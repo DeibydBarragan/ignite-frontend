@@ -236,3 +236,38 @@ body {
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
 }
+
+/* Shimmer para placeholders de carga (portadas, skeletons) */
+@keyframes ignite-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.ignite-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(148, 163, 184, 0.15) 25%,
+    rgba(148, 163, 184, 0.32) 50%,
+    rgba(148, 163, 184, 0.15) 75%
+  );
+  background-size: 200% 100%;
+  animation: ignite-shimmer 1.4s linear infinite;
+}
+
+/* Barra de progreso indeterminada (el resolve es una sola petición, sin % real) */
+@keyframes ignite-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+.ignite-progress-slide {
+  animation: ignite-slide 1.2s ease-in-out infinite;
+}

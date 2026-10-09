@@ -10,6 +10,7 @@ import {
   updatePlaylistSnapshot,
   deleteUserPlaylist,
   timeAgo,
+  FALLBACK_COVER,
   type UserPlaylist,
 } from "@/lib/playlists-service";
 import { GlassModal } from "@/components/glass-modal";
@@ -44,6 +45,66 @@ interface LiveState {
   status: "loading" | "ok" | "error";
   tracks: Song[];
   truncated: boolean;
+}
+
+/** Portada con placeholder shimmer mientras carga la imagen. */
+function CoverImage({ src, alt, className = "" }: { src: string; alt: string; className?: string }) {
+  const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [broken, setBroken] = useState(false);
+
+  useEffect(() => {
+    setLoaded(false);
+    setFailed(false);
+    setBroken(false);
+  }, [src]);
+
+  return (
+    <span className={`relative block overflow-hidden bg-black/5 dark:bg-white/5 ${className}`}>
+      {(!loaded || broken) && (
+        <span className="absolute inset-0 ignite-shimmer flex items-center justify-center">
+          <Music2 size={14} className="text-slate-400/60" />
+        </span>
+      )}
+      {!broken && (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={failed ? FALLBACK_COVER : src}
+          alt={alt}
+          loading="lazy"
+          draggable={false}
+          onLoad={() => setLoaded(true)}
+          onError={() => {
+            if (!failed) setFailed(true);
+            else setBroken(true);
+          }}
+          className={`h-full w-full object-cover transition-opacity duration-300 ${
+            loaded ? "opacity-100" : "opacity-0"
+          }`}
+        />
+      )}
+    </span>
+  );
+}
+
+/** Filas esqueleto con la forma de la lista de temas. */
+function TrackSkeletonRows({ count = 7 }: { count?: number }) {
+  return (
+    <div className="space-y-1.5" aria-hidden="true">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="flex items-center gap-2.5 p-2">
+          <span className="text-[11px] font-mono text-slate-400/50 w-6 text-center shrink-0">
+            {i + 1}
+          </span>
+          <span className="w-9 h-9 rounded-lg ignite-shimmer shrink-0" />
+          <div className="flex-1 space-y-1.5">
+            <div className="h-3 rounded-md ignite-shimmer" style={{ width: `${72 - (i % 3) * 12}%` }} />
+            <div className="h-2 rounded-md ignite-shimmer" style={{ width: `${46 - (i % 2) * 10}%` }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function PlaylistsView() {
@@ -312,12 +373,10 @@ export function PlaylistsView() {
                 className="glass-panel p-3.5 flex flex-col gap-3 hover:border-purple-500/30 transition-colors"
               >
                 <div className="flex items-start gap-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <CoverImage
                     src={pl.cover}
                     alt={pl.name}
-                    className="w-14 h-14 rounded-xl object-cover ring-1 ring-black/10 dark:ring-white/10 shrink-0"
-                    loading="lazy"
+                    className="w-14 h-14 rounded-xl ring-1 ring-black/10 dark:ring-white/10 shrink-0"
                   />
                   <div className="min-w-0 flex-1">
                     <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate" title={pl.name}>
@@ -431,9 +490,21 @@ export function PlaylistsView() {
         {selected && (
           <div className="space-y-1.5">
             {isSyncing ? (
-              <div className="py-10 flex flex-col items-center justify-center gap-2 text-slate-400">
-                <RefreshCw size={22} className="animate-spin text-purple-400" />
-                <span className="text-xs">Sincronizando temas con {selected.source}...</span>
+              <div className="space-y-3 py-2">
+                <div className="px-1">
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 mb-1.5">
+                    <RefreshCw size={12} className="animate-spin text-purple-400" />
+                    <span>Sincronizando temas con {selected.source}...</span>
+                  </div>
+                  <div
+                    className="h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden"
+                    role="progressbar"
+                    aria-label="Sincronizando playlist"
+                  >
+                    <div className="h-full w-2/5 rounded-full bg-gradient-to-r from-purple-500 to-[#1ed760] ignite-progress-slide" />
+                  </div>
+                </div>
+                <TrackSkeletonRows />
               </div>
             ) : (
               <>
@@ -459,12 +530,10 @@ export function PlaylistsView() {
                         <span className="text-[11px] font-mono text-slate-400 w-6 text-center shrink-0">
                           {idx + 1}
                         </span>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
+                        <CoverImage
                           src={track.albumArt}
                           alt={track.title}
-                          className="w-9 h-9 rounded-lg object-cover shrink-0"
-                          loading="lazy"
+                          className="w-9 h-9 rounded-lg shrink-0"
                         />
                         <div className="min-w-0">
                           <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
