@@ -59,7 +59,17 @@ interface BotContextType {
   toggleShuffle: () => void;
   defaultProvider: MusicSource;
   setDefaultProvider: (provider: MusicSource) => void;
-  importUrlSong: (url: string) => { success: boolean; message: string; song?: Song };
+  importUrlSong: (url: string) => Promise<{ success: boolean; message: string; song?: Song }>;
+
+  // Loading & Action Locking States
+  isPlayerBusy: boolean;
+  pendingAction: "skip" | "previous" | "toggle" | "play" | "queue" | "clear" | null;
+  loadingSongId: string | null;
+  removingSongId: string | null;
+  isSkipping: boolean;
+  isTogglingPlay: boolean;
+  isAddingToQueue: boolean;
+  syncPlayerState: () => Promise<void>;
 
   // TTS
   recentTTS: TTSMessage[];
@@ -165,45 +175,59 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(interval);
   }, [isPlaying, currentSong]);
 
+  // Loading & Action locking state
+  const [isPlayerBusy, setIsPlayerBusy] = useState<boolean>(false);
+  const [pendingAction, setPendingAction] = useState<"skip" | "previous" | "toggle" | "play" | "queue" | "clear" | null>(null);
+  const [loadingSongId, setLoadingSongId] = useState<string | null>(null);
+  const [removingSongId, setRemovingSongId] = useState<string | null>(null);
+
+  const isSkipping = pendingAction === "skip";
+  const isTogglingPlay = pendingAction === "toggle";
+  const isAddingToQueue = pendingAction === "queue";
+
   // Real-time synchronization with Bot REST API
+  const syncPlayerState = useCallback(async () => {
+    try {
+      const state = await igniteApi.getPlayerState(selectedGuildId);
+      if (!state) return;
+
+      if (state.hasQueue && state.currentSong) {
+        setCurrentSong(state.currentSong);
+        setIsPlaying(state.isPlaying);
+        setCurrentTime(state.currentTime);
+        setVolume(state.volume);
+        setRepeatMode(state.repeatMode);
+        setQueue(state.queue);
+        setIsVoiceConnected(true);
+        if (state.voiceChannel) {
+          setCurrentVoiceChannelId(state.voiceChannel.id);
+        }
+      } else if (!state.hasQueue) {
+        setCurrentSong(null);
+        setIsPlaying(false);
+        setQueue([]);
+        setCurrentTime(0);
+      }
+    } catch {
+      // Fall back gracefully to local state
+    }
+  }, [selectedGuildId]);
+
   useEffect(() => {
     let isMounted = true;
-
-    const syncPlayerState = async () => {
-      try {
-        const state = await igniteApi.getPlayerState(selectedGuildId);
-        if (!isMounted || !state) return;
-
-        if (state.hasQueue && state.currentSong) {
-          setCurrentSong(state.currentSong);
-          setIsPlaying(state.isPlaying);
-          setCurrentTime(state.currentTime);
-          setVolume(state.volume);
-          setRepeatMode(state.repeatMode);
-          setQueue(state.queue);
-          setIsVoiceConnected(true);
-          if (state.voiceChannel) {
-            setCurrentVoiceChannelId(state.voiceChannel.id);
-          }
-        } else if (!state.hasQueue) {
-          setCurrentSong(null);
-          setIsPlaying(false);
-          setQueue([]);
-          setCurrentTime(0);
-        }
-      } catch {
-        // Fall back gracefully to local state
-      }
+    const runSync = async () => {
+      if (!isMounted) return;
+      await syncPlayerState();
     };
 
-    const interval = setInterval(syncPlayerState, 2000);
-    syncPlayerState();
+    const interval = setInterval(runSync, 2000);
+    runSync();
 
     return () => {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [selectedGuildId, isPlaying]);
+  }, [syncPlayerState]);
 
   const loginDiscord = () => {
     setIsLoggedIn(true);
@@ -227,65 +251,147 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     }));
   };
 
-  const playSong = useCallback((song: Song) => {
-    setCurrentSong(song);
-    setCurrentTime(0);
-    setIsPlaying(true);
-    igniteApi.play(selectedGuildId, { query: song.url || `${song.title} ${song.artist}` });
-    setLiveEvents((prev) => [
-      {
-        id: "evt-" + Date.now(),
-        type: "music_play",
-        title: "Reproduciendo",
-        description: `'${song.title} - ${song.artist}' enviada al bot`,
-        timestamp: "Ahora mismo",
-      },
-      ...prev.slice(0, 19),
-    ]);
-  }, [selectedGuildId]);
+  const playSong = useCallback(async (song: Song) => {
+    if (isPlayerBusy) return;
+    setIsPlayerBusy(true);
+    setPendingAction("play");
+    setLoadingSongId(song.id);
+    try {
+      setCurrentSong(song);
+      setCurrentTime(0);
+      setIsPlaying(true);
+      await igniteApi.play(selectedGuildId, {
+        query: song.url || `${song.title} ${song.artist}`,
+        voiceChannelId: currentVoiceChannelId || undefined,
+      });
+      setLiveEvents((prev) => [
+        {
+          id: "evt-" + Date.now(),
+          type: "music_play",
+          title: "Reproduciendo",
+          description: `'${song.title} - ${song.artist}' enviada al bot`,
+          timestamp: "Ahora mismo",
+        },
+        ...prev.slice(0, 19),
+      ]);
+      await syncPlayerState();
+    } catch (err) {
+      console.error("Error playing song:", err);
+    } finally {
+      setIsPlayerBusy(false);
+      setPendingAction(null);
+      setLoadingSongId(null);
+    }
+  }, [isPlayerBusy, selectedGuildId, currentVoiceChannelId, syncPlayerState]);
 
-  const addToQueue = useCallback((song: Song) => {
-    setQueue((prev) => [...prev, song]);
-    igniteApi.play(selectedGuildId, { query: song.url || `${song.title} ${song.artist}` });
-    setLiveEvents((prev) => [
-      {
-        id: "evt-" + Date.now(),
-        type: "music_play",
-        title: "Añadido a la cola",
-        description: `'${song.title}' añadida a la lista de espera`,
-        timestamp: "Ahora mismo",
-      },
-      ...prev.slice(0, 19),
-    ]);
-  }, [selectedGuildId]);
+  const addToQueue = useCallback(async (song: Song) => {
+    if (loadingSongId === song.id) return;
+    setPendingAction("queue");
+    setLoadingSongId(song.id);
+    try {
+      setQueue((prev) => [...prev, song]);
+      await igniteApi.play(selectedGuildId, {
+        query: song.url || `${song.title} ${song.artist}`,
+        voiceChannelId: currentVoiceChannelId || undefined,
+      });
+      setLiveEvents((prev) => [
+        {
+          id: "evt-" + Date.now(),
+          type: "music_play",
+          title: "Añadido a la cola",
+          description: `'${song.title}' añadida a la lista de espera`,
+          timestamp: "Ahora mismo",
+        },
+        ...prev.slice(0, 19),
+      ]);
+      await syncPlayerState();
+    } catch (err) {
+      console.error("Error adding to queue:", err);
+    } finally {
+      setPendingAction(null);
+      setLoadingSongId(null);
+    }
+  }, [loadingSongId, selectedGuildId, currentVoiceChannelId, syncPlayerState]);
 
-  const removeFromQueue = useCallback((songId: string) => {
-    setQueue((prev) => {
-      const idx = prev.findIndex((s) => s.id === songId);
+  const removeFromQueue = useCallback(async (songId: string) => {
+    if (removingSongId === songId) return;
+    setRemovingSongId(songId);
+    try {
+      const idx = queue.findIndex((s) => s.id === songId);
+      setQueue((prev) => prev.filter((s) => s.id !== songId));
       if (idx !== -1) {
-        igniteApi.removeFromQueue(selectedGuildId, idx + 1);
+        await igniteApi.removeFromQueue(selectedGuildId, idx + 1);
+        await syncPlayerState();
       }
-      return prev.filter((s) => s.id !== songId);
-    });
-  }, [selectedGuildId]);
+    } catch (err) {
+      console.error("Error removing from queue:", err);
+    } finally {
+      setRemovingSongId(null);
+    }
+  }, [queue, removingSongId, selectedGuildId, syncPlayerState]);
 
-  const clearQueue = useCallback(() => {
-    setQueue([]);
-    igniteApi.clearQueue(selectedGuildId);
-  }, [selectedGuildId]);
+  const clearQueue = useCallback(async () => {
+    if (isPlayerBusy) return;
+    setIsPlayerBusy(true);
+    setPendingAction("clear");
+    try {
+      setQueue([]);
+      await igniteApi.clearQueue(selectedGuildId);
+      await syncPlayerState();
+    } catch (err) {
+      console.error("Error clearing queue:", err);
+    } finally {
+      setIsPlayerBusy(false);
+      setPendingAction(null);
+    }
+  }, [isPlayerBusy, selectedGuildId, syncPlayerState]);
 
-  const togglePlayPause = useCallback(() => {
+  const togglePlayPause = useCallback(async () => {
+    if (isPlayerBusy) return;
+    setIsPlayerBusy(true);
+    setPendingAction("toggle");
     setIsPlaying((prev) => !prev);
-    igniteApi.control(selectedGuildId, "toggle");
-  }, [selectedGuildId]);
+    try {
+      await igniteApi.control(selectedGuildId, "toggle");
+      await syncPlayerState();
+    } catch (err) {
+      console.error("Error toggling play/pause:", err);
+      setIsPlaying((prev) => !prev);
+    } finally {
+      setIsPlayerBusy(false);
+      setPendingAction(null);
+    }
+  }, [isPlayerBusy, selectedGuildId, syncPlayerState]);
 
-  const skipNext = useCallback(() => {
-    igniteApi.control(selectedGuildId, "skip");
-  }, [selectedGuildId]);
+  const skipNext = useCallback(async () => {
+    if (isPlayerBusy) return;
+    setIsPlayerBusy(true);
+    setPendingAction("skip");
+    try {
+      await igniteApi.control(selectedGuildId, "skip");
+      await syncPlayerState();
+    } catch (err) {
+      console.error("Error skipping next:", err);
+    } finally {
+      setIsPlayerBusy(false);
+      setPendingAction(null);
+    }
+  }, [isPlayerBusy, selectedGuildId, syncPlayerState]);
 
-  const skipPrevious = useCallback(() => {
-    igniteApi.control(selectedGuildId, "previous");
-  }, [selectedGuildId]);
+  const skipPrevious = useCallback(async () => {
+    if (isPlayerBusy) return;
+    setIsPlayerBusy(true);
+    setPendingAction("previous");
+    try {
+      await igniteApi.control(selectedGuildId, "previous");
+      await syncPlayerState();
+    } catch (err) {
+      console.error("Error skipping previous:", err);
+    } finally {
+      setIsPlayerBusy(false);
+      setPendingAction(null);
+    }
+  }, [isPlayerBusy, selectedGuildId, syncPlayerState]);
 
   const seekTo = useCallback((seconds: number) => {
     if (currentSong) {
@@ -329,63 +435,98 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     });
   }, [selectedGuildId]);
 
-  const importUrlSong = useCallback((url: string) => {
-    const trimmed = url.trim().toLowerCase();
+  const importUrlSong = useCallback(async (url: string) => {
+    const trimmed = url.trim();
     if (!trimmed) {
-      return { success: false, message: "Por favor introduce un enlace válido." };
+      return { success: false, message: "Por favor introduce un enlace o nombre válido." };
     }
 
-    let source: Song["source"] = "youtube";
-    let title = "Pista Importada";
-    let artist = "Desconocido";
-    let albumArt = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=400&q=80";
+    setPendingAction("queue");
+    setIsPlayerBusy(true);
 
-    if (trimmed.includes("spotify.com")) {
-      source = "spotify";
-      title = "Spotify Track · Lavamusic Stream";
-      artist = "Spotify Artist";
-      albumArt = "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=400&q=80";
-    } else if (trimmed.includes("soundcloud.com")) {
-      source = "soundcloud";
-      title = "SoundCloud Remix Session";
-      artist = "SoundCloud Creator";
-      albumArt = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=400&q=80";
-    } else if (trimmed.includes("youtube.com") || trimmed.includes("youtu.be")) {
-      source = "youtube";
-      title = "YouTube Video Audio (Lavalink HQ)";
-      artist = "YouTube Content";
-      albumArt = "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=400&q=80";
-    } else {
-      // Búsqueda en texto plano: resuelve con el proveedor predeterminado
-      source = defaultProvider;
-      title = url.trim();
-      artist = `Búsqueda en ${defaultProvider.toUpperCase()}`;
-      albumArt =
-        defaultProvider === "spotify"
-          ? "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=400&q=80"
-          : defaultProvider === "youtube"
-          ? "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=400&q=80"
-          : "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=400&q=80";
+    try {
+      const res = await igniteApi.play(selectedGuildId, {
+        query: trimmed,
+        voiceChannelId: currentVoiceChannelId || undefined,
+      });
+
+      if (res.success && res.song) {
+        setLiveEvents((prev) => [
+          {
+            id: "evt-" + Date.now(),
+            type: "music_play",
+            title: "Pista Encolada",
+            description: `'${res.song?.title}' enviada al bot`,
+            timestamp: "Ahora mismo",
+          },
+          ...prev.slice(0, 19),
+        ]);
+        await syncPlayerState();
+        return {
+          success: true,
+          message: `¡'${res.song.title}' añadida a la cola exitosamente!`,
+          song: res.song,
+        };
+      } else if (!res.success && res.error) {
+        return {
+          success: false,
+          message: `Error al procesar: ${res.error}`,
+        };
+      }
+
+      // Fallback local mock handling if API didn't return song
+      let source: Song["source"] = "youtube";
+      let title = trimmed;
+      let artist = "Desconocido";
+      let albumArt = "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=400&q=80";
+
+      const lower = trimmed.toLowerCase();
+      if (lower.includes("spotify.com")) {
+        source = "spotify";
+        title = "Spotify Track";
+        artist = "Spotify Artist";
+        albumArt = "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=400&q=80";
+      } else if (lower.includes("soundcloud.com")) {
+        source = "soundcloud";
+        title = "SoundCloud Track";
+        artist = "SoundCloud Creator";
+        albumArt = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=400&q=80";
+      } else if (lower.includes("youtube.com") || lower.includes("youtu.be")) {
+        source = "youtube";
+        title = "YouTube Video Audio";
+        artist = "YouTube Content";
+        albumArt = "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=400&q=80";
+      }
+
+      const newSong: Song = {
+        id: "imported-" + Date.now(),
+        title,
+        artist,
+        albumArt,
+        duration: 210,
+        source,
+        url: trimmed,
+        category: "hits",
+      };
+
+      setQueue((prev) => [...prev, newSong]);
+      await syncPlayerState();
+
+      return {
+        success: true,
+        message: `¡'${title}' añadida a la cola!`,
+        song: newSong,
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        message: err?.message || "Error al encolar la canción.",
+      };
+    } finally {
+      setIsPlayerBusy(false);
+      setPendingAction(null);
     }
-
-    const newSong: Song = {
-      id: "imported-" + Date.now(),
-      title,
-      artist,
-      albumArt,
-      duration: 180 + Math.floor(Math.random() * 120),
-      source,
-      url,
-      category: "gaming",
-    };
-
-    addToQueue(newSong);
-    return {
-      success: true,
-      message: `¡Pista encolada vía ${source.toUpperCase()}!`,
-      song: newSong,
-    };
-  }, [addToQueue, defaultProvider]);
+  }, [selectedGuildId, currentVoiceChannelId, syncPlayerState]);
 
   const sendTTS = useCallback((text: string, voice: string, pitch: number, rate: number) => {
     if (!text.trim()) return;
@@ -556,6 +697,15 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         defaultProvider,
         setDefaultProvider,
         importUrlSong,
+
+        isPlayerBusy,
+        pendingAction,
+        loadingSongId,
+        removingSongId,
+        isSkipping,
+        isTogglingPlay,
+        isAddingToQueue,
+        syncPlayerState,
 
         recentTTS,
         sendTTS,

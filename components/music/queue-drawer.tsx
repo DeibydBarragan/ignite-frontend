@@ -3,7 +3,7 @@
 import { useBot } from "@/context/bot-context";
 import { GlassModal } from "@/components/glass-modal";
 import { Button } from "@heroui/react";
-import { ListMusic, Trash2, X, Music, Play, Disc3, Clock } from "lucide-react";
+import { ListMusic, Trash2, X, Music, Play, Disc3, Clock, Loader2 } from "lucide-react";
 
 function formatDuration(sec: number) {
   const m = Math.floor(sec / 60);
@@ -26,6 +26,10 @@ export function QueueDrawer({
     playSong,
     removeFromQueue,
     clearQueue,
+    isPlayerBusy,
+    pendingAction,
+    loadingSongId,
+    removingSongId,
   } = useBot();
 
   const totalSeconds = (currentSong ? currentSong.duration - currentTime : 0) +
@@ -45,11 +49,20 @@ export function QueueDrawer({
             variant="danger-soft"
             size="sm"
             onPress={clearQueue}
-            isDisabled={queue.length === 0}
+            isDisabled={queue.length === 0 || isPlayerBusy}
             className="flex items-center gap-1.5"
           >
-            <Trash2 size={13} />
-            <span>Vaciar cola</span>
+            {pendingAction === "clear" ? (
+              <>
+                <Loader2 size={13} className="animate-spin text-rose-400" />
+                <span>Vaciando...</span>
+              </>
+            ) : (
+              <>
+                <Trash2 size={13} />
+                <span>Vaciar cola</span>
+              </>
+            )}
           </Button>
           <Button
             variant="outline"
@@ -146,17 +159,35 @@ export function QueueDrawer({
                         playSong(song);
                         removeFromQueue(song.id);
                       }}
+                      disabled={isPlayerBusy}
                       title="Saltar a este tema ahora"
-                      className="p-1 rounded-lg hover:bg-indigo-500/10 text-slate-400 hover:text-indigo-500 transition-colors"
+                      className={`p-1 rounded-lg transition-colors ${
+                        isPlayerBusy
+                          ? "opacity-40 cursor-not-allowed"
+                          : "hover:bg-indigo-500/10 text-slate-400 hover:text-indigo-500 cursor-pointer"
+                      }`}
                     >
-                      <Play size={13} />
+                      {loadingSongId === song.id && pendingAction === "play" ? (
+                        <Loader2 size={13} className="animate-spin text-indigo-400" />
+                      ) : (
+                        <Play size={13} />
+                      )}
                     </button>
                     <button
                       onClick={() => removeFromQueue(song.id)}
+                      disabled={isPlayerBusy || removingSongId === song.id}
                       title="Eliminar de la cola"
-                      className="p-1 rounded-lg hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 transition-colors"
+                      className={`p-1 rounded-lg transition-colors ${
+                        removingSongId === song.id || isPlayerBusy
+                          ? "opacity-40 cursor-not-allowed"
+                          : "hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 cursor-pointer"
+                      }`}
                     >
-                      <X size={13} />
+                      {removingSongId === song.id ? (
+                        <Loader2 size={13} className="animate-spin text-rose-400" />
+                      ) : (
+                        <X size={13} />
+                      )}
                     </button>
                   </div>
                 </div>

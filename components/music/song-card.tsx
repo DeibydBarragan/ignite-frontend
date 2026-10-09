@@ -2,7 +2,7 @@
 
 import { Song } from "@/lib/mock-data";
 import { useBot } from "@/context/bot-context";
-import { Play, Plus, Clock, Disc3 } from "lucide-react";
+import { Play, Plus, Clock, Disc3, Loader2 } from "lucide-react";
 
 function formatDuration(sec: number) {
   const m = Math.floor(sec / 60);
@@ -17,9 +17,19 @@ const SOURCE_COLORS: Record<Song["source"], { label: string; bg: string; text: s
 };
 
 export function SongCard({ song }: { song: Song }) {
-  const { currentSong, isPlaying, playSong, addToQueue } = useBot();
+  const {
+    currentSong,
+    isPlaying,
+    playSong,
+    addToQueue,
+    isPlayerBusy,
+    pendingAction,
+    loadingSongId,
+  } = useBot();
 
   const isCurrent = currentSong?.id === song.id;
+  const isLoadingThisSongPlay = loadingSongId === song.id && pendingAction === "play";
+  const isLoadingThisSongQueue = loadingSongId === song.id && pendingAction === "queue";
 
   return (
     <div
@@ -59,10 +69,21 @@ export function SongCard({ song }: { song: Song }) {
           {/* Quick Play Hover Button (Spotify Green) */}
           <button
             onClick={() => playSong(song)}
+            disabled={isPlayerBusy}
             aria-label={`Reproducir ${song.title}`}
-            className="absolute bottom-2.5 right-2.5 h-9 w-9 rounded-full bg-[#1db954] hover:bg-[#1ed760] text-black shadow-lg shadow-[#1db954]/25 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all transform translate-y-1 group-hover:translate-y-0 hover:scale-105"
+            className={`absolute bottom-2.5 right-2.5 h-9 w-9 rounded-full bg-[#1db954] text-black shadow-lg shadow-[#1db954]/25 flex items-center justify-center transition-all transform ${
+              isLoadingThisSongPlay
+                ? "opacity-100 scale-105 cursor-not-allowed"
+                : isPlayerBusy
+                ? "opacity-0 pointer-events-none"
+                : "opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 hover:scale-105 hover:bg-[#1ed760] cursor-pointer"
+            }`}
           >
-            <Play size={16} className="fill-current ml-0.5" />
+            {isLoadingThisSongPlay ? (
+              <Loader2 size={16} className="animate-spin text-black" />
+            ) : (
+              <Play size={16} className="fill-current ml-0.5" />
+            )}
           </button>
         </div>
 
@@ -84,11 +105,25 @@ export function SongCard({ song }: { song: Song }) {
 
         <button
           onClick={() => addToQueue(song)}
-          title="Añadir a la cola"
-          className="glass-btn px-2 py-0.5 text-[10px] flex items-center gap-1 text-slate-600 dark:text-slate-300 hover:text-[#1ed760] hover:border-[#1db954]/30"
+          disabled={isPlayerBusy || isLoadingThisSongQueue}
+          title={isLoadingThisSongQueue ? "Añadiendo a la cola..." : "Añadir a la cola"}
+          className={`glass-btn px-2 py-0.5 text-[10px] flex items-center gap-1 transition-colors ${
+            isLoadingThisSongQueue || isPlayerBusy
+              ? "opacity-50 cursor-not-allowed"
+              : "text-slate-600 dark:text-slate-300 hover:text-[#1ed760] hover:border-[#1db954]/30 cursor-pointer"
+          }`}
         >
-          <Plus size={11} />
-          <span>Cola</span>
+          {isLoadingThisSongQueue ? (
+            <>
+              <Loader2 size={11} className="animate-spin text-purple-400" />
+              <span>Añadiendo...</span>
+            </>
+          ) : (
+            <>
+              <Plus size={11} />
+              <span>Cola</span>
+            </>
+          )}
         </button>
       </div>
     </div>
