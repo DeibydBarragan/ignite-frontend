@@ -157,11 +157,11 @@ export function MusicView() {
         )}
 
         {/* ══════════ TABS DE NAVEGACIÓN DEL CATÁLOGO ══════════ */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 min-w-0">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-full min-w-0 pb-0.5">
             <button
               onClick={() => setActiveTab("favorites")}
-              className={`glass-pill px-3 py-1.5 text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`glass-pill px-3 py-1.5 text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === "favorites"
                   ? "glass-pill-active font-semibold"
                   : "text-slate-400 hover:text-slate-200"
@@ -181,7 +181,7 @@ export function MusicView() {
 
             <button
               onClick={() => setActiveTab("catalog")}
-              className={`glass-pill px-3 py-1.5 text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`glass-pill px-3 py-1.5 text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === "catalog"
                   ? "glass-pill-active font-semibold"
                   : "text-slate-400 hover:text-slate-200"
@@ -199,7 +199,7 @@ export function MusicView() {
 
             <button
               onClick={() => setActiveTab("playlists")}
-              className={`glass-pill px-3 py-1.5 text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+              className={`glass-pill px-3 py-1.5 text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === "playlists"
                   ? "glass-pill-active font-semibold"
                   : "text-slate-400 hover:text-slate-200"
