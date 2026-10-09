@@ -2,7 +2,7 @@
 
 import { Song } from "@/lib/mock-data";
 import { useBot } from "@/context/bot-context";
-import { Play, Plus, Clock, Disc3, Loader2 } from "lucide-react";
+import { Play, Plus, Clock, Disc3, Loader2, Star } from "lucide-react";
 
 function formatDuration(sec: number) {
   const m = Math.floor(sec / 60);
@@ -25,9 +25,12 @@ export function SongCard({ song }: { song: Song }) {
     isPlayerBusy,
     pendingAction,
     loadingSongId,
+    isFavorite,
+    toggleFavorite,
   } = useBot();
 
   const isCurrent = currentSong?.id === song.id;
+  const isFav = isFavorite(song.id) || isFavorite(song.url);
   const isLoadingThisSongPlay = loadingSongId === song.id && pendingAction === "play";
   const isLoadingThisSongQueue = loadingSongId === song.id && pendingAction === "queue";
 
@@ -56,6 +59,22 @@ export function SongCard({ song }: { song: Song }) {
           >
             {SOURCE_COLORS[song.source].label}
           </span>
+
+          {/* Favorite Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleFavorite(song);
+            }}
+            title={isFav ? "Quitar de favoritos" : "Guardar en favoritos"}
+            className={`absolute top-2 right-2 p-1.5 rounded-full backdrop-blur-md transition-all cursor-pointer z-10 ${
+              isFav
+                ? "bg-amber-400/20 text-amber-400 border border-amber-400/30 opacity-100 scale-105"
+                : "bg-black/40 text-white/70 hover:text-amber-400 hover:bg-black/60 opacity-0 group-hover:opacity-100"
+            }`}
+          >
+            <Star size={12} className={isFav ? "fill-amber-400" : ""} />
+          </button>
 
           {/* Equalizer overlay when playing */}
           {isCurrent && isPlaying && (

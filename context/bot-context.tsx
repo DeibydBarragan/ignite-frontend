@@ -20,13 +20,14 @@ import {
 } from "@/lib/mock-data";
 import { audioSynth } from "@/lib/audio-synth";
 import { igniteApi } from "@/lib/ignite-api";
+import { supabase } from "@/lib/supabase";
 
 interface BotContextType {
   // Auth & Guild
   user: DiscordUser;
   isLoggedIn: boolean;
-  loginDiscord: () => void;
-  logoutDiscord: () => void;
+  loginDiscord: () => Promise<void>;
+  logoutDiscord: () => Promise<void>;
   guilds: DiscordGuild[];
   selectedGuildId: string;
   selectedGuild: DiscordGuild;
@@ -60,6 +61,13 @@ interface BotContextType {
   defaultProvider: MusicSource;
   setDefaultProvider: (provider: MusicSource) => void;
   importUrlSong: (url: string) => Promise<{ success: boolean; message: string; song?: Song }>;
+
+  // Favorites (Supabase & Discord sync)
+  favorites: Song[];
+  isLoadingFavorites: boolean;
+  isFavorite: (songIdOrUrl: string) => boolean;
+  toggleFavorite: (song: Song) => Promise<void>;
+  playFavorites: () => Promise<void>;
 
   // Loading & Action Locking States
   isPlayerBusy: boolean;
@@ -185,6 +193,10 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   const isTogglingPlay = pendingAction === "toggle";
   const isAddingToQueue = pendingAction === "queue";
 
+  // Favorites State (Supabase sync)
+  const [favorites, setFavorites] = useState<Song[]>([]);
+  const [isLoadingFavorites, setIsLoadingFavorites] = useState<boolean>(false);
+
   // Real-time synchronization with Bot REST API
   const syncPlayerState = useCallback(async () => {
     try {
@@ -229,13 +241,185 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     };
   }, [syncPlayerState]);
 
-  const loginDiscord = () => {
-    setIsLoggedIn(true);
-  };
+  // Fetch favorites from Supabase for a given user ID
+  const fetchFavorites = useCallback(async (uid: string) => {
+    setIsLoadingFavorites(true);
+    try {
+      const { data, error } = await supabase
+        .from("user_favorites")
+        .select("*")
+        .eq("user_id", uid)
+        .order("created_at", { ascending: false });
 
-  const logoutDiscord = () => {
-    setIsLoggedIn(false);
-  };
+      if (!error && data) {
+        const mapped: Song[] = data.map((item: any) => ({
+          id: item.song_id || item.url,
+          title: item.title,
+          artist: item.artist,
+          albumArt:
+            item.album_art ||
+            "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=400&q=80",
+          duration: item.duration || 180,
+          source: (item.source as Song["source"]) || "youtube",
+          url: item.url,
+          category: "hits",
+        }));
+        setFavorites(mapped);
+      }
+    } catch (err) {
+      console.error("Error loading favorites from Supabase:", err);
+    } finally {
+      setIsLoadingFavorites(false);
+    }
+  }, []);
+
+  // Sync Supabase Auth session with Discord user profile
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const meta = session.user.user_metadata || {};
+        const discordId =
+          meta.provider_id || meta.sub || session.user.id;
+        const username =
+          meta.custom_claims?.global_name ||
+          meta.full_name ||
+          meta.user_name ||
+          meta.name ||
+          "Usuario";
+        const avatar = meta.avatar_url || MOCK_USER.avatar;
+
+        setUser({
+          id: discordId,
+          username,
+          discriminator: "0",
+          avatar,
+          status: "online",
+          isVoiceConnected: true,
+          currentChannelId: null,
+        });
+        setIsLoggedIn(true);
+        fetchFavorites(discordId);
+      } else {
+        fetchFavorites(MOCK_USER.id);
+      }
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const meta = session.user.user_metadata || {};
+        const discordId =
+          meta.provider_id || meta.sub || session.user.id;
+        const username =
+          meta.custom_claims?.global_name ||
+          meta.full_name ||
+          meta.user_name ||
+          meta.name ||
+          "Usuario";
+        const avatar = meta.avatar_url || MOCK_USER.avatar;
+
+        setUser({
+          id: discordId,
+          username,
+          discriminator: "0",
+          avatar,
+          status: "online",
+          isVoiceConnected: true,
+          currentChannelId: null,
+        });
+        setIsLoggedIn(true);
+        fetchFavorites(discordId);
+      } else {
+        setUser(MOCK_USER);
+        setIsLoggedIn(false);
+        fetchFavorites(MOCK_USER.id);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [fetchFavorites]);
+
+  const loginDiscord = useCallback(async () => {
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: "discord",
+        options: {
+          redirectTo:
+            typeof window !== "undefined"
+              ? `${window.location.origin}/auth/callback`
+              : undefined,
+        },
+      });
+    } catch (err) {
+      console.error("Discord login error:", err);
+    }
+  }, []);
+
+  const logoutDiscord = useCallback(async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(MOCK_USER);
+      setIsLoggedIn(false);
+      fetchFavorites(MOCK_USER.id);
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+  }, [fetchFavorites]);
+
+  const isFavorite = useCallback(
+    (songIdOrUrl: string) => {
+      return favorites.some(
+        (f) => f.id === songIdOrUrl || f.url === songIdOrUrl
+      );
+    },
+    [favorites]
+  );
+
+  const toggleFavorite = useCallback(
+    async (song: Song) => {
+      const uid = user.id;
+      const isAlready = favorites.some(
+        (f) => f.id === song.id || f.url === song.url
+      );
+
+      if (isAlready) {
+        // Optimistic UI update
+        setFavorites((prev) =>
+          prev.filter((f) => f.id !== song.id && f.url !== song.url)
+        );
+        try {
+          await supabase
+            .from("user_favorites")
+            .delete()
+            .eq("user_id", uid)
+            .or(`song_id.eq.${song.id},url.eq.${song.url}`);
+        } catch (err) {
+          console.error("Error removing favorite from Supabase:", err);
+        }
+      } else {
+        // Optimistic UI update
+        setFavorites((prev) => [song, ...prev]);
+        try {
+          await supabase.from("user_favorites").insert({
+            user_id: uid,
+            song_id: song.id,
+            title: song.title,
+            artist: song.artist,
+            album_art: song.albumArt,
+            url: song.url,
+            duration: song.duration,
+            source: song.source,
+          });
+        } catch (err) {
+          console.error("Error adding favorite to Supabase:", err);
+        }
+      }
+    },
+    [user.id, favorites]
+  );
 
   const setVoiceConnection = (connected: boolean, channelId?: string) => {
     setIsVoiceConnected(connected);
@@ -312,6 +496,15 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setLoadingSongId(null);
     }
   }, [loadingSongId, selectedGuildId, currentVoiceChannelId, syncPlayerState]);
+
+  const playFavorites = useCallback(async () => {
+    if (!favorites.length || isPlayerBusy) return;
+    const [first, ...rest] = favorites;
+    await playSong(first);
+    for (const song of rest) {
+      await addToQueue(song);
+    }
+  }, [favorites, isPlayerBusy, playSong, addToQueue]);
 
   const removeFromQueue = useCallback(async (songId: string) => {
     if (removingSongId === songId) return;
@@ -697,6 +890,12 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         defaultProvider,
         setDefaultProvider,
         importUrlSong,
+
+        favorites,
+        isLoadingFavorites,
+        isFavorite,
+        toggleFavorite,
+        playFavorites,
 
         isPlayerBusy,
         pendingAction,

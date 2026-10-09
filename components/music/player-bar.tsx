@@ -14,6 +14,7 @@ import {
   ListMusic,
   ExternalLink,
   Loader2,
+  Star,
 } from "lucide-react";
 
 function formatDuration(sec: number) {
@@ -38,11 +39,15 @@ export function PlayerBar() {
     toggleShuffle,
     isPlayerBusy,
     pendingAction,
+    isFavorite,
+    toggleFavorite,
   } = useBot();
 
   const [isQueueOpen, setIsQueueOpen] = useState(false);
 
   if (!currentSong) return null;
+
+  const isFav = isFavorite(currentSong.id) || isFavorite(currentSong.url);
 
   const currentDuration = currentSong.duration || 180;
   const progressPercent = Math.min(100, Math.max(0, (currentTime / currentDuration) * 100));
@@ -100,6 +105,18 @@ export function PlayerBar() {
                   {currentSong.artist}
                 </p>
               </div>
+
+              <button
+                onClick={() => toggleFavorite(currentSong)}
+                title={isFav ? "Quitar de favoritos" : "Guardar en favoritos"}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer shrink-0 ${
+                  isFav
+                    ? "text-amber-400 bg-amber-400/10 hover:bg-amber-400/20"
+                    : "text-slate-400 hover:text-amber-400 hover:bg-amber-400/10"
+                }`}
+              >
+                <Star size={16} className={isFav ? "fill-amber-400" : ""} />
+              </button>
             </div>
 
             {/* Center: Controls + Time Scrubber */}

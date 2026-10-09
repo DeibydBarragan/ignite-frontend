@@ -11,6 +11,10 @@ import {
   AlertCircle,
   Plus,
   Loader2,
+  Star,
+  Flame,
+  Play,
+  Sparkles,
 } from "lucide-react";
 
 function detectPlatform(text: string): "spotify" | "youtube" | "soundcloud" | null {
@@ -23,7 +27,17 @@ function detectPlatform(text: string): "spotify" | "youtube" | "soundcloud" | nu
 }
 
 export function MusicView() {
-  const { catalog, importUrlSong, isPlayerBusy, pendingAction } = useBot();
+  const {
+    catalog,
+    favorites,
+    isLoadingFavorites,
+    playFavorites,
+    importUrlSong,
+    isPlayerBusy,
+    pendingAction,
+  } = useBot();
+
+  const [activeTab, setActiveTab] = useState<"favorites" | "catalog">("favorites");
   const [searchInput, setSearchInput] = useState("");
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
@@ -31,18 +45,20 @@ export function MusicView() {
   const detectedPlatform = useMemo(() => detectPlatform(searchInput.trim()), [searchInput]);
   const isUrl = detectedPlatform !== null;
 
-  const filteredSongs = useMemo(() => {
-    if (isUrl) return catalog; // When typing a URL, keep catalog intact
+  const currentList = activeTab === "favorites" ? favorites : catalog;
+
+  const displayedSongs = useMemo(() => {
+    if (isUrl) return currentList;
     const query = searchInput.toLowerCase().trim();
-    if (!query) return catalog;
-    return catalog.filter((song) => {
+    if (!query) return currentList;
+    return currentList.filter((song) => {
       return (
         song.title.toLowerCase().includes(query) ||
         song.artist.toLowerCase().includes(query) ||
         song.source.toLowerCase().includes(query)
       );
     });
-  }, [catalog, searchInput, isUrl]);
+  }, [currentList, searchInput, isUrl]);
 
   const handleImport = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -70,7 +86,7 @@ export function MusicView() {
   return (
     <div className="space-y-4 pb-28">
       {/* ══════════ COMANDO: BÚSQUEDA Y DETECCIÓN DE ENLACES ══════════ */}
-      <div className="space-y-2">
+      <div className="space-y-3">
         <form onSubmit={handleImport} className="relative flex items-center">
           <div className="relative flex-1 flex items-center">
             {isUrl ? (
@@ -138,14 +154,86 @@ export function MusicView() {
           </div>
         )}
 
-        <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
-          <span>Catálogo de recomendaciones</span>
-          <span className="tabular-nums font-mono">{filteredSongs.length} temas</span>
+        {/* ══════════ TABS DE NAVEGACIÓN DEL CATÁLOGO ══════════ */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveTab("favorites")}
+              className={`glass-pill px-3 py-1.5 text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeTab === "favorites"
+                  ? "glass-pill-active font-semibold"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Star
+                size={13}
+                className={
+                  activeTab === "favorites" ? "fill-amber-400 text-amber-400" : ""
+                }
+              />
+              <span>Mis Favoritos</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-400/15 text-amber-400 font-mono font-bold">
+                {favorites.length}
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("catalog")}
+              className={`glass-pill px-3 py-1.5 text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeTab === "catalog"
+                  ? "glass-pill-active font-semibold"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <Flame
+                size={13}
+                className={activeTab === "catalog" ? "text-purple-400" : ""}
+              />
+              <span>Recomendadas</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-500/15 text-purple-400 font-mono">
+                {catalog.length}
+              </span>
+            </button>
+          </div>
+
+          {/* Action button: Play all favorites */}
+          {activeTab === "favorites" && favorites.length > 0 && (
+            <button
+              onClick={playFavorites}
+              disabled={isPlayerBusy}
+              className="glass-btn px-3 py-1 text-xs flex items-center gap-1.5 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 cursor-pointer disabled:opacity-50"
+            >
+              <Play size={12} className="fill-current" />
+              <span>Reproducir todos mis favoritos</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* ══════════ CATÁLOGO MUSICAL ══════════ */}
-      {filteredSongs.length === 0 ? (
+      {/* ══════════ LISTA DE CANCIONES / ESTADOS ══════════ */}
+      {isLoadingFavorites && activeTab === "favorites" ? (
+        <div className="p-12 text-center glass-panel">
+          <Loader2 size={28} className="mx-auto text-amber-400 animate-spin mb-2" />
+          <p className="text-xs text-slate-400">Cargando tus favoritos desde Supabase...</p>
+        </div>
+      ) : activeTab === "favorites" && favorites.length === 0 ? (
+        <div className="p-12 text-center glass-panel border border-dashed border-black/10 dark:border-white/10">
+          <Star size={36} className="mx-auto text-amber-400/40 mb-3" />
+          <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+            Aún no tienes canciones favoritas
+          </h4>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
+            Presiona el botón <span className="font-semibold text-amber-400">⭐ Favorito</span> en Discord mientras escuchas música, o guarda canciones desde las recomendaciones.
+          </p>
+          <button
+            onClick={() => setActiveTab("catalog")}
+            className="mt-4 px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-md shadow-purple-600/20 inline-flex items-center gap-1.5 cursor-pointer"
+          >
+            <Sparkles size={13} />
+            <span>Explorar sugerencias</span>
+          </button>
+        </div>
+      ) : displayedSongs.length === 0 ? (
         <div className="p-12 text-center glass-panel">
           <Music2 size={32} className="mx-auto text-slate-400 mb-2 opacity-50" />
           <h4 className="text-xs font-semibold text-slate-800 dark:text-slate-200">
@@ -157,7 +245,7 @@ export function MusicView() {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          {filteredSongs.map((song) => (
+          {displayedSongs.map((song) => (
             <SongCard key={song.id} song={song} />
           ))}
         </div>
