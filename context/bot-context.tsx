@@ -90,6 +90,7 @@ interface BotContextType {
   activeSoundId: string | null;
   playSound: (soundId: string) => void;
   addCustomSound: (sound: { name: string; emoji?: string; category: SoundItem["category"]; file?: File }) => Promise<boolean>;
+  attachSoundAudio: (soundId: string, file: File) => Promise<boolean>;
   addPhraseTrigger: (trigger: { phrase: string; soundId: string; exactMatch: boolean; channelTarget: string }) => void;
   togglePhraseTrigger: (id: string) => void;
   deletePhraseTrigger: (id: string) => void;
@@ -889,6 +890,48 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     return true;
   }, [isLoggedIn]);
 
+  const attachSoundAudio = useCallback(async (soundId: string, file: File) => {
+    if (!isLoggedIn) return false;
+    const res = await soundApi.attachSoundFile(soundId, file);
+    if (!res.success || !res.sound) {
+      setLiveEvents((prev) => [
+        {
+          id: "evt-" + Date.now(),
+          type: "soundboard",
+          title: "Error al subir audio",
+          description: res.error || "No se pudo adjuntar el audio al sonido.",
+          timestamp: "Ahora mismo",
+        },
+        ...prev.slice(0, 19),
+      ]);
+      return false;
+    }
+    const s = res.sound;
+    setSounds((prev) =>
+      prev.map((x) =>
+        x.id === soundId
+          ? {
+              ...x,
+              duration: s.duration ?? x.duration,
+              playsCount: s.playsCount ?? x.playsCount,
+              hasFile: true,
+            }
+          : x
+      )
+    );
+    setLiveEvents((prev) => [
+      {
+        id: "evt-" + Date.now(),
+        type: "soundboard",
+        title: "Audio adjuntado",
+        description: `'${s.name}' ahora tiene audio real y sonará en Discord 🔊`,
+        timestamp: "Ahora mismo",
+      },
+      ...prev.slice(0, 19),
+    ]);
+    return true;
+  }, [isLoggedIn]);
+
   const addPhraseTrigger = useCallback((data: { phrase: string; soundId: string; exactMatch: boolean; channelTarget: string }) => {
     if (!isLoggedIn) return;
     const targetSound = sounds.find((s) => s.id === data.soundId);
@@ -1017,6 +1060,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         activeSoundId,
         playSound,
         addCustomSound,
+        attachSoundAudio,
         addPhraseTrigger,
         togglePhraseTrigger,
         deletePhraseTrigger,

@@ -311,6 +311,35 @@ class SoundApiClient {
       };
     }
   }
+
+  async attachSoundFile(
+    soundId: string,
+    file: File
+  ): Promise<{ success: boolean; sound?: SoundboardTrack; error?: string }> {
+    try {
+      const form = new FormData();
+      form.append("file", file);
+
+      const res = await fetch(
+        `${SOUND_API_URL}/api/sounds/${encodeURIComponent(soundId)}/file`,
+        {
+          method: "PUT",
+          headers: { ...NGROK_HEADERS },
+          body: form,
+        }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { success: false, error: data.error || "Error al adjuntar el audio." };
+      }
+      return { success: true, sound: data.sound };
+    } catch {
+      return {
+        success: false,
+        error: "No se pudo conectar con el bot de sonido.",
+      };
+    }
+  }
 }
 
 export const soundApi = new SoundApiClient();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useBot } from "@/context/bot-context";
 import { SoundItem, SoundCategory } from "@/lib/mock-data";
 import { AddSoundModal } from "@/components/soundboard/add-sound-modal";
@@ -15,6 +15,7 @@ import {
   Trash2,
   Zap,
   Radio,
+  Upload,
 } from "lucide-react";
 
 const CATEGORIES: { id: "all" | SoundCategory; label: string }[] = [
@@ -32,6 +33,7 @@ export function SoundboardView() {
     phraseTriggers,
     activeSoundId,
     playSound,
+    attachSoundAudio,
     togglePhraseTrigger,
     deletePhraseTrigger,
     simulatePhraseDetection,
@@ -43,6 +45,33 @@ export function SoundboardView() {
   const [selectedCategory, setSelectedCategory] = useState<"all" | SoundCategory>("all");
   const [isAddSoundOpen, setIsAddSoundOpen] = useState(false);
   const [isAddPhraseOpen, setIsAddPhraseOpen] = useState(false);
+  const [isAttaching, setIsAttaching] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const attachTargetRef = useRef<string | null>(null);
+
+  const ATTACH_EXTS = [".mp3", ".ogg", ".oga", ".wav", ".webm", ".m4a"];
+  const ATTACH_MAX_BYTES = 5 * 1024 * 1024;
+
+  const triggerAttach = (soundId: string) => {
+    attachTargetRef.current = soundId;
+    fileInputRef.current?.click();
+  };
+
+  const handleAttachFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    const targetId = attachTargetRef.current;
+    attachTargetRef.current = null;
+    if (!file || !targetId || isAttaching) return;
+
+    const ext = "." + (file.name.split(".").pop() || "").toLowerCase();
+    if (!ATTACH_EXTS.includes(ext)) return;
+    if (file.size > ATTACH_MAX_BYTES) return;
+
+    setIsAttaching(true);
+    await attachSoundAudio(targetId, file);
+    setIsAttaching(false);
+  };
 
   const filteredSounds = useMemo(() => {
     return sounds.filter((s) => {
@@ -153,7 +182,27 @@ export function SoundboardView() {
                         </span>
                       )}
                     </span>
-                    <span>{snd.playsCount} plays</span>
+                    <span className="flex items-center gap-1">
+                      <span>{snd.playsCount} plays</span>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        title={snd.hasFile ? "Reemplazar audio MP3" : "Subir audio MP3 para que suene en Discord"}
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          triggerAttach(snd.id);
+                        }}
+                        onKeyDown={(ev) => {
+                          if (ev.key === "Enter" || ev.key === " ") {
+                            ev.stopPropagation();
+                            triggerAttach(snd.id);
+                          }
+                        }}
+                        className={`p-0.5 rounded transition-colors cursor-pointer ${snd.hasFile ? "text-[#1db954] hover:text-[#1ed760]" : "text-slate-300 dark:text-slate-600 hover:text-purple-400"}`}
+                      >
+                        <Upload size={11} />
+                      </span>
+                    </span>
                   </div>
                 </div>
               </button>
@@ -317,6 +366,15 @@ export function SoundboardView() {
       {/* Modals */}
       <AddSoundModal isOpen={isAddSoundOpen} onClose={() => setIsAddSoundOpen(false)} />
       <AddPhraseModal isOpen={isAddPhraseOpen} onClose={() => setIsAddPhraseOpen(false)} />
+
+      {/* Hidden file picker for attaching MP3 audio to existing sounds */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".mp3,.ogg,.oga,.wav,.webm,.m4a,audio/*"
+        className="hidden"
+        onChange={handleAttachFile}
+      />
     </div>
   );
 }
