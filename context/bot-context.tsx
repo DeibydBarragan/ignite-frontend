@@ -49,6 +49,8 @@ interface BotContextType {
   playSong: (song: Song) => void;
   addToQueue: (song: Song) => void;
   removeFromQueue: (songId: string) => void;
+  moveQueueSong: (fromIndex: number, toIndex: number) => Promise<void>;
+  jumpToQueueSong: (index: number) => Promise<void>;
   clearQueue: () => void;
   togglePlayPause: () => void;
   skipNext: () => void;
@@ -569,6 +571,41 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isLoggedIn, queue, removingSongId, selectedGuildId, syncPlayerState]);
 
+  // Índices 0-based sobre la cola visible (upcoming). El backend usa
+  // posiciones 1-based sobre songs (0 = tema actual).
+  const moveQueueSong = useCallback(async (fromIndex: number, toIndex: number) => {
+    if (!isLoggedIn || isPlayerBusy) return;
+    if (fromIndex === toIndex) return;
+    if (fromIndex < 0 || toIndex < 0 || fromIndex >= queue.length || toIndex >= queue.length) return;
+    setQueue((prev) => {
+      const next = [...prev];
+      const [song] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, song);
+      return next;
+    });
+    try {
+      await igniteApi.moveInQueue(selectedGuildId, fromIndex + 1, toIndex + 1);
+      await syncPlayerState();
+    } catch (err) {
+      console.error("Error moving song in queue:", err);
+      await syncPlayerState();
+    }
+  }, [isLoggedIn, isPlayerBusy, queue.length, selectedGuildId, syncPlayerState]);
+
+  const jumpToQueueSong = useCallback(async (index: number) => {
+    if (!isLoggedIn || isPlayerBusy) return;
+    if (index < 0 || index >= queue.length) return;
+    setIsPlayerBusy(true);
+    try {
+      await igniteApi.jumpInQueue(selectedGuildId, index + 1);
+      await syncPlayerState();
+    } catch (err) {
+      console.error("Error jumping in queue:", err);
+    } finally {
+      setIsPlayerBusy(false);
+    }
+  }, [isLoggedIn, isPlayerBusy, queue.length, selectedGuildId, syncPlayerState]);
+
   const clearQueue = useCallback(async () => {
     if (!isLoggedIn || isPlayerBusy) return;
     setIsPlayerBusy(true);
@@ -1070,6 +1107,8 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         playSong,
         addToQueue,
         removeFromQueue,
+        moveQueueSong,
+        jumpToQueueSong,
         clearQueue,
         togglePlayPause,
         skipNext,

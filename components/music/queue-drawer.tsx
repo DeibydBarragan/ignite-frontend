@@ -3,7 +3,7 @@
 import { useBot } from "@/context/bot-context";
 import { GlassModal } from "@/components/glass-modal";
 import { Button } from "@heroui/react";
-import { ListMusic, Trash2, X, Music, Play, Disc3, Clock, Loader2 } from "lucide-react";
+import { ListMusic, Trash2, X, Music, Play, Disc3, Clock, Loader2, ChevronUp, ChevronDown } from "lucide-react";
 
 function formatDuration(sec: number) {
   const m = Math.floor(sec / 60);
@@ -23,12 +23,12 @@ export function QueueDrawer({
     queue,
     isPlaying,
     currentTime,
-    playSong,
+    moveQueueSong,
+    jumpToQueueSong,
     removeFromQueue,
     clearQueue,
     isPlayerBusy,
     pendingAction,
-    loadingSongId,
     removingSongId,
   } = useBot();
 
@@ -150,15 +150,36 @@ export function QueueDrawer({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[11px] font-mono text-slate-400">
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="text-[11px] font-mono text-slate-400 mr-1">
                       {formatDuration(song.duration)}
                     </span>
                     <button
-                      onClick={() => {
-                        playSong(song);
-                        removeFromQueue(song.id);
-                      }}
+                      onClick={() => moveQueueSong(index, index - 1)}
+                      disabled={isPlayerBusy || index === 0}
+                      title="Subir en la cola"
+                      className={`p-1 rounded-lg transition-colors ${
+                        isPlayerBusy || index === 0
+                          ? "opacity-30 cursor-not-allowed"
+                          : "hover:bg-purple-500/10 text-slate-400 hover:text-purple-500 cursor-pointer"
+                      }`}
+                    >
+                      <ChevronUp size={13} />
+                    </button>
+                    <button
+                      onClick={() => moveQueueSong(index, index + 1)}
+                      disabled={isPlayerBusy || index === queue.length - 1}
+                      title="Bajar en la cola"
+                      className={`p-1 rounded-lg transition-colors ${
+                        isPlayerBusy || index === queue.length - 1
+                          ? "opacity-30 cursor-not-allowed"
+                          : "hover:bg-purple-500/10 text-slate-400 hover:text-purple-500 cursor-pointer"
+                      }`}
+                    >
+                      <ChevronDown size={13} />
+                    </button>
+                    <button
+                      onClick={() => jumpToQueueSong(index)}
                       disabled={isPlayerBusy}
                       title="Saltar a este tema ahora"
                       className={`p-1 rounded-lg transition-colors ${
@@ -167,11 +188,7 @@ export function QueueDrawer({
                           : "hover:bg-indigo-500/10 text-slate-400 hover:text-indigo-500 cursor-pointer"
                       }`}
                     >
-                      {loadingSongId === song.id && pendingAction === "play" ? (
-                        <Loader2 size={13} className="animate-spin text-indigo-400" />
-                      ) : (
-                        <Play size={13} />
-                      )}
+                      <Play size={13} />
                     </button>
                     <button
                       onClick={() => removeFromQueue(song.id)}

@@ -149,6 +149,36 @@ class IgniteApiClient {
     }
   }
 
+  async moveInQueue(guildId: string, from: number, to: number): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/queue/move`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify({ from, to }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { success: false, error: data.error };
+      return { success: true, message: data.message };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  async jumpInQueue(guildId: string, position: number): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/queue/jump`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify({ position }),
+      });
+      const data = await res.json();
+      if (!res.ok) return { success: false, error: data.error };
+      return { success: true, message: data.message };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+
   async clearQueue(guildId: string): Promise<boolean> {
     try {
       const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/queue`, {
