@@ -798,8 +798,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     if (!sound) return;
 
     setActiveSoundId(soundId);
-    // Preview local inmediato (Web Audio synth) — funciona aunque el bot esté offline
-    audioSynth.playPreset(sound.preset);
+    // Sin preview local: el sonido solo se emite en Discord.
 
     setTimeout(() => {
       setActiveSoundId(null);
@@ -812,9 +811,9 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
 
     const channelName = currentVoiceChannel?.name || "General";
 
-    // Emisión real en Discord (fire-and-forget, no bloquea la UI).
-    // Si el sonido aún no tiene .mp3 en el bot, el backend responde
-    // code NO_AUDIO_FILE y nos quedamos con el preview local.
+    // Emisión en Discord (fire-and-forget, no bloquea la UI).
+    // Sin archivo en el bot (code NO_AUDIO_FILE) no sonará nada:
+    // hay que subir el .mp3 con el icono de subida del pad.
     soundApi
       .playSoundOnDiscord({
         guildId: selectedGuildId,
@@ -827,10 +826,12 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
           {
             id: "evt-" + Date.now(),
             type: "soundboard",
-            title: res.success ? "Soundboard en Discord" : "Soundboard (preview local)",
+            title: res.success ? "Soundboard en Discord" : "No se pudo emitir",
             description: res.success
               ? `Efecto ${sound.emoji || "🔊"} '${sound.name}' emitido en ${res.channel?.name || channelName}`
-              : `Efecto ${sound.emoji || "🔊"} '${sound.name}' solo en tu navegador — ${res.code === "NO_AUDIO_FILE" ? "el bot aún no tiene el .mp3" : res.error || "bot no alcanzable"}`,
+              : res.code === "NO_AUDIO_FILE"
+                ? `Efecto ${sound.emoji || "🔊"} '${sound.name}' sin audio en el bot — súbelo con el icono ⬆️ del pad`
+                : res.error || "No se pudo emitir el sonido en Discord",
             timestamp: "Ahora mismo",
           },
           ...prev.slice(0, 19),
@@ -841,8 +842,8 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
           {
             id: "evt-" + Date.now(),
             type: "soundboard",
-            title: "Soundboard (preview local)",
-            description: `Efecto ${sound.emoji || "🔊"} '${sound.name}' solo en tu navegador — bot no alcanzable`,
+            title: "No se pudo emitir",
+            description: `Efecto ${sound.emoji || "🔊"} '${sound.name}' — bot no alcanzable`,
             timestamp: "Ahora mismo",
           },
           ...prev.slice(0, 19),
