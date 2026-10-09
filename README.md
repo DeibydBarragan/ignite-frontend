@@ -29,7 +29,7 @@ Built with **Next.js 16 + React 19**, glassmorphism UI, Discord OAuth login, and
 
 | | |
 | --- | --- |
-| **Music controller** | Song catalog, universal search, YouTube / Spotify / SoundCloud link support, play-next, persistent floating player bar (play, pause, skip, previous, seek scrubber, volume, loop, shuffle, autoplay), and a queue drawer (jump to track, remove, clear) |
+| **Music controller** | Song catalog, universal search, YouTube / Spotify link support, play-next, persistent floating player bar (play, pause, skip, previous, seek scrubber, volume, loop, shuffle, autoplay), and a queue drawer (jump to track, remove, clear) |
 | **Playlists** | Import a playlist link (preview resolved tracks first), save it per user in Supabase, and play it back from the web or from Discord with `/playlists` |
 | **TTS console** | Message composer with character counter, neural voice picker (Loquendo, Edge es-MX/es-ES/es-AR/es-CO, …), rate/pitch controls, browser preview, one-click emit to the Discord voice channel, and saved phrases in Supabase |
 | **Soundboard** | Live catalog from the sound bot, category filters + search, one-click play in Discord, upload of new sounds (name, emoji, category, audio file), and delete |

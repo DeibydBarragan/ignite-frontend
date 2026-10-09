@@ -120,7 +120,7 @@ export function QueueDrawer({
                 La cola está vacía
               </p>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                Añade temas desde el catálogo musical o pega un enlace de YouTube, Spotify o SoundCloud.
+                Añade temas desde el catálogo musical o pega un enlace de YouTube o Spotify.
               </p>
             </div>
           ) : (

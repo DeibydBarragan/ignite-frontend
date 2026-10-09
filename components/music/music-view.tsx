@@ -20,11 +20,10 @@ import {
   ListMusic,
 } from "lucide-react";
 
-function detectPlatform(text: string): "spotify" | "youtube" | "soundcloud" | null {
+function detectPlatform(text: string): "spotify" | "youtube" | null {
   const lower = text.toLowerCase();
   if (lower.includes("spotify.com")) return "spotify";
   if (lower.includes("youtube.com") || lower.includes("youtu.be")) return "youtube";
-  if (lower.includes("soundcloud.com")) return "soundcloud";
   if (lower.startsWith("http://") || lower.startsWith("https://")) return "spotify";
   return null;
 }
@@ -129,7 +128,7 @@ export function MusicView() {
 
             <input
               type="text"
-              placeholder="Buscar por canción o pegar enlace de Spotify, YouTube o SoundCloud..."
+              placeholder="Buscar por canción o pegar enlace de Spotify o YouTube..."
               value={searchInput}
               disabled={isImporting}
               onChange={(e) => setSearchInput(e.target.value)}
@@ -317,7 +316,7 @@ export function MusicView() {
             No hay recomendaciones por ahora
           </h4>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
-            Usa el buscador de arriba para encontrar música por nombre o pega un enlace directo de Spotify, YouTube o SoundCloud.
+            Usa el buscador de arriba para encontrar música por nombre o pega un enlace directo de Spotify o YouTube.
           </p>
         </div>
       ) : displayedSongs.length === 0 ? (
@@ -327,7 +326,7 @@ export function MusicView() {
             Sin resultados para &ldquo;{searchInput}&rdquo;
           </h4>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            Puedes pegar un enlace directo de Spotify, YouTube o SoundCloud para reproducirlo.
+            Puedes pegar un enlace directo de Spotify o YouTube para reproducirlo.
           </p>
         </div>
       ) : (

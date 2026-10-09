@@ -169,7 +169,11 @@ export function PlaylistsView() {
     const url = importUrl.trim();
     if (!url) return;
     if (!url.startsWith("http://") && !url.startsWith("https://")) {
-      showFeedback("error", "Pega un enlace válido de Spotify, YouTube o SoundCloud.");
+      showFeedback("error", "Pega un enlace válido de Spotify o YouTube.");
+      return;
+    }
+    if (url.toLowerCase().includes("soundcloud.com")) {
+      showFeedback("error", "SoundCloud ya no está soportado. Usa un enlace de Spotify o YouTube.");
       return;
     }
     if (playlists.some((p) => p.url.trim().toLowerCase() === url.toLowerCase())) {
@@ -356,7 +360,7 @@ export function PlaylistsView() {
           </h4>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
             {playlists.length === 0
-              ? "Pega un enlace de Spotify, YouTube o SoundCloud arriba para guardar tu primera playlist."
+              ? "Pega un enlace de Spotify o YouTube arriba para guardar tu primera playlist."
               : `Sin coincidencias para "${search}".`}
           </p>
         </div>

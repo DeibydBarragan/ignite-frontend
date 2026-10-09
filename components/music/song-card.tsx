@@ -13,7 +13,6 @@ function formatDuration(sec: number) {
 const SOURCE_COLORS: Record<Song["source"], { label: string; bg: string; text: string }> = {
   youtube: { label: "YouTube", bg: "bg-red-500/10", text: "text-red-500 border-red-500/20" },
   spotify: { label: "Spotify", bg: "bg-emerald-500/10", text: "text-emerald-500 border-emerald-500/20" },
-  soundcloud: { label: "SoundCloud", bg: "bg-amber-500/10", text: "text-amber-500 border-amber-500/20" },
 };
 
 export function SongCard({ song }: { song: Song }) {

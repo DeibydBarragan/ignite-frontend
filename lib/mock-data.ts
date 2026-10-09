@@ -24,7 +24,7 @@ export interface DiscordGuild {
   voiceChannels: VoiceChannel[];
 }
 
-export type MusicSource = "youtube" | "spotify" | "soundcloud";
+export type MusicSource = "youtube" | "spotify";
 
 export interface Song {
   id: string;
@@ -35,7 +35,6 @@ export interface Song {
   source: MusicSource;
   url: string;
   category: "lofi" | "gaming" | "synthwave" | "hits" | "rock";
-  fallbackFrom?: string | null; // ej. "youtube" cuando SoundCloud entró como fallback
 }
 
 export type SoundCategory = "memes" | "gaming" | "reactions" | "sfx" | "anime";
@@ -186,8 +185,8 @@ export const MOCK_SONGS: Song[] = [
     artist: "Toby Fox",
     albumArt: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=400&q=80",
     duration: 156,
-    source: "soundcloud",
-    url: "https://soundcloud.com/toby-fox/megalovania",
+    source: "youtube",
+    url: "https://www.youtube.com/watch?v=wDgQdr8Zhb8",
     category: "gaming",
   },
   {
@@ -236,8 +235,8 @@ export const MOCK_SONGS: Song[] = [
     artist: "Petit Biscuit",
     albumArt: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=400&q=80",
     duration: 237,
-    source: "soundcloud",
-    url: "https://soundcloud.com/petitbiscuit/sunset-lover",
+    source: "youtube",
+    url: "https://www.youtube.com/watch?v=1V_xRb0x9aw",
     category: "lofi",
   },
   {

@@ -136,7 +136,7 @@ class IgniteApiClient {
   async play(
     guildId: string,
     params: { query: string; voiceChannelId?: string; userId?: string; next?: boolean; skip?: boolean }
-  ): Promise<{ success: boolean; song?: Song; fallbackFrom?: string | null; error?: string }> {
+  ): Promise<{ success: boolean; song?: Song; error?: string }> {
     try {
       const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/play`, {
         method: "POST",
@@ -148,7 +148,6 @@ class IgniteApiClient {
       return {
         success: true,
         song: data.song,
-        fallbackFrom: data.fallbackFrom || data.song?.fallbackFrom || null,
       };
     } catch (err: any) {
       return { success: false, error: err.message };

@@ -822,6 +822,9 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     if (!trimmed) {
       return { success: false, message: "Por favor introduce un enlace o nombre válido." };
     }
+    if (trimmed.toLowerCase().includes("soundcloud.com")) {
+      return { success: false, message: "SoundCloud ya no está soportado. Usa un enlace de YouTube o Spotify, o busca por nombre." };
+    }
 
     setPendingAction("queue");
     setIsPlayerBusy(true);
@@ -845,12 +848,9 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
           ...prev.slice(0, 19),
         ]);
         await syncPlayerState();
-        const fallbackNote = res.fallbackFrom
-          ? " (YouTube no disponible, reproducido vía SoundCloud)"
-          : "";
         return {
           success: true,
-          message: `¡'${res.song.title}' añadida a la cola exitosamente!${fallbackNote}`,
+          message: `¡'${res.song.title}' añadida a la cola exitosamente!`,
           song: res.song,
         };
       } else if (!res.success && res.error) {
@@ -872,11 +872,6 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         title = "Spotify Track";
         artist = "Spotify Artist";
         albumArt = "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=400&q=80";
-      } else if (lower.includes("soundcloud.com")) {
-        source = "soundcloud";
-        title = "SoundCloud Track";
-        artist = "SoundCloud Creator";
-        albumArt = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=400&q=80";
       } else if (lower.includes("youtube.com") || lower.includes("youtu.be")) {
         source = "youtube";
         title = "YouTube Video Audio";

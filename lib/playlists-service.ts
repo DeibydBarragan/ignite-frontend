@@ -5,7 +5,7 @@ import type { Song, MusicSource } from "@/lib/mock-data";
 
 /*
   Modelo híbrido: el LINK es la fuente de verdad (la playlist viva en
-  Spotify/YouTube/SoundCloud). `tracks` + `cover` son solo un SNAPSHOT
+  Spotify/YouTube). `tracks` + `cover` son solo un SNAPSHOT
   (caché de lectura) que se refresca cada vez que se abre la playlist.
   `synced_at` indica cuándo se sincronizó por última vez.
 
@@ -61,7 +61,6 @@ export function detectPlaylistSource(url: string): MusicSource {
   const lower = url.toLowerCase();
   if (lower.includes("spotify.com")) return "spotify";
   if (lower.includes("youtube.com") || lower.includes("youtu.be")) return "youtube";
-  if (lower.includes("soundcloud.com")) return "soundcloud";
   return "spotify";
 }
 
