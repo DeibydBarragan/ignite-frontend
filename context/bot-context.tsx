@@ -24,8 +24,9 @@ import { supabase } from "@/lib/supabase";
 
 interface BotContextType {
   // Auth & Guild
-  user: DiscordUser;
+  user: DiscordUser | null;
   isLoggedIn: boolean;
+  isLoadingAuth: boolean;
   loginDiscord: () => Promise<void>;
   logoutDiscord: () => Promise<void>;
   guilds: DiscordGuild[];
@@ -101,8 +102,9 @@ const BotContext = createContext<BotContextType | null>(null);
 
 export function BotProvider({ children }: { children: React.ReactNode }) {
   // User & Guild State
-  const [user, setUser] = useState<DiscordUser>(MOCK_USER);
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [user, setUser] = useState<DiscordUser | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true);
   const [guilds, setGuilds] = useState<DiscordGuild[]>([
     {
       id: "1011718919473610863",
@@ -199,6 +201,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
 
   // Real-time synchronization with Bot REST API
   const syncPlayerState = useCallback(async () => {
+    if (!isLoggedIn) return;
     try {
       const state = await igniteApi.getPlayerState(selectedGuildId);
       if (!state) return;
@@ -223,9 +226,10 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     } catch {
       // Fall back gracefully to local state
     }
-  }, [selectedGuildId]);
+  }, [isLoggedIn, selectedGuildId]);
 
   useEffect(() => {
+    if (!isLoggedIn) return;
     let isMounted = true;
     const runSync = async () => {
       if (!isMounted) return;
@@ -239,7 +243,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [syncPlayerState]);
+  }, [isLoggedIn, syncPlayerState]);
 
   // Fetch favorites from Supabase for a given user ID
   const fetchFavorites = useCallback(async (uid: string) => {
@@ -286,7 +290,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
           meta.user_name ||
           meta.name ||
           "Usuario";
-        const avatar = meta.avatar_url || MOCK_USER.avatar;
+        const avatar = meta.avatar_url || "https://cdn.discordapp.com/embed/avatars/0.png";
 
         setUser({
           id: discordId,
@@ -300,8 +304,11 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         setIsLoggedIn(true);
         fetchFavorites(discordId);
       } else {
-        fetchFavorites(MOCK_USER.id);
+        setUser(null);
+        setIsLoggedIn(false);
+        setFavorites([]);
       }
+      setIsLoadingAuth(false);
     });
 
     const {
@@ -317,7 +324,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
           meta.user_name ||
           meta.name ||
           "Usuario";
-        const avatar = meta.avatar_url || MOCK_USER.avatar;
+        const avatar = meta.avatar_url || "https://cdn.discordapp.com/embed/avatars/0.png";
 
         setUser({
           id: discordId,
@@ -331,10 +338,11 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         setIsLoggedIn(true);
         fetchFavorites(discordId);
       } else {
-        setUser(MOCK_USER);
+        setUser(null);
         setIsLoggedIn(false);
-        fetchFavorites(MOCK_USER.id);
+        setFavorites([]);
       }
+      setIsLoadingAuth(false);
     });
 
     return () => {
@@ -361,13 +369,13 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   const logoutDiscord = useCallback(async () => {
     try {
       await supabase.auth.signOut();
-      setUser(MOCK_USER);
+      setUser(null);
       setIsLoggedIn(false);
-      fetchFavorites(MOCK_USER.id);
+      setFavorites([]);
     } catch (err) {
       console.error("Logout error:", err);
     }
-  }, [fetchFavorites]);
+  }, []);
 
   const isFavorite = useCallback(
     (songIdOrUrl: string) => {
@@ -380,6 +388,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
 
   const toggleFavorite = useCallback(
     async (song: Song) => {
+      if (!isLoggedIn || !user) return;
       const uid = user.id;
       const isAlready = favorites.some(
         (f) => f.id === song.id || f.url === song.url
@@ -418,25 +427,26 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         }
       }
     },
-    [user.id, favorites]
+    [isLoggedIn, user, favorites]
   );
 
   const setVoiceConnection = (connected: boolean, channelId?: string) => {
+    if (!isLoggedIn) return;
     setIsVoiceConnected(connected);
     if (connected && channelId) {
       setCurrentVoiceChannelId(channelId);
     } else if (connected && !channelId && selectedGuild.voiceChannels.length > 0) {
       setCurrentVoiceChannelId(selectedGuild.voiceChannels[0].id);
     }
-    setUser((prev) => ({
+    setUser((prev) => (prev ? ({
       ...prev,
       isVoiceConnected: connected,
       currentChannelId: connected ? channelId || selectedGuild.voiceChannels[0]?.id || null : null,
-    }));
+    }) : null));
   };
 
   const playSong = useCallback(async (song: Song) => {
-    if (isPlayerBusy) return;
+    if (!isLoggedIn || isPlayerBusy) return;
     setIsPlayerBusy(true);
     setPendingAction("play");
     setLoadingSongId(song.id);
@@ -466,10 +476,10 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setPendingAction(null);
       setLoadingSongId(null);
     }
-  }, [isPlayerBusy, selectedGuildId, currentVoiceChannelId, syncPlayerState]);
+  }, [isLoggedIn, isPlayerBusy, selectedGuildId, currentVoiceChannelId, syncPlayerState]);
 
   const addToQueue = useCallback(async (song: Song) => {
-    if (loadingSongId === song.id) return;
+    if (!isLoggedIn || loadingSongId === song.id) return;
     setPendingAction("queue");
     setLoadingSongId(song.id);
     try {
@@ -495,19 +505,19 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setPendingAction(null);
       setLoadingSongId(null);
     }
-  }, [loadingSongId, selectedGuildId, currentVoiceChannelId, syncPlayerState]);
+  }, [isLoggedIn, loadingSongId, selectedGuildId, currentVoiceChannelId, syncPlayerState]);
 
   const playFavorites = useCallback(async () => {
-    if (!favorites.length || isPlayerBusy) return;
+    if (!isLoggedIn || !favorites.length || isPlayerBusy) return;
     const [first, ...rest] = favorites;
     await playSong(first);
     for (const song of rest) {
       await addToQueue(song);
     }
-  }, [favorites, isPlayerBusy, playSong, addToQueue]);
+  }, [isLoggedIn, favorites, isPlayerBusy, playSong, addToQueue]);
 
   const removeFromQueue = useCallback(async (songId: string) => {
-    if (removingSongId === songId) return;
+    if (!isLoggedIn || removingSongId === songId) return;
     setRemovingSongId(songId);
     try {
       const idx = queue.findIndex((s) => s.id === songId);
@@ -521,10 +531,10 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setRemovingSongId(null);
     }
-  }, [queue, removingSongId, selectedGuildId, syncPlayerState]);
+  }, [isLoggedIn, queue, removingSongId, selectedGuildId, syncPlayerState]);
 
   const clearQueue = useCallback(async () => {
-    if (isPlayerBusy) return;
+    if (!isLoggedIn || isPlayerBusy) return;
     setIsPlayerBusy(true);
     setPendingAction("clear");
     try {
@@ -537,10 +547,10 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setIsPlayerBusy(false);
       setPendingAction(null);
     }
-  }, [isPlayerBusy, selectedGuildId, syncPlayerState]);
+  }, [isLoggedIn, isPlayerBusy, selectedGuildId, syncPlayerState]);
 
   const togglePlayPause = useCallback(async () => {
-    if (isPlayerBusy) return;
+    if (!isLoggedIn || isPlayerBusy) return;
     setIsPlayerBusy(true);
     setPendingAction("toggle");
     setIsPlaying((prev) => !prev);
@@ -554,10 +564,10 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setIsPlayerBusy(false);
       setPendingAction(null);
     }
-  }, [isPlayerBusy, selectedGuildId, syncPlayerState]);
+  }, [isLoggedIn, isPlayerBusy, selectedGuildId, syncPlayerState]);
 
   const skipNext = useCallback(async () => {
-    if (isPlayerBusy) return;
+    if (!isLoggedIn || isPlayerBusy) return;
     setIsPlayerBusy(true);
     setPendingAction("skip");
     try {
@@ -569,10 +579,10 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setIsPlayerBusy(false);
       setPendingAction(null);
     }
-  }, [isPlayerBusy, selectedGuildId, syncPlayerState]);
+  }, [isLoggedIn, isPlayerBusy, selectedGuildId, syncPlayerState]);
 
   const skipPrevious = useCallback(async () => {
-    if (isPlayerBusy) return;
+    if (!isLoggedIn || isPlayerBusy) return;
     setIsPlayerBusy(true);
     setPendingAction("previous");
     try {
@@ -584,33 +594,35 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setIsPlayerBusy(false);
       setPendingAction(null);
     }
-  }, [isPlayerBusy, selectedGuildId, syncPlayerState]);
+  }, [isLoggedIn, isPlayerBusy, selectedGuildId, syncPlayerState]);
 
   const seekTo = useCallback((seconds: number) => {
-    if (currentSong) {
-      const clamped = Math.max(0, Math.min(seconds, currentSong.duration));
-      setCurrentTime(clamped);
-      igniteApi.control(selectedGuildId, "seek", clamped);
-    }
-  }, [currentSong, selectedGuildId]);
+    if (!isLoggedIn || !currentSong) return;
+    const clamped = Math.max(0, Math.min(seconds, currentSong.duration));
+    setCurrentTime(clamped);
+    igniteApi.control(selectedGuildId, "seek", clamped);
+  }, [isLoggedIn, currentSong, selectedGuildId]);
 
   const setVolumeLevel = useCallback((vol: number) => {
+    if (!isLoggedIn) return;
     setVolume(vol);
     if (vol > 0 && isMuted) {
       setIsMuted(false);
     }
     igniteApi.control(selectedGuildId, "volume", vol);
-  }, [isMuted, selectedGuildId]);
+  }, [isLoggedIn, isMuted, selectedGuildId]);
 
   const toggleMute = useCallback(() => {
+    if (!isLoggedIn) return;
     setIsMuted((prev) => {
       const next = !prev;
       igniteApi.control(selectedGuildId, "volume", next ? 0 : volume);
       return next;
     });
-  }, [selectedGuildId, volume]);
+  }, [isLoggedIn, selectedGuildId, volume]);
 
   const toggleRepeat = useCallback(() => {
+    if (!isLoggedIn) return;
     setRepeatMode((prev) => {
       let next: "off" | "track" | "queue" = "off";
       if (prev === "off") next = "track";
@@ -618,17 +630,21 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       igniteApi.control(selectedGuildId, "loop", next);
       return next;
     });
-  }, [selectedGuildId]);
+  }, [isLoggedIn, selectedGuildId]);
 
   const toggleShuffle = useCallback(() => {
+    if (!isLoggedIn) return;
     setShuffle((prev) => {
       const next = !prev;
       igniteApi.control(selectedGuildId, "shuffle");
       return next;
     });
-  }, [selectedGuildId]);
+  }, [isLoggedIn, selectedGuildId]);
 
   const importUrlSong = useCallback(async (url: string) => {
+    if (!isLoggedIn) {
+      return { success: false, message: "Debes iniciar sesión con Discord para reproducir canciones." };
+    }
     const trimmed = url.trim();
     if (!trimmed) {
       return { success: false, message: "Por favor introduce un enlace o nombre válido." };
@@ -722,7 +738,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   }, [selectedGuildId, currentVoiceChannelId, syncPlayerState]);
 
   const sendTTS = useCallback((text: string, voice: string, pitch: number, rate: number) => {
-    if (!text.trim()) return;
+    if (!isLoggedIn || !text.trim()) return;
 
     // Trigger audible speech in browser
     audioSynth.speakTTS(text, voice, rate, pitch);
@@ -748,9 +764,10 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       },
       ...prev.slice(0, 19),
     ]);
-  }, [currentVoiceChannel]);
+  }, [isLoggedIn, currentVoiceChannel]);
 
   const playSound = useCallback((soundId: string) => {
+    if (!isLoggedIn) return;
     const sound = sounds.find((s) => s.id === soundId);
     if (!sound) return;
 
@@ -777,9 +794,10 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       },
       ...prev.slice(0, 19),
     ]);
-  }, [sounds, currentVoiceChannel]);
+  }, [isLoggedIn, sounds, currentVoiceChannel]);
 
   const addCustomSound = useCallback((soundData: { name: string; emoji?: string; category: SoundItem["category"] }) => {
+    if (!isLoggedIn) return;
     const newSound: SoundItem = {
       id: "snd-" + Date.now(),
       name: soundData.name,
@@ -790,9 +808,10 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       playsCount: 0,
     };
     setSounds((prev) => [newSound, ...prev]);
-  }, []);
+  }, [isLoggedIn]);
 
   const addPhraseTrigger = useCallback((data: { phrase: string; soundId: string; exactMatch: boolean; channelTarget: string }) => {
+    if (!isLoggedIn) return;
     const targetSound = sounds.find((s) => s.id === data.soundId);
     if (!targetSound) return;
 
@@ -809,19 +828,22 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     };
 
     setPhraseTriggers((prev) => [newTrigger, ...prev]);
-  }, [sounds]);
+  }, [isLoggedIn, sounds]);
 
   const togglePhraseTrigger = useCallback((id: string) => {
+    if (!isLoggedIn) return;
     setPhraseTriggers((prev) =>
       prev.map((t) => (t.id === id ? { ...t, enabled: !t.enabled } : t))
     );
-  }, []);
+  }, [isLoggedIn]);
 
   const deletePhraseTrigger = useCallback((id: string) => {
+    if (!isLoggedIn) return;
     setPhraseTriggers((prev) => prev.filter((t) => t.id !== id));
-  }, []);
+  }, [isLoggedIn]);
 
   const simulatePhraseDetection = useCallback((triggerId: string) => {
+    if (!isLoggedIn) return;
     const trigger = phraseTriggers.find((t) => t.id === triggerId);
     if (!trigger || !trigger.enabled) return;
 
@@ -856,6 +878,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         isLoggedIn,
+        isLoadingAuth,
         loginDiscord,
         logoutDiscord,
         guilds,

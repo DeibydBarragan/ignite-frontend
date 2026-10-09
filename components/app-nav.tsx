@@ -48,7 +48,7 @@ export function AppNav() {
           <ThemeToggle />
 
           {/* User profile / Login */}
-          {isLoggedIn ? (
+          {isLoggedIn && user ? (
             <div className="relative">
               <button
                 onClick={() => setIsUserDropdownOpen((prev) => !prev)}
@@ -96,7 +96,7 @@ export function AppNav() {
                         className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
                       >
                         <LogOut size={14} />
-                        <span>Cerrar sesión simulada</span>
+                        <span>Cerrar sesión</span>
                       </button>
                     </div>
                   </div>
