@@ -25,9 +25,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col relative selection:bg-purple-600 selection:text-white">
-      {/* Top Header Navigation */}
-      <AppNav />
-
       {/* Auth Gatekeeper */}
       {isLoadingAuth ? (
         <main className="flex-1 flex flex-col items-center justify-center p-8 min-h-[60vh]">
@@ -102,6 +99,9 @@ export default function Home() {
         </main>
       ) : (
         <>
+          {/* Top Header Navigation */}
+          <AppNav />
+
           {/* Main Content Container */}
           <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-5 flex flex-col gap-6">
             {/* Context & Navigation Toolbar (Server, Voice Channel, Tabs) */}
