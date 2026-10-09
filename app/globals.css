@@ -237,25 +237,40 @@ body {
   scrollbar-color: rgba(148, 163, 184, 0.25) transparent;
 }
 
-/* Shimmer para placeholders de carga (portadas, skeletons) */
-@keyframes ignite-shimmer {
+/* Shimmer para placeholders de carga (portadas, skeletons).
+   Base sólida visible en ambos temas + brillo barriendo por encima. */
+@keyframes ignite-shimmer-sweep {
   0% {
-    background-position: -200% 0;
+    transform: translateX(-100%);
   }
   100% {
-    background-position: 200% 0;
+    transform: translateX(100%);
   }
 }
 
 .ignite-shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: rgba(100, 116, 139, 0.28);
+}
+
+.dark .ignite-shimmer {
+  background-color: rgba(255, 255, 255, 0.09);
+}
+
+.ignite-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   background: linear-gradient(
     90deg,
-    rgba(148, 163, 184, 0.15) 25%,
-    rgba(148, 163, 184, 0.32) 50%,
-    rgba(148, 163, 184, 0.15) 75%
+    transparent 20%,
+    rgba(255, 255, 255, 0.28) 50%,
+    transparent 80%
   );
-  background-size: 200% 100%;
-  animation: ignite-shimmer 1.4s linear infinite;
+  animation: ignite-shimmer-sweep 1.4s linear infinite;
+  pointer-events: none;
 }
 
 /* Barra de progreso indeterminada (el resolve es una sola petición, sin % real) */

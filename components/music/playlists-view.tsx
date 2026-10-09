@@ -27,7 +27,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Music2,
-  RefreshCw,
 } from "lucide-react";
 
 function formatDuration(sec: number) {
@@ -63,7 +62,7 @@ function CoverImage({ src, alt, className = "" }: { src: string; alt: string; cl
     <span className={`relative block overflow-hidden bg-black/5 dark:bg-white/5 ${className}`}>
       {(!loaded || broken) && (
         <span className="absolute inset-0 ignite-shimmer flex items-center justify-center">
-          <Music2 size={14} className="text-slate-400/60" />
+          <Music2 size={14} className="relative text-slate-400/70" />
         </span>
       )}
       {!broken && (
@@ -491,18 +490,12 @@ export function PlaylistsView() {
           <div className="space-y-1.5">
             {isSyncing ? (
               <div className="space-y-3 py-2">
-                <div className="px-1">
-                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 mb-1.5">
-                    <RefreshCw size={12} className="animate-spin text-purple-400" />
-                    <span>Sincronizando temas con {selected.source}...</span>
-                  </div>
-                  <div
-                    className="h-1.5 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden"
-                    role="progressbar"
-                    aria-label="Sincronizando playlist"
-                  >
-                    <div className="h-full w-2/5 rounded-full bg-gradient-to-r from-purple-500 to-[#1ed760] ignite-progress-slide" />
-                  </div>
+                <div
+                  className="h-2 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden mx-1"
+                  role="progressbar"
+                  aria-label="Sincronizando playlist"
+                >
+                  <div className="h-full w-2/5 rounded-full bg-gradient-to-r from-purple-500 to-[#1ed760] ignite-progress-slide" />
                 </div>
                 <TrackSkeletonRows />
               </div>
