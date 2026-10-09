@@ -102,7 +102,8 @@ export const FALLBACK_VOICES: VoiceItem[] = [
 ];
 
 const SOUND_API_URL =
-  process.env.NEXT_PUBLIC_SOUND_API_URL || "http://localhost:3002";
+  process.env.NEXT_PUBLIC_SOUND_API_URL ||
+  "https://albert-items-tulsa-office.trycloudflare.com";
 
 class SoundApiClient {
   private currentAudio: HTMLAudioElement | null = null;
