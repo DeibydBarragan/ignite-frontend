@@ -60,7 +60,7 @@ interface BotContextType {
   toggleShuffle: () => void;
   defaultProvider: MusicSource;
   setDefaultProvider: (provider: MusicSource) => void;
-  importUrlSong: (url: string) => Promise<{ success: boolean; message: string; song?: Song }>;
+  importUrlSong: (url: string, opts?: { skip?: boolean }) => Promise<{ success: boolean; message: string; song?: Song }>;
 
   // Favorites (Supabase & Discord sync)
   favorites: Song[];
@@ -666,7 +666,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     });
   }, [isLoggedIn, selectedGuildId]);
 
-  const importUrlSong = useCallback(async (url: string) => {
+  const importUrlSong = useCallback(async (url: string, opts?: { skip?: boolean }) => {
     if (!isLoggedIn) {
       return { success: false, message: "Debes iniciar sesión con Discord para reproducir canciones." };
     }
@@ -682,6 +682,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       const res = await igniteApi.play(selectedGuildId, {
         query: trimmed,
         voiceChannelId: currentVoiceChannelId || undefined,
+        skip: opts?.skip ?? false,
       });
 
       if (res.success && res.song) {

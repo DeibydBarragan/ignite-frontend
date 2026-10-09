@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useBot } from "@/context/bot-context";
 import { igniteApi } from "@/lib/ignite-api";
+import type { Song } from "@/lib/mock-data";
 import {
   fetchUserPlaylists,
   createUserPlaylist,
+  updatePlaylistSnapshot,
   deleteUserPlaylist,
+  timeAgo,
   type UserPlaylist,
 } from "@/lib/playlists-service";
 import { GlassModal } from "@/components/glass-modal";
@@ -23,6 +26,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Music2,
+  RefreshCw,
 } from "lucide-react";
 
 function formatDuration(sec: number) {
@@ -31,8 +35,15 @@ function formatDuration(sec: number) {
   return `${m}:${s < 10 ? "0" : ""}${s}`;
 }
 
-function totalDuration(pl: UserPlaylist) {
-  return pl.tracks.reduce((acc, t) => acc + (t.duration || 180), 0);
+function totalDuration(tracks: Song[]) {
+  return tracks.reduce((acc, t) => acc + (t.duration || 180), 0);
+}
+
+interface LiveState {
+  playlistId: string;
+  status: "loading" | "ok" | "error";
+  tracks: Song[];
+  truncated: boolean;
 }
 
 export function PlaylistsView() {
@@ -41,6 +52,7 @@ export function PlaylistsView() {
     selectedGuildId,
     playSong,
     addToQueue,
+    importUrlSong,
     isPlayerBusy,
   } = useBot();
 
@@ -53,8 +65,10 @@ export function PlaylistsView() {
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const [selected, setSelected] = useState<UserPlaylist | null>(null);
+  const [live, setLive] = useState<LiveState | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [queueingId, setQueueingId] = useState<string | null>(null);
+  const liveForRef = useRef<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -89,6 +103,7 @@ export function PlaylistsView() {
     setTimeout(() => setFeedback(null), 3500);
   };
 
+  // Importar = guardar SOLO el link (instantáneo, sin resolver)
   const handleImport = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const url = importUrl.trim();
@@ -97,28 +112,23 @@ export function PlaylistsView() {
       showFeedback("error", "Pega un enlace válido de Spotify, YouTube o SoundCloud.");
       return;
     }
+    if (playlists.some((p) => p.url.trim().toLowerCase() === url.toLowerCase())) {
+      showFeedback("error", "Esa playlist ya está en tu colección.");
+      return;
+    }
     setIsImporting(true);
     try {
-      // Intentar resolver tracks en el backend (si el endpoint existe)
-      let resolved: UserPlaylist["tracks"] | undefined;
-      try {
-        const res = await igniteApi.resolvePlaylist(selectedGuildId, url);
-        if (res.success && res.tracks && res.tracks.length > 0) resolved = res.tracks;
-      } catch {
-        // fallback local
-      }
       const created = await createUserPlaylist({
         url,
         name: importName.trim() || undefined,
         userId: user?.id,
-        resolvedTracks: resolved,
       });
       setPlaylists((prev) => [created, ...prev]);
       setImportUrl("");
       setImportName("");
-      showFeedback("success", `Playlist "${created.name}" guardada (${created.tracks.length} temas).`);
+      showFeedback("success", `Playlist "${created.name}" guardada. Ábrela para sincronizar sus temas.`);
     } catch {
-      showFeedback("error", "No se pudo importar la playlist.");
+      showFeedback("error", "No se pudo guardar la playlist.");
     } finally {
       setIsImporting(false);
     }
@@ -126,36 +136,73 @@ export function PlaylistsView() {
 
   const handleDelete = async (id: string) => {
     setPlaylists((prev) => prev.filter((p) => p.id !== id));
-    if (selected?.id === id) setSelected(null);
+    if (selected?.id === id) {
+      setSelected(null);
+      setLive(null);
+    }
     await deleteUserPlaylist(id);
   };
 
+  // Abrir detalle = sincronizar con el estado ACTUAL de la plataforma
+  const openPlaylist = async (pl: UserPlaylist) => {
+    setSelected(pl);
+    if (liveForRef.current === pl.id) return;
+    liveForRef.current = pl.id;
+    setLive({ playlistId: pl.id, status: "loading", tracks: [], truncated: false });
+    try {
+      const res = await igniteApi.resolvePlaylist(selectedGuildId, pl.url);
+      if (!res.success || !res.tracks || res.tracks.length === 0) throw new Error("resolve failed");
+      const cover = res.tracks[0]?.albumArt || pl.cover;
+      await updatePlaylistSnapshot(pl.id, { tracks: res.tracks, cover });
+      const synced_at = new Date().toISOString();
+      setPlaylists((prev) =>
+        prev.map((p) => (p.id === pl.id ? { ...p, tracks: res.tracks!, cover, synced_at } : p))
+      );
+      setSelected((prev) =>
+        prev && prev.id === pl.id ? { ...prev, tracks: res.tracks!, cover, synced_at } : prev
+      );
+      setLive({ playlistId: pl.id, status: "ok", tracks: res.tracks, truncated: false });
+    } catch {
+      // Fallback: mostrar el último snapshot conocido
+      setLive({ playlistId: pl.id, status: "error", tracks: [], truncated: false });
+    }
+  };
+
+  const closeModal = () => {
+    setSelected(null);
+    setLive(null);
+    liveForRef.current = null;
+  };
+
+  // Reproducir / encolar SIEMPRE por URL (una sola llamada, versión actual)
   const handlePlayPlaylist = async (pl: UserPlaylist) => {
-    if (isPlayerBusy || pl.tracks.length === 0) return;
+    if (isPlayerBusy) return;
     setPlayingId(pl.id);
     try {
-      const [first, ...rest] = pl.tracks;
-      await playSong(first);
-      for (const track of rest) {
-        await addToQueue(track);
-      }
+      const res = await importUrlSong(pl.url, { skip: true });
+      showFeedback(res.success ? "success" : "error", res.success ? `Reproduciendo "${pl.name}".` : res.message);
     } finally {
       setPlayingId(null);
     }
   };
 
   const handleQueuePlaylist = async (pl: UserPlaylist) => {
-    if (pl.tracks.length === 0) return;
+    if (isPlayerBusy) return;
     setQueueingId(pl.id);
     try {
-      for (const track of pl.tracks) {
-        await addToQueue(track);
-      }
-      showFeedback("success", `"${pl.name}" añadida a la cola (${pl.tracks.length} temas).`);
+      const res = await importUrlSong(pl.url);
+      showFeedback(res.success ? "success" : "error", res.success ? `"${pl.name}" añadida a la cola.` : res.message);
     } finally {
       setQueueingId(null);
     }
   };
+
+  const modalTracks: Song[] =
+    live?.status === "ok" && selected && live.playlistId === selected.id
+      ? live.tracks
+      : selected?.tracks || [];
+  const isSyncing = !!selected && (!live || live.playlistId !== selected.id || live.status === "loading");
+  const syncFailed = !!selected && !!live && live.playlistId === selected.id && live.status === "error";
 
   return (
     <div className="space-y-4">
@@ -171,7 +218,7 @@ export function PlaylistsView() {
         />
       </div>
 
-      {/* Importar por link */}
+      {/* Importar por link (solo se guarda el enlace) */}
       <form
         onSubmit={handleImport}
         className="glass-panel p-3.5 border border-black/5 dark:border-white/10 space-y-2.5"
@@ -217,8 +264,8 @@ export function PlaylistsView() {
           </button>
         </div>
         <p className="text-[11px] text-slate-500 dark:text-slate-400">
-          Podrás reproducirla o añadirla a la cola. Usa el comando{" "}
-          <span className="font-mono font-semibold text-purple-400">playlists</span> en el bot para verlas en Discord (próximamente).
+          Solo se guarda el enlace: los temas siempre se sincronizan con el estado actual de la playlist. Usa el comando{" "}
+          <span className="font-mono font-semibold text-purple-400">playlists</span> en el bot para verlas en Discord.
         </p>
       </form>
 
@@ -235,11 +282,11 @@ export function PlaylistsView() {
         </div>
       )}
 
-      {/* Lista */}
+      {/* Lista (pinta desde el snapshot, instantáneo) */}
       {isLoading ? (
         <div className="p-12 text-center glass-panel">
           <Loader2 size={28} className="mx-auto text-purple-400 animate-spin mb-2" />
-          <p className="text-xs text-slate-400">Cargando tus playlists desde Supabase...</p>
+          <p className="text-xs text-slate-400">Cargando tus playlists...</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="p-12 text-center glass-panel border border-dashed border-black/10 dark:border-white/10">
@@ -258,6 +305,7 @@ export function PlaylistsView() {
           {filtered.map((pl) => {
             const isPlayingThis = playingId === pl.id;
             const isQueueingThis = queueingId === pl.id;
+            const neverSynced = pl.tracks.length === 0;
             return (
               <div
                 key={pl.id}
@@ -272,24 +320,24 @@ export function PlaylistsView() {
                     loading="lazy"
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate" title={pl.name}>
-                        {pl.name}
-                      </h4>
-                    </div>
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate" title={pl.name}>
+                      {pl.name}
+                    </h4>
                     <div className="flex items-center gap-1.5 mt-1">
                       <span className="text-[10px] uppercase font-bold px-1.5 py-0.2 rounded-full border bg-purple-500/10 text-purple-400 border-purple-500/20">
                         {pl.source}
                       </span>
                       <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono tabular-nums flex items-center gap-1">
                         <Music2 size={10} />
-                        {pl.tracks.length} temas
+                        {neverSynced ? "Sin sincronizar" : `${pl.tracks.length} temas`}
                       </span>
                     </div>
-                    <p className="text-[10px] text-slate-400 font-mono tabular-nums mt-1 flex items-center gap-1">
-                      <Clock size={10} />
-                      ~{formatDuration(totalDuration(pl))}
-                    </p>
+                    {!neverSynced && (
+                      <p className="text-[10px] text-slate-400 font-mono tabular-nums mt-1 flex items-center gap-1">
+                        <Clock size={10} />
+                        ~{formatDuration(totalDuration(pl.tracks))}
+                      </p>
+                    )}
                   </div>
                   <button
                     onClick={() => handleDelete(pl.id)}
@@ -302,7 +350,7 @@ export function PlaylistsView() {
 
                 <div className="flex items-center gap-1.5 pt-2 border-t border-black/5 dark:border-white/5">
                   <button
-                    onClick={() => setSelected(pl)}
+                    onClick={() => openPlaylist(pl)}
                     className="flex-1 px-2 py-1.5 rounded-lg text-[11px] font-medium bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 flex items-center justify-center gap-1 transition-colors cursor-pointer"
                   >
                     <Eye size={12} />
@@ -310,7 +358,7 @@ export function PlaylistsView() {
                   </button>
                   <button
                     onClick={() => handlePlayPlaylist(pl)}
-                    disabled={isPlayerBusy || isPlayingThis || pl.tracks.length === 0}
+                    disabled={isPlayerBusy || isPlayingThis}
                     className="flex-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold bg-[#1db954] hover:bg-[#1ed760] disabled:opacity-50 text-black flex items-center justify-center gap-1 transition-all cursor-pointer disabled:cursor-not-allowed"
                   >
                     {isPlayingThis ? (
@@ -322,7 +370,7 @@ export function PlaylistsView() {
                   </button>
                   <button
                     onClick={() => handleQueuePlaylist(pl)}
-                    disabled={isQueueingThis || pl.tracks.length === 0}
+                    disabled={isPlayerBusy || isQueueingThis}
                     title="Añadir toda la playlist a la cola"
                     className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium glass-btn text-slate-600 dark:text-slate-300 hover:text-[#1ed760] flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
                   >
@@ -340,24 +388,26 @@ export function PlaylistsView() {
         </div>
       )}
 
-      {/* Modal detalle */}
+      {/* Modal detalle (sincroniza en vivo al abrir) */}
       <GlassModal
         isOpen={!!selected}
-        onClose={() => setSelected(null)}
+        onClose={closeModal}
         maxWidth="lg"
         icon={<ListMusic size={20} />}
         title={selected?.name || "Playlist"}
         subtitle={
           selected
-            ? `${selected.tracks.length} temas — ~${formatDuration(totalDuration(selected))} — ${selected.source}`
+            ? isSyncing
+              ? "Sincronizando con el estado actual de la playlist…"
+              : `${modalTracks.length} temas — ~${formatDuration(totalDuration(modalTracks))} — ${selected.source} · ${timeAgo(selected.synced_at)}`
             : undefined
         }
         footer={
-          selected ? (
+          selected && !isSyncing && modalTracks.length > 0 ? (
             <div className="flex items-center justify-end gap-2 w-full">
               <button
                 onClick={() => handleQueuePlaylist(selected)}
-                disabled={queueingId === selected.id}
+                disabled={isPlayerBusy}
                 className="px-3 py-1.5 rounded-lg text-xs font-medium glass-btn text-slate-600 dark:text-slate-300 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
               >
                 <Plus size={13} />
@@ -366,7 +416,7 @@ export function PlaylistsView() {
               <button
                 onClick={() => {
                   handlePlayPlaylist(selected);
-                  setSelected(null);
+                  closeModal();
                 }}
                 disabled={isPlayerBusy}
                 className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#1db954] hover:bg-[#1ed760] text-black flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
@@ -380,53 +430,73 @@ export function PlaylistsView() {
       >
         {selected && (
           <div className="space-y-1.5">
-            {selected.tracks.length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-6">Esta playlist no tiene temas.</p>
+            {isSyncing ? (
+              <div className="py-10 flex flex-col items-center justify-center gap-2 text-slate-400">
+                <RefreshCw size={22} className="animate-spin text-purple-400" />
+                <span className="text-xs">Sincronizando temas con {selected.source}...</span>
+              </div>
             ) : (
-              selected.tracks.map((track, idx) => (
-                <div
-                  key={track.id + "-" + idx}
-                  className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 border border-transparent hover:border-black/5 dark:hover:border-white/5 transition-colors"
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-[11px] font-mono text-slate-400 w-6 text-center shrink-0">
-                      {idx + 1}
+              <>
+                {syncFailed && (
+                  <div className="px-3 py-2 rounded-lg text-[11px] flex items-center gap-2 bg-amber-500/10 text-amber-500 border border-amber-500/25 mb-1">
+                    <AlertCircle size={13} />
+                    <span>
+                      No se pudo actualizar{selected.synced_at ? ` (última versión: ${timeAgo(selected.synced_at)})` : ""}. Mostrando última versión conocida.
                     </span>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={track.albumArt}
-                      alt={track.title}
-                      className="w-9 h-9 rounded-lg object-cover shrink-0"
-                      loading="lazy"
-                    />
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
-                        {track.title}
-                      </p>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                        {track.artist} · {formatDuration(track.duration)}
-                      </p>
+                  </div>
+                )}
+                {modalTracks.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center py-6">
+                    No se encontraron temas. Revisa que la playlist sea pública.
+                  </p>
+                ) : (
+                  modalTracks.map((track, idx) => (
+                    <div
+                      key={track.id + "-" + idx}
+                      className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 border border-transparent hover:border-black/5 dark:hover:border-white/5 transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-[11px] font-mono text-slate-400 w-6 text-center shrink-0">
+                          {idx + 1}
+                        </span>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={track.albumArt}
+                          alt={track.title}
+                          className="w-9 h-9 rounded-lg object-cover shrink-0"
+                          loading="lazy"
+                        />
+                        <div className="min-w-0">
+                          <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
+                            {track.title}
+                          </p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                            {track.artist} · {formatDuration(track.duration)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => playSong(track)}
+                          disabled={isPlayerBusy}
+                          title={`Reproducir ${track.title}`}
+                          className="p-1.5 rounded-lg hover:bg-[#1db954]/15 text-slate-400 hover:text-[#1ed760] transition-colors cursor-pointer disabled:opacity-40"
+                        >
+                          <Play size={13} />
+                        </button>
+                        <button
+                          onClick={() => addToQueue(track)}
+                          disabled={isPlayerBusy}
+                          title="Añadir a la cola"
+                          className="p-1.5 rounded-lg hover:bg-purple-500/15 text-slate-400 hover:text-purple-400 transition-colors cursor-pointer disabled:opacity-40"
+                        >
+                          <Plus size={13} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => playSong(track)}
-                      disabled={isPlayerBusy}
-                      title={`Reproducir ${track.title}`}
-                      className="p-1.5 rounded-lg hover:bg-[#1db954]/15 text-slate-400 hover:text-[#1ed760] transition-colors cursor-pointer disabled:opacity-40"
-                    >
-                      <Play size={13} />
-                    </button>
-                    <button
-                      onClick={() => addToQueue(track)}
-                      title="Añadir a la cola"
-                      className="p-1.5 rounded-lg hover:bg-purple-500/15 text-slate-400 hover:text-purple-400 transition-colors cursor-pointer"
-                    >
-                      <Plus size={13} />
-                    </button>
-                  </div>
-                </div>
-              ))
+                  ))
+                )}
+              </>
             )}
           </div>
         )}
