@@ -103,13 +103,10 @@ export const FALLBACK_VOICES: VoiceItem[] = [
 
 const SOUND_API_URL =
   process.env.NEXT_PUBLIC_SOUND_API_URL ||
-  "https://scroll-dangling-usher.ngrok-free.dev";
+  "https://wsnbbnbdc7.execute-api.us-east-2.amazonaws.com/sound";
 
-// ngrok free tier requires this header to bypass the browser warning page
-const NGROK_HEADERS: Record<string, string> =
-  SOUND_API_URL.includes("ngrok-free.dev")
-    ? { "ngrok-skip-browser-warning": "true" }
-    : {};
+// No extra headers needed for API Gateway
+const NGROK_HEADERS: Record<string, string> = {};
 
 class SoundApiClient {
   private currentAudio: HTMLAudioElement | null = null;

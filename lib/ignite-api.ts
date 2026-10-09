@@ -2,7 +2,7 @@ import { Song } from "./mock-data";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_IGNITE_API_URL ||
-  "https://domains-differential-antiques-chemical.trycloudflare.com";
+  "https://wsnbbnbdc7.execute-api.us-east-2.amazonaws.com/music";
 
 const API_SECRET =
   process.env.NEXT_PUBLIC_IGNITE_API_SECRET || "ignite_dev_secret_2026_xyz";
