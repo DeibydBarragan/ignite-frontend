@@ -6,7 +6,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Flame,
   ChevronDown,
-  Radio,
   LogOut,
   LogIn,
 } from "lucide-react";
@@ -33,18 +32,11 @@ export function AppNav() {
             <span className="font-semibold tracking-tight text-base text-slate-900 dark:text-white">
               ignite
             </span>
-            <span className="h-1.5 w-1.5 rounded-full bg-[#1db954]" title="Bot activo" />
           </div>
         </div>
 
-        {/* Right side: Bot status & Discord User Login */}
+        {/* Right side: Discord User Login */}
         <div className="flex items-center gap-2.5">
-          {/* Bot Online status pill */}
-          <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[11px] font-medium">
-            <Radio size={12} className="animate-pulse" />
-            <span>Bot Online</span>
-          </div>
-
           <ThemeToggle />
 
           {/* User profile / Login */}
@@ -67,9 +59,6 @@ export function AppNav() {
                   <div className="text-xs font-semibold text-slate-900 dark:text-white leading-tight">
                     @{user.username}
                   </div>
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
-                    #{user.discriminator}
-                  </div>
                 </div>
                 <ChevronDown size={14} className="text-slate-400 hidden sm:block" />
               </button>
@@ -84,7 +73,7 @@ export function AppNav() {
                   <div className="glass-dropdown absolute right-0 mt-2 w-56 p-2 z-40 border border-black/10 dark:border-white/10 glass-modal-enter shadow-2xl">
                     <div className="px-3 py-2 border-b border-black/5 dark:border-white/10">
                       <p className="text-xs font-bold text-slate-900 dark:text-white">
-                        @{user.username}#{user.discriminator}
+                        @{user.username}
                       </p>
                     </div>
                     <div className="pt-2">

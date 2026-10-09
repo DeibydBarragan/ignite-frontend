@@ -145,7 +145,14 @@ export function SoundboardView() {
                     {snd.name}
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1 tabular-nums font-mono">
-                    <span className="capitalize font-sans text-slate-500 dark:text-slate-400">{snd.category}</span>
+                    <span className="capitalize font-sans text-slate-500 dark:text-slate-400">
+                      {snd.category}
+                      {snd.hasFile && (
+                        <span className="ml-1 not-italic font-sans font-semibold text-[#1db954]" title="Tiene audio real: suena en Discord">
+                          · MP3
+                        </span>
+                      )}
+                    </span>
                     <span>{snd.playsCount} plays</span>
                   </div>
                 </div>

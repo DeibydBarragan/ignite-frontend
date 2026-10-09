@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 
 export function TTSView() {
-  const { isVoiceConnected, currentVoiceChannel, selectedGuild, user } = useBot();
+  const { currentVoiceChannel, selectedGuild, user } = useBot();
   const { toast } = useToast();
 
   // Composer State
@@ -165,7 +165,7 @@ export function TTSView() {
       {/* ─── Main TTS Composer (Left 2 columns) ────────────────── */}
       <div className="lg:col-span-2 space-y-4">
         <div className="glass-panel p-5 sm:p-6 border border-black/5 dark:border-white/10">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center mb-4">
             <div className="flex items-center gap-2.5">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-600/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
                 <Mic size={16} />
@@ -178,18 +178,6 @@ export function TTSView() {
                   Voces neuronales de Microsoft y Loquendo conectadas en vivo con tu bot.
                 </p>
               </div>
-            </div>
-
-            {/* Target Channel Pill */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/5 text-slate-600 dark:text-slate-300 border border-black/5 dark:border-white/10 text-[11px]">
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  isVoiceConnected ? "bg-[#1db954]" : "bg-amber-500"
-                }`}
-              />
-              <span className="truncate max-w-[130px]">
-                {isVoiceConnected && currentVoiceChannel ? currentVoiceChannel.name : "Canal de Voz"}
-              </span>
             </div>
           </div>
 

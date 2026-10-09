@@ -47,6 +47,7 @@ export interface SoundItem {
   duration: number; // in seconds
   preset: "airhorn" | "violin" | "tada" | "badumtss" | "bruh" | "quack" | "alarm" | "levelup" | "victory" | "applause";
   playsCount: number;
+  hasFile?: boolean; // true si el bot tiene el .mp3 real (suena en Discord)
 }
 
 export interface PhraseTrigger {

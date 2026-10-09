@@ -9,6 +9,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Ignite · Discord Bot Controller",
   description: "Panel de control para bot de Discord con Lavamusic, TTS y Soundboard con Phrase to Sound.",
+  icons: {
+    icon: "/ignite.svg",
+  },
 };
 
 const themeScript = `(function(){try{var t=localStorage.getItem("theme");if(!t){t="dark";}if(t==="dark"){document.documentElement.classList.add("dark");}else{document.documentElement.classList.remove("dark");}}catch(e){}})();`;

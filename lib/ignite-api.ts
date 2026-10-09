@@ -115,6 +115,27 @@ class IgniteApiClient {
     }
   }
 
+  async resolvePlaylist(
+    guildId: string,
+    url: string
+  ): Promise<{ success: boolean; tracks?: Song[]; error?: string }> {
+    // Intenta resolver una playlist en el backend. Si el endpoint aún no existe,
+    // devuelve success:false para que el frontend use el fallback local.
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/guilds/${guildId}/playlist/resolve?url=${encodeURIComponent(url)}`,
+        { headers: this.headers, cache: "no-store" }
+      );
+      if (!res.ok) return { success: false };
+      const data = await res.json();
+      const tracks = data.tracks || data.songs || [];
+      if (!Array.isArray(tracks) || tracks.length === 0) return { success: false };
+      return { success: true, tracks };
+    } catch {
+      return { success: false };
+    }
+  }
+
   async removeFromQueue(guildId: string, index: number): Promise<boolean> {
     try {
       const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/queue/${index}`, {

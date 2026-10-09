@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useBot } from "@/context/bot-context";
 import { SongCard } from "@/components/music/song-card";
+import { PlaylistsView } from "@/components/music/playlists-view";
 import {
   Search,
   Link2,
@@ -15,6 +16,7 @@ import {
   Flame,
   Play,
   Sparkles,
+  ListMusic,
 } from "lucide-react";
 
 function detectPlatform(text: string): "spotify" | "youtube" | "soundcloud" | null {
@@ -37,7 +39,7 @@ export function MusicView() {
     pendingAction,
   } = useBot();
 
-  const [activeTab, setActiveTab] = useState<"favorites" | "catalog">("favorites");
+  const [activeTab, setActiveTab] = useState<"favorites" | "catalog" | "playlists">("favorites");
   const [searchInput, setSearchInput] = useState("");
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
@@ -194,6 +196,21 @@ export function MusicView() {
                 {catalog.length}
               </span>
             </button>
+
+            <button
+              onClick={() => setActiveTab("playlists")}
+              className={`glass-pill px-3 py-1.5 text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                activeTab === "playlists"
+                  ? "glass-pill-active font-semibold"
+                  : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              <ListMusic
+                size={13}
+                className={activeTab === "playlists" ? "text-emerald-400" : ""}
+              />
+              <span>Playlists</span>
+            </button>
           </div>
 
           {/* Action button: Play all favorites */}
@@ -210,8 +227,10 @@ export function MusicView() {
         </div>
       </div>
 
-      {/* ══════════ LISTA DE CANCIONES / ESTADOS ══════════ */}
-      {isLoadingFavorites && activeTab === "favorites" ? (
+      {/* ══════════ LISTA DE CANCIONES / PLAYLISTS / ESTADOS ══════════ */}
+      {activeTab === "playlists" ? (
+        <PlaylistsView />
+      ) : isLoadingFavorites && activeTab === "favorites" ? (
         <div className="p-12 text-center glass-panel">
           <Loader2 size={28} className="mx-auto text-amber-400 animate-spin mb-2" />
           <p className="text-xs text-slate-400">Cargando tus favoritos desde Supabase...</p>
@@ -232,6 +251,16 @@ export function MusicView() {
             <Sparkles size={13} />
             <span>Explorar sugerencias</span>
           </button>
+        </div>
+      ) : activeTab === "catalog" && catalog.length === 0 ? (
+        <div className="p-12 text-center glass-panel border border-dashed border-black/10 dark:border-white/10">
+          <Flame size={36} className="mx-auto text-purple-400/40 mb-3" />
+          <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+            No hay recomendaciones por ahora
+          </h4>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
+            Usa el buscador de arriba para encontrar música por nombre o pega un enlace directo de Spotify, YouTube o SoundCloud.
+          </p>
         </div>
       ) : displayedSongs.length === 0 ? (
         <div className="p-12 text-center glass-panel">

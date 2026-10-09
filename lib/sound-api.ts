@@ -101,6 +101,26 @@ export const FALLBACK_VOICES: VoiceItem[] = [
   },
 ];
 
+export interface SoundboardTrack {
+  id: string;
+  name: string;
+  emoji?: string;
+  category: string;
+  duration: number;
+  preset?: string;
+  playsCount: number;
+  file?: string | null;
+  hasFile?: boolean;
+}
+
+export interface SoundPlayResult {
+  success: boolean;
+  code?: string;
+  message?: string;
+  error?: string;
+  channel?: { id: string; name: string };
+}
+
 const SOUND_API_URL =
   process.env.NEXT_PUBLIC_SOUND_API_URL ||
   "https://wsnbbnbdc7.execute-api.us-east-2.amazonaws.com/sound";
@@ -198,6 +218,97 @@ class SoundApiClient {
     } catch (err) {
       console.error("[previewTTS] Error:", err);
       throw err;
+    }
+  }
+
+  // ─── Soundboard (catálogo real del bot) ────────────────────
+
+  async getSounds(): Promise<SoundboardTrack[] | null> {
+    try {
+      const res = await fetch(`${SOUND_API_URL}/api/sounds`, {
+        cache: "no-store",
+        headers: { ...NGROK_HEADERS },
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return Array.isArray(data.sounds) ? data.sounds : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async playSoundOnDiscord(params: {
+    guildId?: string;
+    channelId?: string;
+    soundId: string;
+    volume?: number;
+  }): Promise<SoundPlayResult> {
+    try {
+      const res = await fetch(`${SOUND_API_URL}/api/sounds/play`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...NGROK_HEADERS },
+        body: JSON.stringify(params),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return {
+          success: false,
+          code: data.code,
+          error: data.error || "Error al emitir el sonido en Discord.",
+          channel: data.channel,
+        };
+      }
+      return { success: true, message: data.message, channel: data.channel };
+    } catch {
+      return {
+        success: false,
+        error: "No se pudo conectar con el bot de sonido.",
+      };
+    }
+  }
+
+  async deleteSound(id: string): Promise<boolean> {
+    try {
+      const res = await fetch(`${SOUND_API_URL}/api/sounds/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { ...NGROK_HEADERS },
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  async uploadSound(params: {
+    name: string;
+    emoji?: string;
+    category?: string;
+    duration?: number;
+    file: File;
+  }): Promise<{ success: boolean; sound?: SoundboardTrack; error?: string }> {
+    try {
+      const form = new FormData();
+      form.append("name", params.name);
+      if (params.emoji) form.append("emoji", params.emoji);
+      if (params.category) form.append("category", params.category);
+      if (params.duration) form.append("duration", String(params.duration));
+      form.append("file", params.file);
+
+      const res = await fetch(`${SOUND_API_URL}/api/sounds/upload`, {
+        method: "POST",
+        headers: { ...NGROK_HEADERS },
+        body: form,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { success: false, error: data.error || "Error al subir el audio." };
+      }
+      return { success: true, sound: data.sound };
+    } catch {
+      return {
+        success: false,
+        error: "No se pudo conectar con el bot de sonido.",
+      };
     }
   }
 }

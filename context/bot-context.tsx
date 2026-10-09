@@ -11,15 +11,14 @@ import {
   PhraseTrigger,
   TTSMessage,
   LiveEvent,
-  MOCK_USER,
   MOCK_GUILDS,
-  MOCK_SONGS,
   MOCK_SOUNDS,
   MOCK_PHRASE_TRIGGERS,
   MOCK_INITIAL_EVENTS,
 } from "@/lib/mock-data";
 import { audioSynth } from "@/lib/audio-synth";
 import { igniteApi } from "@/lib/ignite-api";
+import { soundApi } from "@/lib/sound-api";
 import { supabase } from "@/lib/supabase";
 
 interface BotContextType {
@@ -90,7 +89,7 @@ interface BotContextType {
   liveEvents: LiveEvent[];
   activeSoundId: string | null;
   playSound: (soundId: string) => void;
-  addCustomSound: (sound: { name: string; emoji?: string; category: SoundItem["category"] }) => void;
+  addCustomSound: (sound: { name: string; emoji?: string; category: SoundItem["category"]; file?: File }) => Promise<boolean>;
   addPhraseTrigger: (trigger: { phrase: string; soundId: string; exactMatch: boolean; channelTarget: string }) => void;
   togglePhraseTrigger: (id: string) => void;
   deletePhraseTrigger: (id: string) => void;
@@ -125,7 +124,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   const [currentVoiceChannelId, setCurrentVoiceChannelId] = useState<string>("1012424911110799370");
 
   // Music State
-  const [catalog] = useState<Song[]>(MOCK_SONGS);
+  const [catalog] = useState<Song[]>([]);
   const [queue, setQueue] = useState<Song[]>([]);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -163,6 +162,29 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   const [phraseTriggers, setPhraseTriggers] = useState<PhraseTrigger[]>(MOCK_PHRASE_TRIGGERS);
   const [liveEvents, setLiveEvents] = useState<LiveEvent[]>(MOCK_INITIAL_EVENTS);
   const [activeSoundId, setActiveSoundId] = useState<string | null>(null);
+
+  // Sincroniza playsCount con el catálogo real del bot (sin pisar sonidos locales).
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    let cancelled = false;
+    soundApi
+      .getSounds()
+      .then((remote) => {
+        if (cancelled || !remote) return;
+        setSounds((prev) =>
+          prev.map((s) => {
+            const r = remote.find((x) => x.id === s.id);
+            return r
+              ? { ...s, playsCount: Math.max(s.playsCount, r.playsCount ?? 0), hasFile: r.hasFile ?? s.hasFile }
+              : s;
+          })
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn]);
 
   const selectedGuild = guilds.find((g) => g.id === selectedGuildId) || guilds[0];
   const currentVoiceChannel = isVoiceConnected
@@ -774,32 +796,85 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     if (!sound) return;
 
     setActiveSoundId(soundId);
-    // Play Web Audio synth sound
+    // Preview local inmediato (Web Audio synth) — funciona aunque el bot esté offline
     audioSynth.playPreset(sound.preset);
 
     setTimeout(() => {
       setActiveSoundId(null);
     }, sound.duration * 1000);
 
-    // Update play count
+    // Update play count (optimista)
     setSounds((prev) =>
       prev.map((s) => (s.id === soundId ? { ...s, playsCount: s.playsCount + 1 } : s))
     );
 
-    setLiveEvents((prev) => [
-      {
-        id: "evt-" + Date.now(),
-        type: "soundboard",
-        title: "Soundboard Play",
-        description: `Efecto ${sound.emoji || "🔊"} '${sound.name}' reproducido en ${currentVoiceChannel?.name || "General"}`,
-        timestamp: "Ahora mismo",
-      },
-      ...prev.slice(0, 19),
-    ]);
-  }, [isLoggedIn, sounds, currentVoiceChannel]);
+    const channelName = currentVoiceChannel?.name || "General";
 
-  const addCustomSound = useCallback((soundData: { name: string; emoji?: string; category: SoundItem["category"] }) => {
-    if (!isLoggedIn) return;
+    // Emisión real en Discord (fire-and-forget, no bloquea la UI).
+    // Si el sonido aún no tiene .mp3 en el bot, el backend responde
+    // code NO_AUDIO_FILE y nos quedamos con el preview local.
+    soundApi
+      .playSoundOnDiscord({
+        guildId: selectedGuildId,
+        channelId: currentVoiceChannel?.id,
+        soundId,
+        volume,
+      })
+      .then((res) => {
+        setLiveEvents((prev) => [
+          {
+            id: "evt-" + Date.now(),
+            type: "soundboard",
+            title: res.success ? "Soundboard en Discord" : "Soundboard (preview local)",
+            description: res.success
+              ? `Efecto ${sound.emoji || "🔊"} '${sound.name}' emitido en ${res.channel?.name || channelName}`
+              : `Efecto ${sound.emoji || "🔊"} '${sound.name}' solo en tu navegador — ${res.code === "NO_AUDIO_FILE" ? "el bot aún no tiene el .mp3" : res.error || "bot no alcanzable"}`,
+            timestamp: "Ahora mismo",
+          },
+          ...prev.slice(0, 19),
+        ]);
+      })
+      .catch(() => {
+        setLiveEvents((prev) => [
+          {
+            id: "evt-" + Date.now(),
+            type: "soundboard",
+            title: "Soundboard (preview local)",
+            description: `Efecto ${sound.emoji || "🔊"} '${sound.name}' solo en tu navegador — bot no alcanzable`,
+            timestamp: "Ahora mismo",
+          },
+          ...prev.slice(0, 19),
+        ]);
+      });
+  }, [isLoggedIn, sounds, currentVoiceChannel, selectedGuildId, volume]);
+
+  const addCustomSound = useCallback(async (soundData: { name: string; emoji?: string; category: SoundItem["category"]; file?: File }) => {
+    if (!isLoggedIn) return false;
+
+    // Con archivo: subida real al bot (sonará en Discord). Sin archivo: solo local (preview synth).
+    if (soundData.file) {
+      const res = await soundApi.uploadSound({
+        name: soundData.name,
+        emoji: soundData.emoji,
+        category: soundData.category,
+        file: soundData.file,
+      });
+      if (!res.success || !res.sound) return false;
+      const s = res.sound;
+      const newSound: SoundItem = {
+        id: s.id,
+        name: s.name,
+        emoji: s.emoji || soundData.emoji || "🎵",
+        category: (s.category as SoundItem["category"]) || soundData.category,
+        duration: s.duration ?? 2,
+        preset: "tada",
+        playsCount: s.playsCount ?? 0,
+        hasFile: true,
+      };
+      setSounds((prev) => [newSound, ...prev]);
+      return true;
+    }
+
     const newSound: SoundItem = {
       id: "snd-" + Date.now(),
       name: soundData.name,
@@ -808,8 +883,10 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       duration: 2,
       preset: "tada",
       playsCount: 0,
+      hasFile: false,
     };
     setSounds((prev) => [newSound, ...prev]);
+    return true;
   }, [isLoggedIn]);
 
   const addPhraseTrigger = useCallback((data: { phrase: string; soundId: string; exactMatch: boolean; channelTarget: string }) => {
