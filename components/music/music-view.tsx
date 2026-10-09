@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useBot } from "@/context/bot-context";
+import { igniteApi } from "@/lib/ignite-api";
 import { SongCard } from "@/components/music/song-card";
 import { PlaylistsView } from "@/components/music/playlists-view";
 import {
@@ -42,6 +43,9 @@ export function MusicView() {
   const [activeTab, setActiveTab] = useState<"favorites" | "catalog" | "playlists">("favorites");
   const [searchInput, setSearchInput] = useState("");
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isImporting = isPlayerBusy && pendingAction === "queue";
   const detectedPlatform = useMemo(() => detectPlatform(searchInput.trim()), [searchInput]);
@@ -64,9 +68,16 @@ export function MusicView() {
 
   const handleImport = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    await submitQuery(searchInput);
+  };
+
+  const submitQuery = async (rawQuery: string) => {
     if (isPlayerBusy) return;
-    const query = searchInput.trim();
+    const query = rawQuery.trim();
     if (!query) return;
+
+    setShowSuggestions(false);
+    setSuggestions([]);
 
     try {
       const res = await importUrlSong(query);
@@ -84,6 +95,25 @@ export function MusicView() {
       setFeedback(null);
     }, 3500);
   };
+
+  // Sugerencias de YouTube (igual que el autocompletado de /play en Discord).
+  useEffect(() => {
+    if (suggestTimer.current) clearTimeout(suggestTimer.current);
+    const q = searchInput.trim();
+    if (isUrl || q.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+    suggestTimer.current = setTimeout(async () => {
+      const items = await igniteApi.getSuggestions(q);
+      setSuggestions(items);
+      setShowSuggestions(items.length > 0);
+    }, 300);
+    return () => {
+      if (suggestTimer.current) clearTimeout(suggestTimer.current);
+    };
+  }, [searchInput, isUrl]);
 
   return (
     <div className="space-y-4 pb-28">
@@ -103,6 +133,13 @@ export function MusicView() {
               value={searchInput}
               disabled={isImporting}
               onChange={(e) => setSearchInput(e.target.value)}
+              onFocus={() => {
+                if (suggestions.length > 0) setShowSuggestions(true);
+              }}
+              onBlur={() => setShowSuggestions(false)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setShowSuggestions(false);
+              }}
               className={`glass-input w-full pl-10 pr-28 sm:pr-36 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-0 ${
                 isImporting ? "opacity-60 cursor-not-allowed" : ""
               }`}
@@ -140,6 +177,27 @@ export function MusicView() {
               </div>
             )}
           </div>
+
+          {/* Sugerencias de YouTube (igual que /play en Discord) */}
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1.5 z-30 glass-panel p-1.5 max-h-60 overflow-y-auto custom-scrollbar">
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setSearchInput(s);
+                    submitQuery(s);
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-lg text-xs text-slate-700 dark:text-slate-300 hover:bg-purple-500/10 hover:text-slate-900 dark:hover:text-white flex items-center gap-2 transition-colors cursor-pointer"
+                >
+                  <Search size={12} className="text-slate-400 shrink-0" />
+                  <span className="truncate">{s}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </form>
 
         {/* Feedback alert */}

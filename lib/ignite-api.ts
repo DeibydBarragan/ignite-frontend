@@ -136,7 +136,7 @@ class IgniteApiClient {
   async play(
     guildId: string,
     params: { query: string; voiceChannelId?: string; userId?: string; next?: boolean; skip?: boolean }
-  ): Promise<{ success: boolean; song?: Song; error?: string }> {
+  ): Promise<{ success: boolean; song?: Song; fallbackFrom?: string | null; error?: string }> {
     try {
       const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/play`, {
         method: "POST",
@@ -145,9 +145,29 @@ class IgniteApiClient {
       });
       const data = await res.json();
       if (!res.ok) return { success: false, error: data.error };
-      return { success: true, song: data.song };
+      return {
+        success: true,
+        song: data.song,
+        fallbackFrom: data.fallbackFrom || data.song?.fallbackFrom || null,
+      };
     } catch (err: any) {
       return { success: false, error: err.message };
+    }
+  }
+
+  async getSuggestions(query: string): Promise<string[]> {
+    const q = query.trim();
+    if (q.length < 2 || q.length > 100 || /^https?:\/\//i.test(q)) return [];
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/api/search/suggest?q=${encodeURIComponent(q)}`,
+        { headers: this.headers, cache: "no-store" }
+      );
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data.suggestions) ? data.suggestions : [];
+    } catch {
+      return [];
     }
   }
 

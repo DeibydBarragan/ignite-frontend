@@ -35,6 +35,7 @@ export interface Song {
   source: MusicSource;
   url: string;
   category: "lofi" | "gaming" | "synthwave" | "hits" | "rock";
+  fallbackFrom?: string | null; // ej. "youtube" cuando SoundCloud entró como fallback
 }
 
 export type SoundCategory = "memes" | "gaming" | "reactions" | "sfx" | "anime";

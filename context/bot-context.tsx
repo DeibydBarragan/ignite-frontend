@@ -209,7 +209,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   const [shuffle, setShuffle] = useState<boolean>(false);
   const [autoplay, setAutoplay] = useState<boolean>(false);
   const [currentFilter, setCurrentFilter] = useState<string | null>(null);
-  const [defaultProvider, setDefaultProvider] = useState<MusicSource>("spotify");
+  const [defaultProvider, setDefaultProvider] = useState<MusicSource>("youtube");
 
   // TTS State
   const [recentTTS, setRecentTTS] = useState<TTSMessage[]>([
@@ -845,9 +845,12 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
           ...prev.slice(0, 19),
         ]);
         await syncPlayerState();
+        const fallbackNote = res.fallbackFrom
+          ? " (YouTube no disponible, reproducido vía SoundCloud)"
+          : "";
         return {
           success: true,
-          message: `¡'${res.song.title}' añadida a la cola exitosamente!`,
+          message: `¡'${res.song.title}' añadida a la cola exitosamente!${fallbackNote}`,
           song: res.song,
         };
       } else if (!res.success && res.error) {
