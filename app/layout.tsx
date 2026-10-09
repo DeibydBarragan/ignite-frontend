@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { BotProvider } from "@/context/bot-context";
+import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -24,7 +25,9 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} min-h-screen flex flex-col text-slate-900 dark:text-slate-100`}>
         <BotProvider>
-          {children}
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </BotProvider>
       </body>
     </html>

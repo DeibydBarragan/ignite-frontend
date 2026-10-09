@@ -145,7 +145,7 @@ class SoundApiClient {
       return {
         success: false,
         error:
-          "No se pudo conectar con el bot de sonido (¿está encendido en el puerto 3002?).",
+          "No se pudo conectar con el bot de sonido (puerto 3002).",
       };
     }
   }
@@ -157,7 +157,6 @@ class SoundApiClient {
     pitch?: number | string;
   }): Promise<void> {
     try {
-      // Detener audio previo si está sonando
       if (this.currentAudio) {
         this.currentAudio.pause();
         this.currentAudio = null;
@@ -178,7 +177,20 @@ class SoundApiClient {
       const audio = new Audio(audioUrl);
       this.currentAudio = audio;
 
-      await audio.play();
+      return new Promise((resolve) => {
+        audio.onended = () => {
+          this.currentAudio = null;
+          resolve();
+        };
+        audio.onerror = () => {
+          this.currentAudio = null;
+          resolve();
+        };
+        audio.play().catch(() => {
+          this.currentAudio = null;
+          resolve();
+        });
+      });
     } catch (err) {
       console.error("[previewTTS] Error:", err);
       throw err;

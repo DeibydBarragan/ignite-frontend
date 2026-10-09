@@ -9,6 +9,7 @@ import {
   SavedPhrase,
 } from "@/lib/phrases-service";
 import { AddPhraseModal } from "./add-phrase-modal";
+import { useToast } from "@/components/ui/toast";
 import {
   Mic,
   Send,
@@ -18,14 +19,13 @@ import {
   Play,
   Trash2,
   ArrowUpLeft,
-  CheckCircle2,
-  AlertCircle,
   Radio,
   Loader2,
 } from "lucide-react";
 
 export function TTSView() {
   const { isVoiceConnected, currentVoiceChannel, selectedGuild, user } = useBot();
+  const { toast } = useToast();
 
   // Composer State
   const [text, setText] = useState("");
@@ -35,7 +35,6 @@ export function TTSView() {
   const [rate, setRate] = useState(1.0);
   const [isSending, setIsSending] = useState(false);
   const [isPreviewing, setIsPreviewing] = useState(false);
-  const [feedbackMsg, setFeedbackMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Saved Phrases State (Supabase)
   const [savedPhrases, setSavedPhrases] = useState<SavedPhrase[]>([]);
@@ -70,7 +69,6 @@ export function TTSView() {
     if (!text.trim() || isSending) return;
 
     setIsSending(true);
-    setFeedbackMsg(null);
 
     const res = await soundApi.speakTTS({
       guildId: selectedGuild?.id,
@@ -82,14 +80,13 @@ export function TTSView() {
     });
 
     if (res.success) {
-      setFeedbackMsg({ type: "success", text: "Mensaje emitido en el canal de voz." });
+      toast("Mensaje emitido en Discord con éxito.", "emit");
       setText("");
     } else {
-      setFeedbackMsg({ type: "error", text: res.error || "Error al emitir en Discord." });
+      toast(res.error || "Error al emitir en Discord.", "error");
     }
 
     setIsSending(false);
-    setTimeout(() => setFeedbackMsg(null), 4000);
   };
 
   // Handle Browser Audio Preview
@@ -104,7 +101,7 @@ export function TTSView() {
         rate,
       });
     } catch {
-      setFeedbackMsg({ type: "error", text: "No se pudo generar la vista previa." });
+      toast("No se pudo reproducir la vista previa.", "error");
     } finally {
       setIsPreviewing(false);
     }
@@ -120,8 +117,8 @@ export function TTSView() {
         pitch: phrase.pitch,
         rate: phrase.rate,
       });
-    } catch (err) {
-      console.error(err);
+    } catch {
+      toast("Error al reproducir vista previa de la frase.", "error");
     } finally {
       setPlayingPhraseId(null);
     }
@@ -141,11 +138,10 @@ export function TTSView() {
     setEmittingPhraseId(null);
 
     if (res.success) {
-      setFeedbackMsg({ type: "success", text: `"${phrase.title}" emitida en Discord.` });
+      toast(`"${phrase.title}" emitida en Discord.`, "emit");
     } else {
-      setFeedbackMsg({ type: "error", text: res.error || "Error al emitir." });
+      toast(res.error || "Error al emitir frase.", "error");
     }
-    setTimeout(() => setFeedbackMsg(null), 3000);
   };
 
   // Load saved phrase into the composer
@@ -154,15 +150,15 @@ export function TTSView() {
     if (phrase.voice) setSelectedVoiceId(phrase.voice);
     if (phrase.pitch) setPitch(phrase.pitch);
     if (phrase.rate) setRate(phrase.rate);
+    toast(`Frase cargada al editor.`, "info");
   };
 
   // Delete saved phrase
   const handleDeletePhrase = async (id: string) => {
     await deleteSavedPhrase(id);
     setSavedPhrases((prev) => prev.filter((p) => p.id !== id));
+    toast("Frase eliminada.", "info");
   };
-
-  const selectedVoiceObj = voices.find((v) => v.id === selectedVoiceId) || voices[0];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 pb-28">
@@ -216,7 +212,7 @@ export function TTSView() {
             </span>
           </div>
 
-          {/* Quick Voice Selector & Sliders */}
+          {/* Voice Selector & Sliders */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 mb-4">
             {/* Voice Dropdown */}
             <div>
@@ -279,27 +275,13 @@ export function TTSView() {
             </div>
           </div>
 
-          {/* Feedback message banner */}
-          {feedbackMsg && (
-            <div
-              className={`mb-3 p-2.5 rounded-lg flex items-center gap-2 text-xs border ${
-                feedbackMsg.type === "success"
-                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                  : "bg-red-500/10 text-red-400 border-red-500/20"
-              }`}
-            >
-              {feedbackMsg.type === "success" ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-              <span>{feedbackMsg.text}</span>
-            </div>
-          )}
-
           {/* Action Row */}
           <div className="flex items-center justify-between gap-3 pt-1">
             <button
               type="button"
               onClick={handlePreview}
               disabled={!text.trim() || isPreviewing}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 flex items-center gap-1.5 transition-colors disabled:opacity-40"
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 flex items-center gap-1.5 transition-colors disabled:opacity-40 cursor-pointer"
             >
               {isPreviewing ? <Loader2 size={13} className="animate-spin" /> : <Volume2 size={13} />}
               <span>Probar en navegador</span>
@@ -308,7 +290,7 @@ export function TTSView() {
             <button
               onClick={() => handleSend()}
               disabled={!text.trim() || isSending}
-              className={`px-4 py-2 rounded-xl font-medium text-xs shadow-xs flex items-center gap-1.5 transition-all shrink-0 ${
+              className={`px-4 py-2 rounded-xl font-medium text-xs shadow-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
                 isSending
                   ? "bg-[#1db954] text-black"
                   : "bg-purple-600 hover:bg-purple-700 text-white active:scale-95"
@@ -388,7 +370,7 @@ export function TTSView() {
                       <button
                         onClick={() => handleDeletePhrase(phrase.id)}
                         title="Eliminar frase"
-                        className="text-slate-400 hover:text-red-400 transition-colors p-1"
+                        className="text-slate-400 hover:text-red-400 transition-colors p-1 cursor-pointer"
                       >
                         <Trash2 size={12} />
                       </button>
@@ -406,7 +388,7 @@ export function TTSView() {
                         <button
                           onClick={() => handleLoadToComposer(phrase)}
                           title="Cargar al editor"
-                          className="p-1 rounded text-slate-400 hover:text-white transition-colors"
+                          className="p-1 rounded text-slate-400 hover:text-white transition-colors cursor-pointer"
                         >
                           <ArrowUpLeft size={13} />
                         </button>
@@ -416,7 +398,7 @@ export function TTSView() {
                           onClick={() => handlePreviewPhrase(phrase)}
                           disabled={isPlaying}
                           title="Probar en navegador"
-                          className="px-2 py-0.5 rounded bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 flex items-center gap-1"
+                          className="px-2 py-0.5 rounded bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 flex items-center gap-1 cursor-pointer disabled:opacity-40"
                         >
                           {isPlaying ? (
                             <Loader2 size={10} className="animate-spin" />
@@ -431,7 +413,7 @@ export function TTSView() {
                           onClick={() => handleSpeakPhrase(phrase)}
                           disabled={isEmitting}
                           title="Emitir en Discord"
-                          className="px-2.5 py-0.5 rounded bg-purple-600 hover:bg-purple-500 text-white font-medium flex items-center gap-1 shadow-xs"
+                          className="px-2.5 py-0.5 rounded bg-purple-600 hover:bg-purple-500 text-white font-medium flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-40"
                         >
                           {isEmitting ? (
                             <Loader2 size={10} className="animate-spin" />
@@ -458,6 +440,7 @@ export function TTSView() {
         userId={user?.id}
         onPhraseAdded={(newPhrase) => {
           setSavedPhrases((prev) => [newPhrase, ...prev]);
+          toast(`Frase "${newPhrase.title}" guardada exitosamente.`, "success");
         }}
       />
     </div>
