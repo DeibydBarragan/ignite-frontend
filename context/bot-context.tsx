@@ -85,18 +85,32 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   // User & Guild State
   const [user, setUser] = useState<DiscordUser>(MOCK_USER);
   const [isLoggedIn, setIsLoggedIn] = useState(true);
-  const [guilds] = useState<DiscordGuild[]>(MOCK_GUILDS);
-  const [selectedGuildId, setSelectedGuildId] = useState<string>(MOCK_GUILDS[0].id);
+  const [guilds, setGuilds] = useState<DiscordGuild[]>([
+    {
+      id: "1011718919473610863",
+      name: "Perros mierda",
+      icon: "https://cdn.discordapp.com/icons/1011718919473610863/b5185e31fae4e960f46cd4d222d28801.webp",
+      memberCount: 23,
+      botPresent: true,
+      voiceChannels: [
+        { id: "1012424911110799370", name: "La  Perrera", userCount: 1, bitrate: 64 },
+      ],
+    },
+    ...MOCK_GUILDS,
+  ]);
+  const [selectedGuildId, setSelectedGuildId] = useState<string>(
+    process.env.NEXT_PUBLIC_DEFAULT_GUILD_ID || "1011718919473610863"
+  );
   const [isVoiceConnected, setIsVoiceConnected] = useState<boolean>(true);
-  const [currentVoiceChannelId, setCurrentVoiceChannelId] = useState<string>("vc-1");
+  const [currentVoiceChannelId, setCurrentVoiceChannelId] = useState<string>("1012424911110799370");
 
   // Music State
   const [catalog] = useState<Song[]>(MOCK_SONGS);
-  const [queue, setQueue] = useState<Song[]>([MOCK_SONGS[1], MOCK_SONGS[2], MOCK_SONGS[3]]);
-  const [currentSong, setCurrentSong] = useState<Song | null>(MOCK_SONGS[0]);
+  const [queue, setQueue] = useState<Song[]>([]);
+  const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [currentTime, setCurrentTime] = useState<number>(34);
-  const [volume, setVolume] = useState<number>(80);
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const [volume, setVolume] = useState<number>(100);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [repeatMode, setRepeatMode] = useState<"off" | "track" | "queue">("off");
   const [shuffle, setShuffle] = useState<boolean>(false);
@@ -168,8 +182,14 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
           setRepeatMode(state.repeatMode);
           setQueue(state.queue);
           setIsVoiceConnected(true);
-        } else if (!state.hasQueue && isPlaying) {
+          if (state.voiceChannel) {
+            setCurrentVoiceChannelId(state.voiceChannel.id);
+          }
+        } else if (!state.hasQueue) {
+          setCurrentSong(null);
           setIsPlaying(false);
+          setQueue([]);
+          setCurrentTime(0);
         }
       } catch {
         // Fall back gracefully to local state
