@@ -1,0 +1,143 @@
+import { Song } from "./mock-data";
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_IGNITE_API_URL ||
+  "https://domains-differential-antiques-chemical.trycloudflare.com";
+
+const API_SECRET =
+  process.env.NEXT_PUBLIC_IGNITE_API_SECRET || "ignite_dev_secret_2026_xyz";
+
+export interface ApiPlayerState {
+  hasQueue: boolean;
+  isPlaying: boolean;
+  isPaused: boolean;
+  currentTime: number;
+  duration: number;
+  volume: number;
+  repeatMode: "off" | "track" | "queue";
+  autoplay: boolean;
+  voiceChannel: { id: string; name: string } | null;
+  currentSong: Song | null;
+  queue: Song[];
+}
+
+export interface ApiGuild {
+  id: string;
+  name: string;
+  icon: string | null;
+  memberCount: number;
+}
+
+class IgniteApiClient {
+  private get headers(): Record<string, string> {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (API_SECRET) {
+      headers["Authorization"] = `Bearer ${API_SECRET}`;
+    }
+    return headers;
+  }
+
+  async getHealth(): Promise<{ status: string; uptime: number; bot: any } | null> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/health`, {
+        headers: this.headers,
+        cache: "no-store",
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
+  }
+
+  async getGuilds(): Promise<ApiGuild[]> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/guilds`, {
+        headers: this.headers,
+        cache: "no-store",
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.guilds || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async getPlayerState(guildId: string): Promise<ApiPlayerState | null> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/player`, {
+        headers: this.headers,
+        cache: "no-store",
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
+  }
+
+  async play(
+    guildId: string,
+    params: { query: string; voiceChannelId?: string; userId?: string; next?: boolean }
+  ): Promise<{ success: boolean; song?: Song; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/play`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify(params),
+      });
+      const data = await res.json();
+      if (!res.ok) return { success: false, error: data.error };
+      return { success: true, song: data.song };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+
+  async control(
+    guildId: string,
+    action: "pause" | "resume" | "toggle" | "skip" | "previous" | "stop" | "seek" | "volume" | "loop" | "shuffle" | "autoplay",
+    value?: any
+  ): Promise<{ success: boolean; message?: string }> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/control`, {
+        method: "POST",
+        headers: this.headers,
+        body: JSON.stringify({ action, value }),
+      });
+      const data = await res.json();
+      return { success: data.success ?? res.ok, message: data.message };
+    } catch {
+      return { success: false };
+    }
+  }
+
+  async removeFromQueue(guildId: string, index: number): Promise<boolean> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/queue/${index}`, {
+        method: "DELETE",
+        headers: this.headers,
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  async clearQueue(guildId: string): Promise<boolean> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/queue`, {
+        method: "DELETE",
+        headers: this.headers,
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
+export const igniteApi = new IgniteApiClient();
