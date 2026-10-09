@@ -131,6 +131,72 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   const [isVoiceConnected, setIsVoiceConnected] = useState<boolean>(true);
   const [currentVoiceChannelId, setCurrentVoiceChannelId] = useState<string>("1012424911110799370");
 
+  // Servidores y canales de voz REALES desde el bot (reemplaza los mocks al iniciar sesión).
+  // Si la API no responde, se conservan los datos hardcodeados como fallback offline.
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const apiGuilds = await igniteApi.getGuilds();
+        if (cancelled || apiGuilds.length === 0) return;
+
+        const withChannels = await Promise.all(
+          apiGuilds.map(async (g) => {
+            const channels = await igniteApi.getVoiceChannels(g.id);
+            const voiceChannels: VoiceChannel[] = channels.map((c) => ({
+              id: c.id,
+              name: c.name,
+              userCount: c.userCount,
+              bitrate: c.bitrate,
+            }));
+            return {
+              id: g.id,
+              name: g.name,
+              icon: g.icon || "https://cdn.discordapp.com/embed/avatars/0.png",
+              memberCount: g.memberCount,
+              botPresent: true,
+              voiceChannels,
+            } as DiscordGuild;
+          })
+        );
+
+        if (cancelled || withChannels.length === 0) return;
+        setGuilds(withChannels);
+        setSelectedGuildId((prev) =>
+          withChannels.some((g) => g.id === prev) ? prev : withChannels[0].id
+        );
+      } catch {
+        // Fallback: se mantienen los mocks iniciales
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoggedIn]);
+
+  // Presencia de voz REAL del usuario vía el bot (poll cada 5s).
+  useEffect(() => {
+    if (!isLoggedIn || !user) return;
+    let cancelled = false;
+    const check = async () => {
+      const status = await igniteApi.getVoiceStatus(selectedGuildId, user.id);
+      if (cancelled || !status) return;
+      if (status.user) {
+        setIsVoiceConnected(true);
+        setCurrentVoiceChannelId(status.user.id);
+      } else {
+        setIsVoiceConnected(false);
+      }
+    };
+    check();
+    const interval = setInterval(check, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [isLoggedIn, user, selectedGuildId]);
+
   // Music State
   const [catalog] = useState<Song[]>([]);
   const [queue, setQueue] = useState<Song[]>([]);

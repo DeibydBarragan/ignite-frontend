@@ -29,6 +29,29 @@ export interface ApiGuild {
   memberCount: number;
 }
 
+export interface ApiVoiceMember {
+  id: string;
+  username: string;
+  avatar: string | null;
+  bot: boolean;
+}
+
+export interface ApiVoiceChannel {
+  id: string;
+  name: string;
+  bitrate: number;
+  userLimit: number;
+  userCount: number;
+  botPresent: boolean;
+  members: ApiVoiceMember[];
+}
+
+export interface ApiVoiceStatus {
+  bot: { id: string; name: string } | null;
+  user: { id: string; name: string } | null;
+  canControl: boolean;
+}
+
 class IgniteApiClient {
   private get headers(): Record<string, string> {
     const headers: Record<string, string> = {
@@ -64,6 +87,36 @@ class IgniteApiClient {
       return data.guilds || [];
     } catch {
       return [];
+    }
+  }
+
+  async getVoiceChannels(guildId: string): Promise<ApiVoiceChannel[]> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/channels`, {
+        headers: this.headers,
+        cache: "no-store",
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.channels || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async getVoiceStatus(guildId: string, userId?: string): Promise<ApiVoiceStatus | null> {
+    try {
+      const url = userId
+        ? `${API_BASE_URL}/api/guilds/${guildId}/voice-status?userId=${encodeURIComponent(userId)}`
+        : `${API_BASE_URL}/api/guilds/${guildId}/voice-status`;
+      const res = await fetch(url, {
+        headers: this.headers,
+        cache: "no-store",
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
     }
   }
 
