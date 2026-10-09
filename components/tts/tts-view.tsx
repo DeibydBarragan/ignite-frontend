@@ -1,65 +1,172 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useBot } from "@/context/bot-context";
+import { soundApi, VoiceItem, FALLBACK_VOICES } from "@/lib/sound-api";
+import {
+  fetchSavedPhrases,
+  deleteSavedPhrase,
+  SavedPhrase,
+} from "@/lib/phrases-service";
+import { AddPhraseModal } from "./add-phrase-modal";
 import {
   Mic,
   Send,
   Volume2,
-  Sliders,
-  History,
-  RotateCcw,
+  Bookmark,
+  Plus,
+  Play,
+  Trash2,
+  ArrowUpLeft,
+  CheckCircle2,
   AlertCircle,
   Radio,
+  Loader2,
 } from "lucide-react";
 
-const VOICES = [
-  { id: "es-jorge", name: "Jorge (Español Neutro)", lang: "es-ES" },
-  { id: "es-lucia", name: "Lucía (Español Femenino)", lang: "es-MX" },
-  { id: "en-brian", name: "Brian (English Classic)", lang: "en-US" },
-  { id: "cyber-bot", name: "Cyber Bot (Sintetizador)", lang: "es-ES" },
-  { id: "anime-voice", name: "Anime Style (Agudo)", lang: "ja-JP" },
-];
-
-const PRESET_MESSAGES = [
-  "¡Listos todos, comienza la partida!",
-  "Buenas noches a todos, desconectando.",
-  "AFK por 5 minutos, ya vuelvo.",
-  "GG bien jugado equipo.",
-];
-
 export function TTSView() {
-  const { isVoiceConnected, currentVoiceChannel, sendTTS, recentTTS } = useBot();
+  const { isVoiceConnected, currentVoiceChannel, selectedGuild, user } = useBot();
 
+  // Composer State
   const [text, setText] = useState("");
-  const [selectedVoice, setSelectedVoice] = useState(VOICES[0].name);
+  const [voices, setVoices] = useState<VoiceItem[]>(FALLBACK_VOICES);
+  const [selectedVoiceId, setSelectedVoiceId] = useState("loquendo");
   const [pitch, setPitch] = useState(1.0);
   const [rate, setRate] = useState(1.0);
   const [isSending, setIsSending] = useState(false);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+  const [feedbackMsg, setFeedbackMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const maxChars = 250;
+  // Saved Phrases State (Supabase)
+  const [savedPhrases, setSavedPhrases] = useState<SavedPhrase[]>([]);
+  const [isLoadingPhrases, setIsLoadingPhrases] = useState(true);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [playingPhraseId, setPlayingPhraseId] = useState<string | null>(null);
+  const [emittingPhraseId, setEmittingPhraseId] = useState<string | null>(null);
+
+  const maxChars = 300;
   const charsLeft = maxChars - text.length;
 
-  const handleSend = (e?: React.FormEvent) => {
+  // Load Voices from Bot API
+  useEffect(() => {
+    soundApi.getVoices().then((res) => {
+      if (res && res.length > 0) {
+        setVoices(res);
+      }
+    });
+  }, []);
+
+  // Load Saved Phrases from Supabase
+  useEffect(() => {
+    setIsLoadingPhrases(true);
+    fetchSavedPhrases(user?.id)
+      .then((data) => setSavedPhrases(data))
+      .finally(() => setIsLoadingPhrases(false));
+  }, [user?.id]);
+
+  // Handle Main Composer Send to Discord
+  const handleSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!text.trim() || isSending) return;
 
     setIsSending(true);
-    sendTTS(text, selectedVoice, pitch, rate);
+    setFeedbackMsg(null);
 
-    setTimeout(() => {
-      setIsSending(false);
+    const res = await soundApi.speakTTS({
+      guildId: selectedGuild?.id,
+      channelId: currentVoiceChannel?.id,
+      text: text.trim(),
+      voice: selectedVoiceId,
+      pitch,
+      rate,
+    });
+
+    if (res.success) {
+      setFeedbackMsg({ type: "success", text: "Mensaje emitido en el canal de voz." });
       setText("");
-    }, 1200);
+    } else {
+      setFeedbackMsg({ type: "error", text: res.error || "Error al emitir en Discord." });
+    }
+
+    setIsSending(false);
+    setTimeout(() => setFeedbackMsg(null), 4000);
   };
 
-  const handleResend = (msg: { text: string; voice: string; pitch: number; rate: number }) => {
-    sendTTS(msg.text, msg.voice, msg.pitch, msg.rate);
+  // Handle Browser Audio Preview
+  const handlePreview = async () => {
+    if (!text.trim() || isPreviewing) return;
+    setIsPreviewing(true);
+    try {
+      await soundApi.previewTTS({
+        text: text.trim(),
+        voice: selectedVoiceId,
+        pitch,
+        rate,
+      });
+    } catch {
+      setFeedbackMsg({ type: "error", text: "No se pudo generar la vista previa." });
+    } finally {
+      setIsPreviewing(false);
+    }
   };
+
+  // Preview a saved phrase in browser
+  const handlePreviewPhrase = async (phrase: SavedPhrase) => {
+    setPlayingPhraseId(phrase.id);
+    try {
+      await soundApi.previewTTS({
+        text: phrase.text,
+        voice: phrase.voice,
+        pitch: phrase.pitch,
+        rate: phrase.rate,
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setPlayingPhraseId(null);
+    }
+  };
+
+  // Speak a saved phrase directly to Discord
+  const handleSpeakPhrase = async (phrase: SavedPhrase) => {
+    setEmittingPhraseId(phrase.id);
+    const res = await soundApi.speakTTS({
+      guildId: selectedGuild?.id,
+      channelId: currentVoiceChannel?.id,
+      text: phrase.text,
+      voice: phrase.voice,
+      pitch: phrase.pitch,
+      rate: phrase.rate,
+    });
+    setEmittingPhraseId(null);
+
+    if (res.success) {
+      setFeedbackMsg({ type: "success", text: `"${phrase.title}" emitida en Discord.` });
+    } else {
+      setFeedbackMsg({ type: "error", text: res.error || "Error al emitir." });
+    }
+    setTimeout(() => setFeedbackMsg(null), 3000);
+  };
+
+  // Load saved phrase into the composer
+  const handleLoadToComposer = (phrase: SavedPhrase) => {
+    setText(phrase.text);
+    if (phrase.voice) setSelectedVoiceId(phrase.voice);
+    if (phrase.pitch) setPitch(phrase.pitch);
+    if (phrase.rate) setRate(phrase.rate);
+  };
+
+  // Delete saved phrase
+  const handleDeletePhrase = async (id: string) => {
+    await deleteSavedPhrase(id);
+    setSavedPhrases((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const selectedVoiceObj = voices.find((v) => v.id === selectedVoiceId) || voices[0];
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 pb-28">
-      {/* Main TTS Composer (Left 2 columns) */}
+      {/* ─── Main TTS Composer (Left 2 columns) ────────────────── */}
       <div className="lg:col-span-2 space-y-4">
         <div className="glass-panel p-5 sm:p-6 border border-black/5 dark:border-white/10">
           <div className="flex items-center justify-between mb-4">
@@ -72,7 +179,7 @@ export function TTSView() {
                   Sintetizador de Voz (TTS)
                 </h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  El bot leerá el mensaje de forma instantánea en la sala de audio.
+                  Voces neuronales de Microsoft y Loquendo conectadas en vivo con tu bot.
                 </p>
               </div>
             </div>
@@ -85,7 +192,7 @@ export function TTSView() {
                 }`}
               />
               <span className="truncate max-w-[130px]">
-                {isVoiceConnected && currentVoiceChannel ? currentVoiceChannel.name : "Desconectado"}
+                {isVoiceConnected && currentVoiceChannel ? currentVoiceChannel.name : "Canal de Voz"}
               </span>
             </div>
           </div>
@@ -95,7 +202,7 @@ export function TTSView() {
             <textarea
               rows={4}
               maxLength={maxChars}
-              placeholder="Escribe el mensaje a emitir en Discord..."
+              placeholder="Escribe el mensaje que dirá el bot en Discord..."
               value={text}
               onChange={(e) => setText(e.target.value)}
               className="glass-input w-full p-3.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 resize-none"
@@ -109,37 +216,21 @@ export function TTSView() {
             </span>
           </div>
 
-          {/* Quick Presets */}
-          <div className="mb-4">
-            <div className="text-[11px] text-slate-400 mb-1.5">Frases sugeridas:</div>
-            <div className="flex flex-wrap gap-1.5">
-              {PRESET_MESSAGES.map((preset, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setText(preset)}
-                  className="glass-pill px-2.5 py-1 text-[11px] text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
-                >
-                  {preset}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Modulations & Controls */}
+          {/* Quick Voice Selector & Sliders */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 p-3.5 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 mb-4">
-            {/* Voice Select */}
+            {/* Voice Dropdown */}
             <div>
               <label className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block mb-1">
-                Voz del sintetizador
+                Voz seleccionada
               </label>
               <select
-                value={selectedVoice}
-                onChange={(e) => setSelectedVoice(e.target.value)}
+                value={selectedVoiceId}
+                onChange={(e) => setSelectedVoiceId(e.target.value)}
                 className="glass-input w-full py-1.5 px-2.5 text-xs text-slate-900 dark:text-white"
               >
-                {VOICES.map((v) => (
-                  <option key={v.id} value={v.name} className="dark:bg-slate-900">
-                    {v.name}
+                {voices.map((v) => (
+                  <option key={v.id} value={v.id} className="dark:bg-slate-900">
+                    {v.flag} {v.name} ({v.gender})
                   </option>
                 ))}
               </select>
@@ -157,8 +248,8 @@ export function TTSView() {
               </div>
               <input
                 type="range"
-                min="0.5"
-                max="1.8"
+                min="0.6"
+                max="1.6"
                 step="0.1"
                 value={pitch}
                 onChange={(e) => setPitch(Number(e.target.value))}
@@ -179,7 +270,7 @@ export function TTSView() {
               <input
                 type="range"
                 min="0.6"
-                max="1.8"
+                max="1.6"
                 step="0.1"
                 value={rate}
                 onChange={(e) => setRate(Number(e.target.value))}
@@ -188,18 +279,31 @@ export function TTSView() {
             </div>
           </div>
 
+          {/* Feedback message banner */}
+          {feedbackMsg && (
+            <div
+              className={`mb-3 p-2.5 rounded-lg flex items-center gap-2 text-xs border ${
+                feedbackMsg.type === "success"
+                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                  : "bg-red-500/10 text-red-400 border-red-500/20"
+              }`}
+            >
+              {feedbackMsg.type === "success" ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+              <span>{feedbackMsg.text}</span>
+            </div>
+          )}
+
           {/* Action Row */}
           <div className="flex items-center justify-between gap-3 pt-1">
-            {!isVoiceConnected ? (
-              <p className="text-[11px] text-amber-500 flex items-center gap-1.5">
-                <AlertCircle size={13} />
-                <span>Requiere estar conectado a un canal de voz para emitir.</span>
-              </p>
-            ) : (
-              <span className="text-[11px] text-slate-400">
-                Se reproducirá por el bot y en tu navegador para prueba local.
-              </span>
-            )}
+            <button
+              type="button"
+              onClick={handlePreview}
+              disabled={!text.trim() || isPreviewing}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 flex items-center gap-1.5 transition-colors disabled:opacity-40"
+            >
+              {isPreviewing ? <Loader2 size={13} className="animate-spin" /> : <Volume2 size={13} />}
+              <span>Probar en navegador</span>
+            </button>
 
             <button
               onClick={() => handleSend()}
@@ -212,13 +316,13 @@ export function TTSView() {
             >
               {isSending ? (
                 <>
-                  <Volume2 size={14} className="animate-spin" />
+                  <Loader2 size={14} className="animate-spin" />
                   <span>Emitiendo...</span>
                 </>
               ) : (
                 <>
                   <Send size={13} />
-                  <span>Emitir en voz</span>
+                  <span>Emitir en Discord</span>
                 </>
               )}
             </button>
@@ -226,52 +330,136 @@ export function TTSView() {
         </div>
       </div>
 
-      {/* Recent TTS History (Right column) */}
+      {/* ─── Frases Guardadas (Right column - Supabase) ────────── */}
       <div className="space-y-3">
         <div className="glass-panel p-4 border border-black/5 dark:border-white/10">
           <div className="flex items-center justify-between mb-3 border-b border-black/5 dark:border-white/5 pb-2.5">
             <div className="flex items-center gap-2">
-              <History size={14} className="text-purple-600 dark:text-purple-400" />
+              <Bookmark size={15} className="text-purple-600 dark:text-purple-400" />
               <h4 className="text-xs font-semibold text-slate-900 dark:text-white">
-                Historial de Emisiones
+                Frases Guardadas
               </h4>
             </div>
-            <span className="text-[10px] text-slate-400 tabular-nums font-mono">
-              {recentTTS.length} enviados
-            </span>
+
+            <button
+              onClick={() => setIsAddModalOpen(true)}
+              className="glass-pill px-2.5 py-1 text-[11px] font-semibold text-purple-600 dark:text-purple-400 hover:text-purple-500 border border-purple-500/30 flex items-center gap-1 cursor-pointer transition-all active:scale-95"
+            >
+              <Plus size={12} />
+              <span>Nueva frase</span>
+            </button>
           </div>
 
-          {recentTTS.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-8">
-              Aún no has transmitido frases TTS.
-            </p>
+          {isLoadingPhrases ? (
+            <div className="py-8 flex flex-col items-center justify-center gap-2 text-slate-400">
+              <Loader2 size={20} className="animate-spin text-purple-500" />
+              <span className="text-xs">Cargando frases de Supabase...</span>
+            </div>
+          ) : savedPhrases.length === 0 ? (
+            <div className="text-center py-8 px-2">
+              <Bookmark size={28} className="mx-auto text-slate-400/50 mb-2" />
+              <p className="text-xs text-slate-400">No tienes frases guardadas aún.</p>
+              <p className="text-[11px] text-slate-500 mt-1">
+                Crea una frase para reproducirla con un solo clic.
+              </p>
+            </div>
           ) : (
-            <div className="space-y-2 max-h-[380px] overflow-y-auto custom-scrollbar pr-1">
-              {recentTTS.map((msg) => (
-                <div
-                  key={msg.id}
-                  className="p-3 rounded-lg bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 flex flex-col justify-between gap-2"
-                >
-                  <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed">
-                    &ldquo;{msg.text}&rdquo;
-                  </p>
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 border-t border-black/5 dark:border-white/5 pt-1.5 tabular-nums">
-                    <span>{msg.voice} &bull; {msg.timestamp}</span>
-                    <button
-                      onClick={() => handleResend(msg)}
-                      title="Volver a emitir"
-                      className="glass-btn px-2 py-0.5 text-purple-600 dark:text-purple-400 hover:text-purple-500 flex items-center gap-1 text-[10px]"
-                    >
-                      <RotateCcw size={10} />
-                      <span>Reenviar</span>
-                    </button>
+            <div className="space-y-2.5 max-h-[460px] overflow-y-auto custom-scrollbar pr-1">
+              {savedPhrases.map((phrase) => {
+                const voiceInfo = voices.find((v) => v.id === phrase.voice);
+                const isPlaying = playingPhraseId === phrase.id;
+                const isEmitting = emittingPhraseId === phrase.id;
+
+                return (
+                  <div
+                    key={phrase.id}
+                    className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 flex flex-col gap-2 hover:border-purple-500/30 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <h5 className="text-xs font-bold text-slate-900 dark:text-white leading-tight">
+                          {phrase.title}
+                        </h5>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 italic">
+                          &ldquo;{phrase.text}&rdquo;
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={() => handleDeletePhrase(phrase.id)}
+                        title="Eliminar frase"
+                        className="text-slate-400 hover:text-red-400 transition-colors p-1"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-black/5 dark:border-white/5 pt-2 text-[10px]">
+                      {/* Voice Badge */}
+                      <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-medium">
+                        {voiceInfo ? `${voiceInfo.flag} ${voiceInfo.name}` : phrase.voice}
+                      </span>
+
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-1.5">
+                        {/* Copy/Load to composer */}
+                        <button
+                          onClick={() => handleLoadToComposer(phrase)}
+                          title="Cargar al editor"
+                          className="p-1 rounded text-slate-400 hover:text-white transition-colors"
+                        >
+                          <ArrowUpLeft size={13} />
+                        </button>
+
+                        {/* Preview Audio */}
+                        <button
+                          onClick={() => handlePreviewPhrase(phrase)}
+                          disabled={isPlaying}
+                          title="Probar en navegador"
+                          className="px-2 py-0.5 rounded bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 flex items-center gap-1"
+                        >
+                          {isPlaying ? (
+                            <Loader2 size={10} className="animate-spin" />
+                          ) : (
+                            <Play size={10} />
+                          )}
+                          <span>Probar</span>
+                        </button>
+
+                        {/* Speak in Discord */}
+                        <button
+                          onClick={() => handleSpeakPhrase(phrase)}
+                          disabled={isEmitting}
+                          title="Emitir en Discord"
+                          className="px-2.5 py-0.5 rounded bg-purple-600 hover:bg-purple-500 text-white font-medium flex items-center gap-1 shadow-xs"
+                        >
+                          {isEmitting ? (
+                            <Loader2 size={10} className="animate-spin" />
+                          ) : (
+                            <Radio size={10} />
+                          )}
+                          <span>Emitir</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
       </div>
+
+      {/* Modal para Crear Nueva Frase */}
+      <AddPhraseModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        voices={voices}
+        userId={user?.id}
+        onPhraseAdded={(newPhrase) => {
+          setSavedPhrases((prev) => [newPhrase, ...prev]);
+        }}
+      />
     </div>
   );
 }

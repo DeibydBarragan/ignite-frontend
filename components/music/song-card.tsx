@@ -44,7 +44,10 @@ export function SongCard({ song }: { song: Song }) {
     >
       <div>
         {/* Album Artwork with play overlay */}
-        <div className="relative aspect-square w-full rounded-xl overflow-hidden mb-3 bg-black/10 dark:bg-white/5">
+        <div
+          onClick={() => !isPlayerBusy && playSong(song)}
+          className="relative aspect-square w-full rounded-xl overflow-hidden mb-3 bg-black/10 dark:bg-white/5 cursor-pointer"
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={song.albumArt}
@@ -87,7 +90,10 @@ export function SongCard({ song }: { song: Song }) {
 
           {/* Quick Play Hover Button (Spotify Green) */}
           <button
-            onClick={() => playSong(song)}
+            onClick={(e) => {
+              e.stopPropagation();
+              playSong(song);
+            }}
             disabled={isPlayerBusy}
             aria-label={`Reproducir ${song.title}`}
             className={`absolute bottom-2.5 right-2.5 h-9 w-9 rounded-full bg-[#1db954] text-black shadow-lg shadow-[#1db954]/25 flex items-center justify-center transition-all transform ${
@@ -107,7 +113,11 @@ export function SongCard({ song }: { song: Song }) {
         </div>
 
         {/* Info */}
-        <h3 className="font-semibold text-xs text-slate-900 dark:text-white truncate" title={song.title}>
+        <h3
+          onClick={() => !isPlayerBusy && playSong(song)}
+          className="font-semibold text-xs text-slate-900 dark:text-white truncate cursor-pointer hover:text-[#1ed760] transition-colors"
+          title={song.title}
+        >
           {song.title}
         </h3>
         <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5" title={song.artist}>

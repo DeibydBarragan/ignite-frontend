@@ -457,6 +457,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       await igniteApi.play(selectedGuildId, {
         query: song.url || `${song.title} ${song.artist}`,
         voiceChannelId: currentVoiceChannelId || undefined,
+        skip: true,
       });
       setLiveEvents((prev) => [
         {
@@ -487,6 +488,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       await igniteApi.play(selectedGuildId, {
         query: song.url || `${song.title} ${song.artist}`,
         voiceChannelId: currentVoiceChannelId || undefined,
+        skip: false,
       });
       setLiveEvents((prev) => [
         {

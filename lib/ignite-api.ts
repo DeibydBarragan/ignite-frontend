@@ -81,7 +81,7 @@ class IgniteApiClient {
 
   async play(
     guildId: string,
-    params: { query: string; voiceChannelId?: string; userId?: string; next?: boolean }
+    params: { query: string; voiceChannelId?: string; userId?: string; next?: boolean; skip?: boolean }
   ): Promise<{ success: boolean; song?: Song; error?: string }> {
     try {
       const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/play`, {
