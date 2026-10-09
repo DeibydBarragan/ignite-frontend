@@ -61,8 +61,8 @@ function CoverImage({ src, alt, className = "" }: { src: string; alt: string; cl
   return (
     <span className={`relative block overflow-hidden bg-black/5 dark:bg-white/5 ${className}`}>
       {(!loaded || broken) && (
-        <span className="absolute inset-0 ignite-shimmer flex items-center justify-center">
-          <Music2 size={14} className="relative text-slate-400/70" />
+        <span className="absolute inset-0 ignite-shimmer flex items-center justify-center bg-gradient-to-br from-purple-600/70 via-indigo-600/60 to-slate-900/90">
+          <Music2 size={20} className="relative text-white/85" />
         </span>
       )}
       {!broken && (
