@@ -58,6 +58,11 @@ interface BotContextType {
   toggleMute: () => void;
   toggleRepeat: () => void;
   toggleShuffle: () => void;
+  stopPlayback: () => void;
+  autoplay: boolean;
+  toggleAutoplay: () => void;
+  currentFilter: string | null;
+  setFilter: (name: string) => void;
   defaultProvider: MusicSource;
   setDefaultProvider: (provider: MusicSource) => void;
   importUrlSong: (url: string, opts?: { skip?: boolean }) => Promise<{ success: boolean; message: string; song?: Song }>;
@@ -134,6 +139,8 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [repeatMode, setRepeatMode] = useState<"off" | "track" | "queue">("off");
   const [shuffle, setShuffle] = useState<boolean>(false);
+  const [autoplay, setAutoplay] = useState<boolean>(false);
+  const [currentFilter, setCurrentFilter] = useState<string | null>(null);
   const [defaultProvider, setDefaultProvider] = useState<MusicSource>("spotify");
 
   // TTS State
@@ -235,6 +242,8 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         setCurrentTime(state.currentTime);
         setVolume(state.volume);
         setRepeatMode(state.repeatMode);
+        setAutoplay(state.autoplay);
+        setCurrentFilter(state.filter ?? null);
         setQueue(state.queue);
         setIsVoiceConnected(true);
         if (state.voiceChannel) {
@@ -245,6 +254,8 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         setIsPlaying(false);
         setQueue([]);
         setCurrentTime(0);
+        setAutoplay(state.autoplay);
+        setCurrentFilter(null);
       }
     } catch {
       // Fall back gracefully to local state
@@ -666,6 +677,40 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     });
   }, [isLoggedIn, selectedGuildId]);
 
+  const toggleAutoplay = useCallback(() => {
+    if (!isLoggedIn) return;
+    setAutoplay((prev) => {
+      const next = !prev;
+      igniteApi.control(selectedGuildId, "autoplay");
+      return next;
+    });
+  }, [isLoggedIn, selectedGuildId]);
+
+  const setFilter = useCallback((name: string) => {
+    if (!isLoggedIn) return;
+    setCurrentFilter(name === "none" ? null : name);
+    igniteApi.control(selectedGuildId, "filter", name);
+  }, [isLoggedIn, selectedGuildId]);
+
+  const stopPlayback = useCallback(async () => {
+    if (!isLoggedIn || isPlayerBusy) return;
+    setIsPlayerBusy(true);
+    setPendingAction("clear");
+    try {
+      setCurrentSong(null);
+      setIsPlaying(false);
+      setQueue([]);
+      setCurrentTime(0);
+      await igniteApi.control(selectedGuildId, "stop");
+      await syncPlayerState();
+    } catch (err) {
+      console.error("Error stopping playback:", err);
+    } finally {
+      setIsPlayerBusy(false);
+      setPendingAction(null);
+    }
+  }, [isLoggedIn, isPlayerBusy, selectedGuildId, syncPlayerState]);
+
   const importUrlSong = useCallback(async (url: string, opts?: { skip?: boolean }) => {
     if (!isLoggedIn) {
       return { success: false, message: "Debes iniciar sesión con Discord para reproducir canciones." };
@@ -1034,6 +1079,11 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         toggleMute,
         toggleRepeat,
         toggleShuffle,
+        stopPlayback,
+        autoplay,
+        toggleAutoplay,
+        currentFilter,
+        setFilter,
         defaultProvider,
         setDefaultProvider,
         importUrlSong,

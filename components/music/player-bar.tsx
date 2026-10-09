@@ -11,11 +11,16 @@ import {
   Repeat,
   Repeat1,
   Shuffle,
+  Square,
+  ListPlus,
+  SlidersHorizontal,
+  Check,
   ListMusic,
   ExternalLink,
   Loader2,
   Star,
 } from "lucide-react";
+import { AUDIO_FILTERS, AUDIO_FILTER_LABELS } from "@/lib/audio-filters";
 
 function formatDuration(sec: number) {
   const m = Math.floor(sec / 60);
@@ -37,6 +42,11 @@ export function PlayerBar() {
     seekTo,
     toggleRepeat,
     toggleShuffle,
+    stopPlayback,
+    autoplay,
+    toggleAutoplay,
+    currentFilter,
+    setFilter,
     isPlayerBusy,
     pendingAction,
     isFavorite,
@@ -44,6 +54,7 @@ export function PlayerBar() {
   } = useBot();
 
   const [isQueueOpen, setIsQueueOpen] = useState(false);
+  const [isFxOpen, setIsFxOpen] = useState(false);
 
   if (!currentSong) return null;
 
@@ -246,8 +257,91 @@ export function PlayerBar() {
               </div>
             </div>
 
-            {/* Right: Queue Button */}
-            <div className="flex items-center justify-end gap-3 w-full md:w-1/4">
+            {/* Right: FX, Autoplay, Stop, Queue */}
+            <div className="flex items-center justify-end gap-2 w-full md:w-1/4 flex-wrap">
+              {/* FX / Filtros de audio */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsFxOpen((prev) => !prev)}
+                  disabled={isPlayerBusy}
+                  title={currentFilter ? `Filtro: ${AUDIO_FILTER_LABELS[currentFilter as keyof typeof AUDIO_FILTER_LABELS] ?? currentFilter}` : "Efectos de audio (8D, bassboost...)"}
+                  className={`glass-btn px-2.5 py-1.5 text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-40 ${
+                    currentFilter
+                      ? "text-purple-600 dark:text-purple-400 border-purple-500/40 bg-purple-500/10"
+                      : "text-slate-700 dark:text-slate-200 hover:border-purple-500/30"
+                  }`}
+                >
+                  <SlidersHorizontal size={14} />
+                  <span className="hidden lg:inline">{currentFilter ? (AUDIO_FILTER_LABELS[currentFilter as keyof typeof AUDIO_FILTER_LABELS] ?? currentFilter) : "FX"}</span>
+                </button>
+
+                {isFxOpen && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setIsFxOpen(false)} />
+                    <div className="glass-dropdown absolute right-0 bottom-full mb-2 w-48 p-1.5 z-40 border border-black/10 dark:border-white/10 shadow-2xl max-h-64 overflow-y-auto custom-scrollbar">
+                      <button
+                        onClick={() => {
+                          setFilter("none");
+                          setIsFxOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
+                          !currentFilter
+                            ? "bg-purple-600/15 text-purple-600 dark:text-purple-400 font-semibold"
+                            : "text-slate-600 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5"
+                        }`}
+                      >
+                        <span>Sin filtro</span>
+                        {!currentFilter && <Check size={13} className="text-purple-500" />}
+                      </button>
+                      {AUDIO_FILTERS.map((name) => {
+                        const isActive = currentFilter === name;
+                        return (
+                          <button
+                            key={name}
+                            onClick={() => {
+                              setFilter(name);
+                              setIsFxOpen(false);
+                            }}
+                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
+                              isActive
+                                ? "bg-purple-600/15 text-purple-600 dark:text-purple-400 font-semibold"
+                                : "text-slate-600 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/5"
+                            }`}
+                          >
+                            <span>{AUDIO_FILTER_LABELS[name]}</span>
+                            {isActive && <Check size={13} className="text-purple-500" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Autoplay */}
+              <button
+                onClick={toggleAutoplay}
+                disabled={isPlayerBusy}
+                title={autoplay ? "Autoplay activado" : "Autoplay desactivado"}
+                className={`glass-btn p-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-40 ${
+                  autoplay
+                    ? "text-[#1ed760] bg-[#1db954]/15"
+                    : "text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+                }`}
+              >
+                <ListPlus size={15} />
+              </button>
+
+              {/* Stop */}
+              <button
+                onClick={stopPlayback}
+                disabled={isPlayerBusy}
+                title="Detener y salir del canal de voz"
+                className="glass-btn p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer disabled:opacity-40"
+              >
+                <Square size={14} className="fill-current" />
+              </button>
+
               <button
                 onClick={() => setIsQueueOpen(true)}
                 className="glass-btn px-2.5 py-1.5 text-xs flex items-center gap-1.5 text-slate-700 dark:text-slate-200 hover:border-purple-500/30 cursor-pointer"

@@ -16,6 +16,7 @@ export interface ApiPlayerState {
   volume: number;
   repeatMode: "off" | "track" | "queue";
   autoplay: boolean;
+  filter: string | null;
   voiceChannel: { id: string; name: string } | null;
   currentSong: Song | null;
   queue: Song[];
@@ -99,7 +100,7 @@ class IgniteApiClient {
 
   async control(
     guildId: string,
-    action: "pause" | "resume" | "toggle" | "skip" | "previous" | "stop" | "seek" | "volume" | "loop" | "shuffle" | "autoplay",
+    action: "pause" | "resume" | "toggle" | "skip" | "previous" | "stop" | "seek" | "volume" | "loop" | "shuffle" | "autoplay" | "filter",
     value?: any
   ): Promise<{ success: boolean; message?: string }> {
     try {
