@@ -103,7 +103,13 @@ export const FALLBACK_VOICES: VoiceItem[] = [
 
 const SOUND_API_URL =
   process.env.NEXT_PUBLIC_SOUND_API_URL ||
-  "https://albert-items-tulsa-office.trycloudflare.com";
+  "https://scroll-dangling-usher.ngrok-free.dev";
+
+// ngrok free tier requires this header to bypass the browser warning page
+const NGROK_HEADERS: Record<string, string> =
+  SOUND_API_URL.includes("ngrok-free.dev")
+    ? { "ngrok-skip-browser-warning": "true" }
+    : {};
 
 class SoundApiClient {
   private currentAudio: HTMLAudioElement | null = null;
@@ -112,6 +118,7 @@ class SoundApiClient {
     try {
       const res = await fetch(`${SOUND_API_URL}/api/voices`, {
         cache: "no-store",
+        headers: { ...NGROK_HEADERS },
       });
       if (!res.ok) return FALLBACK_VOICES;
       const data = await res.json();
@@ -134,7 +141,7 @@ class SoundApiClient {
     try {
       const res = await fetch(`${SOUND_API_URL}/api/tts/speak`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...NGROK_HEADERS },
         body: JSON.stringify(params),
       });
       const data = await res.json();
@@ -145,8 +152,7 @@ class SoundApiClient {
     } catch (err: any) {
       return {
         success: false,
-        error:
-          "No se pudo conectar con el bot de sonido (puerto 3002).",
+        error: "No se pudo conectar con el bot de sonido.",
       };
     }
   }
@@ -165,7 +171,7 @@ class SoundApiClient {
 
       const res = await fetch(`${SOUND_API_URL}/api/tts/preview`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...NGROK_HEADERS },
         body: JSON.stringify(params),
       });
 
