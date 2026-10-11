@@ -27,6 +27,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Music2,
+  Star,
 } from "lucide-react";
 
 function formatDuration(sec: number) {
@@ -113,6 +114,7 @@ export function PlaylistsView() {
     playSong,
     addToQueue,
     importUrlSong,
+    importPlaylistToFavorites,
     isPlayerBusy,
   } = useBot();
 
@@ -122,6 +124,7 @@ export function PlaylistsView() {
   const [importUrl, setImportUrl] = useState("");
   const [importName, setImportName] = useState("");
   const [isImporting, setIsImporting] = useState(false);
+  const [importingFavId, setImportingFavId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   const [selected, setSelected] = useState<UserPlaylist | null>(null);
@@ -258,6 +261,26 @@ export function PlaylistsView() {
       showFeedback(res.success ? "success" : "error", res.success ? `"${pl.name}" añadida a la cola.` : res.message);
     } finally {
       setQueueingId(null);
+    }
+  };
+
+  const handleImportFavorites = async (pl: UserPlaylist) => {
+    if (importingFavId) return;
+    setImportingFavId(pl.id);
+    try {
+      const res = await importPlaylistToFavorites({ name: pl.name, url: pl.url });
+      if (res.error) {
+        showFeedback("error", res.error);
+      } else if (res.added === 0) {
+        showFeedback("success", "Esos temas ya estaban en tus favoritos.");
+      } else {
+        showFeedback(
+          "success",
+          `${res.added} tema(s) de "${pl.name}" guardados en favoritos${res.skipped > 0 ? ` (${res.skipped} ya estaban)` : ""}.`
+        );
+      }
+    } finally {
+      setImportingFavId(null);
     }
   };
 
@@ -443,6 +466,19 @@ export function PlaylistsView() {
                     )}
                     <span>Cola</span>
                   </button>
+                  <button
+                    onClick={() => handleImportFavorites(pl)}
+                    disabled={!!importingFavId}
+                    title="Guardar los temas en favoritos"
+                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium glass-btn text-slate-600 dark:text-slate-300 hover:text-amber-400 flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    {importingFavId === pl.id ? (
+                      <Loader2 size={12} className="animate-spin" />
+                    ) : (
+                      <Star size={12} />
+                    )}
+                    <span>Favs</span>
+                  </button>
                 </div>
               </div>
             );
@@ -467,6 +503,19 @@ export function PlaylistsView() {
         footer={
           selected && !isSyncing && modalTracks.length > 0 ? (
             <div className="flex items-center justify-end gap-2 w-full">
+              <button
+                onClick={() => selected && handleImportFavorites(selected)}
+                disabled={!!importingFavId}
+                title="Guardar los temas en favoritos"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium glass-btn text-slate-600 dark:text-slate-300 hover:text-amber-400 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {importingFavId ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <Star size={13} />
+                )}
+                <span>Guardar en favs</span>
+              </button>
               <button
                 onClick={() => handleQueuePlaylist(selected)}
                 disabled={isPlayerBusy}
