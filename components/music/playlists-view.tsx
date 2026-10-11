@@ -115,6 +115,8 @@ export function PlaylistsView() {
     addToQueue,
     importUrlSong,
     importPlaylistToFavorites,
+    isFavorite,
+    toggleFavorite,
     isPlayerBusy,
   } = useBot();
 
@@ -591,6 +593,17 @@ export function PlaylistsView() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => toggleFavorite(track)}
+                          title={isFavorite(track.id) ? "Quitar de favoritos" : "Guardar en favoritos"}
+                          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                            isFavorite(track.id)
+                              ? "text-amber-400 hover:text-amber-500"
+                              : "hover:bg-amber-500/15 text-slate-400 hover:text-amber-400"
+                          }`}
+                        >
+                          <Star size={13} className={isFavorite(track.id) ? "fill-amber-400" : ""} />
+                        </button>
                         <button
                           onClick={() => playSong(track)}
                           disabled={isPlayerBusy}
