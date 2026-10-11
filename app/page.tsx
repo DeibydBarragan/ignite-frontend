@@ -13,10 +13,7 @@ import {
   Loader2,
   Lock,
   LogIn,
-  Music,
-  Radio,
   ShieldAlert,
-  Sparkles,
 } from "lucide-react";
 
 export default function Home() {
@@ -61,27 +58,11 @@ export default function Home() {
             </div>
 
             <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-              Ignite Music Bot
+              Ignite
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-2 max-w-sm leading-relaxed">
               Inicia sesión con tu cuenta de Discord para acceder al reproductor, controlar la música y ver tu biblioteca personal de favoritos.
             </p>
-
-            {/* Feature bullets */}
-            <div className="w-full my-6 p-4 rounded-2xl bg-black/[0.03] dark:bg-white/[0.03] border border-black/5 dark:border-white/5 space-y-2.5 text-left">
-              <div className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300">
-                <Sparkles size={14} className="text-amber-400 shrink-0" />
-                <span>Catálogo de canciones favoritas sincronizado</span>
-              </div>
-              <div className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300">
-                <Music size={14} className="text-[#1db954] shrink-0" />
-                <span>Control de pistas, volumen y cola de espera en vivo</span>
-              </div>
-              <div className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300">
-                <Radio size={14} className="text-purple-400 shrink-0" />
-                <span>Efectos de sonido (Soundboard) y TTS en Discord</span>
-              </div>
-            </div>
 
             {/* Discord Login Button */}
             <button
