@@ -25,6 +25,7 @@ const CATEGORIES: { id: "all" | SoundCategory; label: string }[] = [
 
 export function SoundboardView() {
   const {
+    user,
     sounds,
     activeSoundId,
     playSound,
@@ -35,6 +36,7 @@ export function SoundboardView() {
 
   const [searchSound, setSearchSound] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<"all" | SoundCategory>("all");
+  const [soundScope, setSoundScope] = useState<"all" | "mine">("all");
   const [isAddSoundOpen, setIsAddSoundOpen] = useState(false);
   const [isAttaching, setIsAttaching] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -64,13 +66,20 @@ export function SoundboardView() {
     setIsAttaching(false);
   };
 
+  const mySounds = useMemo(() => {
+    if (!user) return [];
+    return sounds.filter((s) => s.uploadedBy && s.uploadedBy === user.id);
+  }, [sounds, user]);
+
+  const scopeSounds = soundScope === "mine" ? mySounds : sounds;
+
   const filteredSounds = useMemo(() => {
-    return sounds.filter((s) => {
+    return scopeSounds.filter((s) => {
       const matchesSearch = s.name.toLowerCase().includes(searchSound.toLowerCase());
       const matchesCat = selectedCategory === "all" || s.category === selectedCategory;
       return matchesSearch && matchesCat;
     });
-  }, [sounds, searchSound, selectedCategory]);
+  }, [scopeSounds, searchSound, selectedCategory]);
 
   return (
     <div className="space-y-8 pb-28">
@@ -95,6 +104,36 @@ export function SoundboardView() {
               <span>Añadir sonido</span>
             </button>
           </div>
+        </div>
+
+        {/* Scope tabs: Todos / Propios */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSoundScope("all")}
+            className={`glass-pill px-3 py-1.5 text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+              soundScope === "all"
+                ? "glass-pill-active font-semibold"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <span>Todos</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-500/15 text-purple-400 font-mono">
+              {sounds.length}
+            </span>
+          </button>
+          <button
+            onClick={() => setSoundScope("mine")}
+            className={`glass-pill px-3 py-1.5 text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+              soundScope === "mine"
+                ? "glass-pill-active font-semibold"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <span>Propios</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500/15 text-emerald-400 font-mono font-bold">
+              {mySounds.length}
+            </span>
+          </button>
         </div>
 
         {/* Filters and search */}
@@ -126,9 +165,34 @@ export function SoundboardView() {
         </div>
 
         {/* MPC Audio Sampler Grid */}
+        {filteredSounds.length === 0 ? (
+          <div className="p-12 text-center glass-panel border border-dashed border-black/10 dark:border-white/10">
+            <Volume2 size={36} className="mx-auto text-purple-400/40 mb-3" />
+            <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+              {soundScope === "mine" && !searchSound && selectedCategory === "all"
+                ? "Aún no has subido sonidos"
+                : "Sin resultados"}
+            </h4>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
+              {soundScope === "mine" && !searchSound && selectedCategory === "all"
+                ? "Usa «Añadir sonido» con un .mp3 y aparecerá aquí. Todos podrán reproducirlo."
+                : "Prueba con otro nombre o categoría."}
+            </p>
+            {soundScope === "mine" && !searchSound && selectedCategory === "all" && (
+              <button
+                onClick={() => setIsAddSoundOpen(true)}
+                className="mt-4 px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-md shadow-purple-600/20 inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus size={13} />
+                <span>Subir mi primer sonido</span>
+              </button>
+            )}
+          </div>
+        ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
           {filteredSounds.map((snd) => {
             const isPlayingThis = activeSoundId === snd.id;
+            const isMine = !!user && !!snd.uploadedBy && snd.uploadedBy === user.id;
 
             return (
               <button
@@ -161,8 +225,13 @@ export function SoundboardView() {
                 </div>
 
                 <div className="w-full min-w-0">
-                  <div className="font-medium text-xs text-slate-900 dark:text-white truncate" title={snd.name}>
-                    {snd.name}
+                  <div className="font-medium text-xs text-slate-900 dark:text-white truncate flex items-center gap-1.5" title={snd.name}>
+                    <span className="truncate">{snd.name}</span>
+                    {isMine && soundScope === "all" && (
+                      <span className="shrink-0 text-[9px] font-bold px-1.5 py-px rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
+                        MÍO
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1 tabular-nums font-mono">
                     <span className="capitalize font-sans text-slate-500 dark:text-slate-400">
@@ -200,6 +269,7 @@ export function SoundboardView() {
             );
           })}
         </div>
+        )}
       </section>
 
       {/* ═══════════════════ PARTE 2: ACTIVIDAD ═══════════════════ */}

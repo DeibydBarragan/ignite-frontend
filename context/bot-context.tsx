@@ -17,8 +17,34 @@ import {
 } from "@/lib/mock-data";
 import { audioSynth } from "@/lib/audio-synth";
 import { igniteApi } from "@/lib/ignite-api";
-import { soundApi } from "@/lib/sound-api";
+import { soundApi, type SoundboardTrack } from "@/lib/sound-api";
 import { supabase } from "@/lib/supabase";
+
+const SOUND_PRESETS: SoundItem["preset"][] = [
+  "airhorn", "violin", "tada", "badumtss", "bruh",
+  "quack", "alarm", "levelup", "victory", "applause",
+];
+
+/** Sonido remoto del bot -> SoundItem local (para la sección "Todos"). */
+function mapRemoteSound(r: SoundboardTrack): SoundItem {
+  return {
+    id: r.id,
+    name: r.name,
+    emoji: r.emoji,
+    category: (["memes", "gaming", "reactions", "sfx", "anime"] as const).includes(
+      r.category as SoundItem["category"]
+    )
+      ? (r.category as SoundItem["category"])
+      : "memes",
+    duration: r.duration || 2,
+    preset: (SOUND_PRESETS as string[]).includes(r.preset || "")
+      ? (r.preset as SoundItem["preset"])
+      : "tada",
+    playsCount: r.playsCount ?? 0,
+    hasFile: r.hasFile ?? false,
+    uploadedBy: r.uploadedBy ?? null,
+  };
+}
 
 interface BotContextType {
   // Auth & Guild
@@ -229,7 +255,8 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   const [liveEvents, setLiveEvents] = useState<LiveEvent[]>(MOCK_INITIAL_EVENTS);
   const [activeSoundId, setActiveSoundId] = useState<string | null>(null);
 
-  // Sincroniza playsCount con el catálogo real del bot (sin pisar sonidos locales).
+  // Sincroniza con el catálogo real del bot: actualiza los conocidos y
+  // añade los que falten (subidos por otros) para la sección "Todos".
   useEffect(() => {
     if (!isLoggedIn) return;
     let cancelled = false;
@@ -237,14 +264,24 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       .getSounds()
       .then((remote) => {
         if (cancelled || !remote) return;
-        setSounds((prev) =>
-          prev.map((s) => {
+        setSounds((prev) => {
+          const merged = prev.map((s) => {
             const r = remote.find((x) => x.id === s.id);
             return r
-              ? { ...s, playsCount: Math.max(s.playsCount, r.playsCount ?? 0), hasFile: r.hasFile ?? s.hasFile }
+              ? {
+                  ...s,
+                  playsCount: Math.max(s.playsCount, r.playsCount ?? 0),
+                  hasFile: r.hasFile ?? s.hasFile,
+                  uploadedBy: r.uploadedBy ?? s.uploadedBy ?? null,
+                }
               : s;
-          })
-        );
+          });
+          const known = new Set(merged.map((s) => s.id));
+          const missing = remote
+            .filter((r) => !known.has(r.id))
+            .map(mapRemoteSound);
+          return [...merged, ...missing];
+        });
       })
       .catch(() => {});
     return () => {
@@ -1084,6 +1121,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         emoji: soundData.emoji,
         category: soundData.category,
         file: soundData.file,
+        userId: user?.id,
       });
       if (!res.success || !res.sound) return false;
       const s = res.sound;
@@ -1096,6 +1134,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         preset: "tada",
         playsCount: s.playsCount ?? 0,
         hasFile: true,
+        uploadedBy: s.uploadedBy ?? user?.id ?? null,
       };
       setSounds((prev) => [newSound, ...prev]);
       return true;
@@ -1110,10 +1149,11 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       preset: "tada",
       playsCount: 0,
       hasFile: false,
+      uploadedBy: user?.id ?? null,
     };
     setSounds((prev) => [newSound, ...prev]);
     return true;
-  }, [isLoggedIn]);
+  }, [isLoggedIn, user?.id]);
 
   const attachSoundAudio = useCallback(async (soundId: string, file: File) => {
     if (!isLoggedIn) return false;

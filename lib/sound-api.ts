@@ -111,6 +111,7 @@ export interface SoundboardTrack {
   playsCount: number;
   file?: string | null;
   hasFile?: boolean;
+  uploadedBy?: string | null;
 }
 
 export interface SoundPlayResult {
@@ -285,6 +286,7 @@ class SoundApiClient {
     category?: string;
     duration?: number;
     file: File;
+    userId?: string;
   }): Promise<{ success: boolean; sound?: SoundboardTrack; error?: string }> {
     try {
       const form = new FormData();
@@ -292,6 +294,7 @@ class SoundApiClient {
       if (params.emoji) form.append("emoji", params.emoji);
       if (params.category) form.append("category", params.category);
       if (params.duration) form.append("duration", String(params.duration));
+      if (params.userId) form.append("userId", params.userId);
       form.append("file", params.file);
 
       const res = await fetch(`${SOUND_API_URL}/api/sounds/upload`, {
