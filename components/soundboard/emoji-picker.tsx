@@ -30,6 +30,16 @@ export function EmojiPicker({
   onChange: (emoji: string) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [custom, setCustom] = useState("");
+
+  const applyCustom = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = custom.trim();
+    if (!trimmed) return;
+    onChange(trimmed);
+    setCustom("");
+    setIsOpen(false);
+  };
 
   return (
     <div className="relative">
@@ -72,6 +82,26 @@ export function EmojiPicker({
                 </div>
               </div>
             ))}
+            <form
+              onSubmit={applyCustom}
+              className="flex items-center gap-1.5 pt-1 border-t border-black/5 dark:border-white/10"
+            >
+              <input
+                type="text"
+                value={custom}
+                onChange={(e) => setCustom(e.target.value)}
+                placeholder="O pega tu propio emoji…"
+                maxLength={32}
+                className="glass-input flex-1 min-w-0 px-2 py-1.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400"
+              />
+              <button
+                type="submit"
+                disabled={!custom.trim()}
+                className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white transition-all cursor-pointer disabled:cursor-not-allowed shrink-0"
+              >
+                Usar
+              </button>
+            </form>
             <button
               type="button"
               onClick={() => {
