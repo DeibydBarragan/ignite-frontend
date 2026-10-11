@@ -4,6 +4,7 @@ import { useState, useMemo, useRef } from "react";
 import { useBot } from "@/context/bot-context";
 import { SoundItem, SoundCategory } from "@/lib/mock-data";
 import { AddSoundModal } from "@/components/soundboard/add-sound-modal";
+import { EditSoundModal } from "@/components/soundboard/edit-sound-modal";
 import {
   Volume2,
   Play,
@@ -12,6 +13,7 @@ import {
   Activity,
   Radio,
   Upload,
+  Pencil,
 } from "lucide-react";
 
 const CATEGORIES: { id: "all" | SoundCategory; label: string }[] = [
@@ -38,6 +40,7 @@ export function SoundboardView() {
   const [selectedCategory, setSelectedCategory] = useState<"all" | SoundCategory>("all");
   const [soundScope, setSoundScope] = useState<"all" | "mine">("all");
   const [isAddSoundOpen, setIsAddSoundOpen] = useState(false);
+  const [editingSound, setEditingSound] = useState<SoundItem | null>(null);
   const [isAttaching, setIsAttaching] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const attachTargetRef = useRef<string | null>(null);
@@ -247,6 +250,24 @@ export function SoundboardView() {
                       <span
                         role="button"
                         tabIndex={0}
+                        title="Editar nombre, emoji y categoría"
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          setEditingSound(snd);
+                        }}
+                        onKeyDown={(ev) => {
+                          if (ev.key === "Enter" || ev.key === " ") {
+                            ev.stopPropagation();
+                            setEditingSound(snd);
+                          }
+                        }}
+                        className="p-0.5 rounded transition-colors cursor-pointer text-slate-300 dark:text-slate-600 hover:text-purple-400"
+                      >
+                        <Pencil size={11} />
+                      </span>
+                      <span
+                        role="button"
+                        tabIndex={0}
                         title={snd.hasFile ? "Reemplazar audio MP3" : "Subir audio MP3 para que suene en Discord"}
                         onClick={(ev) => {
                           ev.stopPropagation();
@@ -333,6 +354,7 @@ export function SoundboardView() {
 
       {/* Modals */}
       <AddSoundModal isOpen={isAddSoundOpen} onClose={() => setIsAddSoundOpen(false)} />
+      <EditSoundModal sound={editingSound} onClose={() => setEditingSound(null)} />
 
       {/* Hidden file picker for attaching MP3 audio to existing sounds */}
       <input

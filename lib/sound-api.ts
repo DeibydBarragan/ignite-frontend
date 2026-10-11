@@ -268,6 +268,29 @@ class SoundApiClient {
     }
   }
 
+  async updateSound(
+    id: string,
+    data: { name?: string; emoji?: string; category?: string }
+  ): Promise<{ success: boolean; sound?: SoundboardTrack; error?: string }> {
+    try {
+      const res = await fetch(`${SOUND_API_URL}/api/sounds/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...NGROK_HEADERS },
+        body: JSON.stringify(data),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { success: false, error: payload.error || "Error al actualizar el sonido." };
+      }
+      return { success: true, sound: payload.sound };
+    } catch {
+      return {
+        success: false,
+        error: "No se pudo conectar con el bot de sonido.",
+      };
+    }
+  }
+
   async deleteSound(id: string): Promise<boolean> {
     try {
       const res = await fetch(`${SOUND_API_URL}/api/sounds/${encodeURIComponent(id)}`, {

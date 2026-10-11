@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useBot } from "@/context/bot-context";
 import { GlassModal } from "@/components/glass-modal";
+import { EmojiPicker } from "@/components/soundboard/emoji-picker";
 import { SoundCategory } from "@/lib/mock-data";
 import { Button } from "@heroui/react";
 import { Plus, Sparkles } from "lucide-react";
@@ -121,14 +122,7 @@ export function AddSoundModal({
             <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
               Emoji Representativo (Opcional)
             </label>
-            <input
-              type="text"
-              placeholder="📢, 🎻, 🎺, 🤖..."
-              value={emoji}
-              maxLength={4}
-              onChange={(e) => setEmoji(e.target.value)}
-              className="glass-input w-full px-3.5 py-2.5 text-center text-lg text-slate-900 dark:text-white"
-            />
+            <EmojiPicker value={emoji} onChange={setEmoji} />
           </div>
 
           <div>

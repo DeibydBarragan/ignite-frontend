@@ -126,6 +126,7 @@ interface BotContextType {
   activeSoundId: string | null;
   playSound: (soundId: string) => void;
   addCustomSound: (sound: { name: string; emoji?: string; category: SoundItem["category"]; file?: File }) => Promise<boolean>;
+  editCustomSound: (soundId: string, data: { name: string; emoji?: string; category: SoundItem["category"] }) => Promise<boolean>;
   attachSoundAudio: (soundId: string, file: File) => Promise<boolean>;
   addPhraseTrigger: (trigger: { phrase: string; soundId: string; exactMatch: boolean; channelTarget: string }) => void;
   togglePhraseTrigger: (id: string) => void;
@@ -1155,6 +1156,47 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     return true;
   }, [isLoggedIn, user?.id]);
 
+  const editCustomSound = useCallback(async (
+    soundId: string,
+    data: { name: string; emoji?: string; category: SoundItem["category"] }
+  ) => {
+    if (!isLoggedIn) return false;
+    const trimmed = data.name.trim();
+    if (!trimmed) return false;
+    const res = await soundApi.updateSound(soundId, {
+      name: trimmed,
+      emoji: data.emoji?.trim() || undefined,
+      category: data.category,
+    });
+    if (!res.success || !res.sound) {
+      setLiveEvents((prev) => [
+        {
+          id: "evt-" + Date.now(),
+          type: "soundboard",
+          title: "Error al editar",
+          description: res.error || "No se pudo actualizar el sonido.",
+          timestamp: "Ahora mismo",
+        },
+        ...prev.slice(0, 19),
+      ]);
+      return false;
+    }
+    const s = res.sound;
+    setSounds((prev) =>
+      prev.map((x) =>
+        x.id === soundId
+          ? {
+              ...x,
+              name: s.name,
+              emoji: s.emoji || x.emoji,
+              category: (s.category as SoundItem["category"]) || x.category,
+            }
+          : x
+      )
+    );
+    return true;
+  }, [isLoggedIn]);
+
   const attachSoundAudio = useCallback(async (soundId: string, file: File) => {
     if (!isLoggedIn) return false;
     const res = await soundApi.attachSoundFile(soundId, file);
@@ -1333,6 +1375,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         activeSoundId,
         playSound,
         addCustomSound,
+        editCustomSound,
         attachSoundAudio,
         addPhraseTrigger,
         togglePhraseTrigger,
