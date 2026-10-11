@@ -67,7 +67,7 @@ export default function Home() {
             {/* Discord Login Button */}
             <button
               onClick={loginDiscord}
-              className="w-full py-3.5 px-6 rounded-xl bg-[#5865f2] hover:bg-[#4752c4] active:scale-[0.98] text-white text-sm font-bold shadow-lg shadow-[#5865f2]/30 flex items-center justify-center gap-2.5 transition-all cursor-pointer group"
+              className="w-full mt-6 py-3.5 px-6 rounded-xl bg-[#5865f2] hover:bg-[#4752c4] active:scale-[0.98] text-white text-sm font-bold shadow-lg shadow-[#5865f2]/30 flex items-center justify-center gap-2.5 transition-all cursor-pointer group"
             >
               <LogIn size={18} className="transition-transform group-hover:translate-x-0.5" />
               <span>Conectar con Discord</span>
