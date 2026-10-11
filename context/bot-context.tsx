@@ -493,13 +493,16 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
           prev.filter((f) => f.id !== song.id && f.url !== song.url)
         );
         try {
-          await supabase
+          const { error } = await supabase
             .from("user_favorites")
             .delete()
             .eq("user_id", uid)
             .or(`song_id.eq.${song.id},url.eq.${song.url}`);
+          if (error) throw error;
         } catch (err) {
           console.error("Error removing favorite from Supabase:", err);
+          // Revertir: el borrado no se aplicó.
+          setFavorites((prev) => [song, ...prev]);
         }
       } else {
         // Optimistic UI update
@@ -516,14 +519,18 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
           is_lyric: song.isLyric ?? false,
         };
         try {
-          await supabase.from("user_favorites").insert(row);
+          const { error } = await supabase.from("user_favorites").insert(row);
+          if (error) throw error;
         } catch (err) {
           // Si la columna is_lyric aún no existe en Supabase, reintentar sin ella.
           try {
             const { is_lyric, ...legacyRow } = row;
-            await supabase.from("user_favorites").insert(legacyRow);
+            const { error } = await supabase.from("user_favorites").insert(legacyRow);
+            if (error) throw error;
           } catch (retryErr) {
             console.error("Error adding favorite to Supabase:", retryErr);
+            // Revertir: el guardado no se aplicó.
+            setFavorites((prev) => prev.filter((f) => f.id !== song.id && f.url !== song.url));
           }
         }
       }
@@ -675,6 +682,15 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         if (error) throw error;
       } catch (err) {
         console.error("Error importing playlist to favorites:", err);
+        // Revertir el optimista para no mostrar fantasmas, y avisar de verdad.
+        const freshIds = new Set(fresh.map((s) => s.id));
+        setFavorites((prev) => prev.filter((s) => !freshIds.has(s.id)));
+        return {
+          added: 0,
+          skipped: tracks.length - fresh.length,
+          total: tracks.length,
+          error: "No se pudo guardar en Supabase. Revisa tu conexión e inténtalo de nuevo.",
+        };
       }
     }
 
