@@ -62,6 +62,16 @@ export function SongCard({ song }: { song: Song }) {
             {SOURCE_COLORS[song.source].label}
           </span>
 
+          {/* Lyric Badge */}
+          {song.isLyric && (
+            <span
+              title="Video con letra"
+              className="absolute top-9 left-2 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border backdrop-blur-md bg-sky-500/10 text-sky-500 border-sky-500/20"
+            >
+              Lyric
+            </span>
+          )}
+
           {/* Favorite Button */}
           <button
             onClick={(e) => {

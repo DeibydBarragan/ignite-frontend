@@ -355,6 +355,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
           source: (item.source as Song["source"]) || "youtube",
           url: item.url,
           category: "hits",
+          isLyric: item.is_lyric ?? false,
         }));
         setFavorites(mapped);
       }
@@ -499,19 +500,27 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       } else {
         // Optimistic UI update
         setFavorites((prev) => [song, ...prev]);
+        const row = {
+          user_id: uid,
+          song_id: song.id,
+          title: song.title,
+          artist: song.artist,
+          album_art: song.albumArt,
+          url: song.url,
+          duration: song.duration,
+          source: song.source,
+          is_lyric: song.isLyric ?? false,
+        };
         try {
-          await supabase.from("user_favorites").insert({
-            user_id: uid,
-            song_id: song.id,
-            title: song.title,
-            artist: song.artist,
-            album_art: song.albumArt,
-            url: song.url,
-            duration: song.duration,
-            source: song.source,
-          });
+          await supabase.from("user_favorites").insert(row);
         } catch (err) {
-          console.error("Error adding favorite to Supabase:", err);
+          // Si la columna is_lyric aún no existe en Supabase, reintentar sin ella.
+          try {
+            const { is_lyric, ...legacyRow } = row;
+            await supabase.from("user_favorites").insert(legacyRow);
+          } catch (retryErr) {
+            console.error("Error adding favorite to Supabase:", retryErr);
+          }
         }
       }
     },

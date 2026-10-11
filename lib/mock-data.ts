@@ -35,6 +35,7 @@ export interface Song {
   source: MusicSource;
   url: string;
   category: "lofi" | "gaming" | "synthwave" | "hits" | "rock";
+  isLyric?: boolean;
 }
 
 export type SoundCategory = "memes" | "gaming" | "reactions" | "sfx" | "anime";
