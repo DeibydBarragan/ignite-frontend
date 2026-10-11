@@ -2,7 +2,7 @@ import { Song } from "./mock-data";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_IGNITE_API_URL ||
-  "https://commit-ghz-period-newest.trycloudflare.com";
+  "https://basic-bracket-shall-dee.trycloudflare.com";
 
 const API_SECRET =
   process.env.NEXT_PUBLIC_IGNITE_API_SECRET || "ignite_dev_secret_2026_xyz";

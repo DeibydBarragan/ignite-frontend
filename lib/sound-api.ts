@@ -123,7 +123,7 @@ export interface SoundPlayResult {
 
 const SOUND_API_URL =
   process.env.NEXT_PUBLIC_SOUND_API_URL ||
-  "https://forestry-interact-difference-respiratory.trycloudflare.com";
+  "https://wsnbbnbdc7.execute-api.us-east-2.amazonaws.com/sound";
 
 // No extra headers needed for API Gateway
 const NGROK_HEADERS: Record<string, string> = {};
