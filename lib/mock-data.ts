@@ -91,43 +91,6 @@ export const MOCK_USER: DiscordUser = {
   currentChannelId: "vc-1",
 };
 
-export const MOCK_GUILDS: DiscordGuild[] = [
-  {
-    id: "guild-1",
-    name: "Nexus Gaming HQ",
-    icon: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&q=80",
-    memberCount: 48,
-    botPresent: true,
-    voiceChannels: [
-      { id: "vc-1", name: "General (Voz)", userCount: 4, bitrate: 64 },
-      { id: "vc-2", name: "Squad Alpha", userCount: 2, bitrate: 96 },
-      { id: "vc-3", name: "Música & Chill", userCount: 1, bitrate: 128 },
-    ],
-  },
-  {
-    id: "guild-2",
-    name: "Code & Coffee Lab",
-    icon: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=120&q=80",
-    memberCount: 24,
-    botPresent: true,
-    voiceChannels: [
-      { id: "vc-4", name: "Sala Principal", userCount: 0, bitrate: 64 },
-      { id: "vc-5", name: "Focus Beats", userCount: 2, bitrate: 96 },
-    ],
-  },
-  {
-    id: "guild-3",
-    name: "Anime Realm",
-    icon: "https://images.unsplash.com/photo-1578632767115-351597cf2477?auto=format&fit=crop&w=120&q=80",
-    memberCount: 112,
-    botPresent: true,
-    voiceChannels: [
-      { id: "vc-6", name: "Salón Otaku", userCount: 6, bitrate: 96 },
-      { id: "vc-7", name: "Karaoke Stage", userCount: 3, bitrate: 128 },
-    ],
-  },
-];
-
 export const MOCK_SONGS: Song[] = [
   {
     id: "song-1",

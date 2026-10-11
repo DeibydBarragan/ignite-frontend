@@ -11,7 +11,6 @@ import {
   PhraseTrigger,
   TTSMessage,
   LiveEvent,
-  MOCK_GUILDS,
   MOCK_SOUNDS,
   MOCK_PHRASE_TRIGGERS,
   MOCK_INITIAL_EVENTS,
@@ -30,7 +29,7 @@ interface BotContextType {
   logoutDiscord: () => Promise<void>;
   guilds: DiscordGuild[];
   selectedGuildId: string;
-  selectedGuild: DiscordGuild;
+  selectedGuild: DiscordGuild | null;
   setSelectedGuildId: (id: string) => void;
   isVoiceConnected: boolean;
   currentVoiceChannel: VoiceChannel | null;
@@ -112,27 +111,14 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<DiscordUser | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true);
-  const [guilds, setGuilds] = useState<DiscordGuild[]>([
-    {
-      id: "1011718919473610863",
-      name: "Perros mierda",
-      icon: "https://cdn.discordapp.com/icons/1011718919473610863/b5185e31fae4e960f46cd4d222d28801.webp",
-      memberCount: 23,
-      botPresent: true,
-      voiceChannels: [
-        { id: "1012424911110799370", name: "La  Perrera", userCount: 1, bitrate: 64 },
-      ],
-    },
-    ...MOCK_GUILDS,
-  ]);
+  const [guilds, setGuilds] = useState<DiscordGuild[]>([]);
   const [selectedGuildId, setSelectedGuildId] = useState<string>(
-    process.env.NEXT_PUBLIC_DEFAULT_GUILD_ID || "1011718919473610863"
+    process.env.NEXT_PUBLIC_DEFAULT_GUILD_ID || ""
   );
-  const [isVoiceConnected, setIsVoiceConnected] = useState<boolean>(true);
-  const [currentVoiceChannelId, setCurrentVoiceChannelId] = useState<string>("1012424911110799370");
+  const [isVoiceConnected, setIsVoiceConnected] = useState<boolean>(false);
+  const [currentVoiceChannelId, setCurrentVoiceChannelId] = useState<string>("");
 
-  // Servidores y canales de voz REALES desde el bot (reemplaza los mocks al iniciar sesión).
-  // Si la API no responde, se conservan los datos hardcodeados como fallback offline.
+  // Servidores y canales de voz REALES desde el bot (sin mocks).
   useEffect(() => {
     if (!isLoggedIn) return;
     let cancelled = false;
@@ -177,7 +163,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
 
   // Presencia de voz REAL del usuario vía el bot (poll cada 5s).
   useEffect(() => {
-    if (!isLoggedIn || !user) return;
+    if (!isLoggedIn || !user || !selectedGuildId) return;
     let cancelled = false;
     const check = async () => {
       const status = await igniteApi.getVoiceStatus(selectedGuildId, user.id);
@@ -262,9 +248,9 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isLoggedIn]);
 
-  const selectedGuild = guilds.find((g) => g.id === selectedGuildId) || guilds[0];
+  const selectedGuild = guilds.find((g) => g.id === selectedGuildId) || guilds[0] || null;
   const currentVoiceChannel = isVoiceConnected
-    ? selectedGuild.voiceChannels.find((vc) => vc.id === currentVoiceChannelId) || selectedGuild.voiceChannels[0] || null
+    ? selectedGuild?.voiceChannels.find((vc) => vc.id === currentVoiceChannelId) || selectedGuild?.voiceChannels[0] || null
     : null;
 
   // Music Scrubber Timer
@@ -299,7 +285,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
 
   // Real-time synchronization with Bot REST API
   const syncPlayerState = useCallback(async () => {
-    if (!isLoggedIn) return;
+    if (!isLoggedIn || !selectedGuildId) return;
     try {
       const state = await igniteApi.getPlayerState(selectedGuildId);
       if (!state) return;
@@ -537,13 +523,13 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     setIsVoiceConnected(connected);
     if (connected && channelId) {
       setCurrentVoiceChannelId(channelId);
-    } else if (connected && !channelId && selectedGuild.voiceChannels.length > 0) {
-      setCurrentVoiceChannelId(selectedGuild.voiceChannels[0].id);
+    } else if (connected && !channelId && (selectedGuild?.voiceChannels.length || 0) > 0) {
+      setCurrentVoiceChannelId(selectedGuild!.voiceChannels[0].id);
     }
     setUser((prev) => (prev ? ({
       ...prev,
       isVoiceConnected: connected,
-      currentChannelId: connected ? channelId || selectedGuild.voiceChannels[0]?.id || null : null,
+      currentChannelId: connected ? channelId || selectedGuild?.voiceChannels[0]?.id || null : null,
     }) : null));
   };
 

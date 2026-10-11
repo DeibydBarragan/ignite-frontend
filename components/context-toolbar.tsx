@@ -60,6 +60,12 @@ export function ContextToolbar({ activeTab, onTabChange }: ContextToolbarProps) 
       {/* ══════════ LEFT: CONTEXTO DE SERVIDOR Y CANAL DE VOZ ══════════ */}
       <div className="flex items-center gap-2 flex-wrap">
         {/* Selector de Servidor */}
+        {!selectedGuild ? (
+          <div className="glass-btn flex items-center gap-2.5 px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10">
+            <Server size={14} className="text-slate-400 animate-pulse" />
+            <span className="text-xs text-slate-400">Cargando servidores…</span>
+          </div>
+        ) : (
         <div className="relative">
           <button
             onClick={() => setIsGuildDropdownOpen((prev) => !prev)}
@@ -137,6 +143,7 @@ export function ContextToolbar({ activeTab, onTabChange }: ContextToolbarProps) 
             </>
           )}
         </div>
+        )}
 
         {/* Indicador de Canal de Voz Activo (sin nombre de servidor) */}
         {isVoiceConnected && currentVoiceChannel ? (
