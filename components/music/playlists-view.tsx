@@ -545,13 +545,6 @@ export function PlaylistsView() {
           <div className="space-y-1.5">
             {isSyncing ? (
               <div className="space-y-3 py-2">
-                <div
-                  className="h-2 rounded-full bg-black/10 dark:bg-white/10 overflow-hidden mx-1"
-                  role="progressbar"
-                  aria-label="Sincronizando playlist"
-                >
-                  <div className="h-full w-2/5 rounded-full bg-gradient-to-r from-purple-500 to-[#1ed760] ignite-progress-slide" />
-                </div>
                 <TrackSkeletonRows />
               </div>
             ) : (
