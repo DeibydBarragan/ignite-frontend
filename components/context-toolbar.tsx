@@ -49,7 +49,7 @@ export function ContextToolbar({ activeTab, onTabChange }: ContextToolbarProps) 
     },
     {
       id: "soundboard" as ActiveTab,
-      label: "Soundboard & Triggers",
+      label: "Soundboard",
       icon: <Volume2 size={14} />,
       live: false,
     },

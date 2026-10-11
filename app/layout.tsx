@@ -8,9 +8,20 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Ignite · Discord Bot Controller",
-  description: "Panel de control para bot de Discord con Lavamusic, TTS y Soundboard con Phrase to Sound.",
+  description: "Controla la música, la voz TTS y el soundboard de tu servidor de Discord desde la web.",
   icons: {
     icon: "/ignite.svg",
+  },
+  openGraph: {
+    title: "Ignite · Discord Bot Controller",
+    description: "Controla la música, la voz TTS y el soundboard de tu servidor de Discord desde la web.",
+    locale: "es_ES",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Ignite · Discord Bot Controller",
+    description: "Controla la música, la voz TTS y el soundboard de tu servidor de Discord desde la web.",
   },
 };
 
