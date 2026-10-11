@@ -1,11 +1,68 @@
 import { Song } from "./mock-data";
+import { supabase } from "./supabase";
 
-const API_BASE_URL =
+// URL fija como fallback (Vercel env). El bot puede anunciar su URL real
+// en Supabase (tabla bot_status) y el dashboard la descubre en runtime,
+// así cambiar de PC/túnel no requiere tocar Vercel.
+const ENV_API_BASE_URL = (
   process.env.NEXT_PUBLIC_IGNITE_API_URL ||
-  "https://amanda-scoring-pond-office.trycloudflare.com";
+  "https://amanda-scoring-pond-office.trycloudflare.com"
+).replace(/\/+$/, "");
 
 const API_SECRET =
   process.env.NEXT_PUBLIC_IGNITE_API_SECRET || "ignite_dev_secret_2026_xyz";
+
+// Caché del descubrimiento + antigüedad máxima aceptada del anuncio.
+// Si el anuncio es más viejo, el bot probablemente cayó y se usa la env.
+const DISCOVERY_TTL_MS = 5 * 60 * 1000;
+const DISCOVERY_MAX_AGE_MS = 10 * 60 * 1000;
+
+let discoveredBase: string | null = null;
+let discoveredAt = 0;
+let discoveryInflight: Promise<string> | null = null;
+
+function cleanUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim().replace(/\/+$/, "");
+  return /^https?:\/\//i.test(trimmed) ? trimmed : null;
+}
+
+async function discoverBaseUrl(): Promise<string> {
+  const now = Date.now();
+  if (discoveredBase && now - discoveredAt < DISCOVERY_TTL_MS) {
+    return discoveredBase;
+  }
+  if (discoveryInflight) return discoveryInflight;
+  discoveryInflight = (async () => {
+    try {
+      const { data } = await supabase
+        .from("bot_status")
+        .select("api_url,updated_at")
+        .eq("id", "music")
+        .maybeSingle();
+      const announced = cleanUrl((data as { api_url?: unknown } | null)?.api_url);
+      const age =
+        data?.updated_at != null
+          ? now - new Date(data.updated_at as string).getTime()
+          : Infinity;
+      if (announced && age < DISCOVERY_MAX_AGE_MS) {
+        discoveredBase = announced;
+        discoveredAt = Date.now();
+        return announced;
+      }
+    } catch {
+      // Sin tabla o sin red: fallback a la env.
+    }
+    discoveredBase = ENV_API_BASE_URL;
+    discoveredAt = Date.now();
+    return ENV_API_BASE_URL;
+  })();
+  try {
+    return await discoveryInflight;
+  } finally {
+    discoveryInflight = null;
+  }
+}
 
 export interface ApiPlayerState {
   hasQueue: boolean;
@@ -63,9 +120,15 @@ class IgniteApiClient {
     return headers;
   }
 
+  /** URL base efectiva (descubierta en runtime o fallback a la env). */
+  async getBaseUrl(): Promise<string> {
+    return discoverBaseUrl();
+  }
+
   async getHealth(): Promise<{ status: string; uptime: number; bot: any } | null> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/health`, {
+      const base = await discoverBaseUrl();
+      const res = await fetch(`${base}/api/health`, {
         headers: this.headers,
         cache: "no-store",
       });
@@ -78,7 +141,8 @@ class IgniteApiClient {
 
   async getGuilds(): Promise<ApiGuild[]> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/guilds`, {
+      const base = await discoverBaseUrl();
+      const res = await fetch(`${base}/api/guilds`, {
         headers: this.headers,
         cache: "no-store",
       });
@@ -92,7 +156,8 @@ class IgniteApiClient {
 
   async getVoiceChannels(guildId: string): Promise<ApiVoiceChannel[]> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/channels`, {
+      const base = await discoverBaseUrl();
+      const res = await fetch(`${base}/api/guilds/${guildId}/channels`, {
         headers: this.headers,
         cache: "no-store",
       });
@@ -106,9 +171,10 @@ class IgniteApiClient {
 
   async getVoiceStatus(guildId: string, userId?: string): Promise<ApiVoiceStatus | null> {
     try {
+      const base = await discoverBaseUrl();
       const url = userId
-        ? `${API_BASE_URL}/api/guilds/${guildId}/voice-status?userId=${encodeURIComponent(userId)}`
-        : `${API_BASE_URL}/api/guilds/${guildId}/voice-status`;
+        ? `${base}/api/guilds/${guildId}/voice-status?userId=${encodeURIComponent(userId)}`
+        : `${base}/api/guilds/${guildId}/voice-status`;
       const res = await fetch(url, {
         headers: this.headers,
         cache: "no-store",
@@ -122,7 +188,8 @@ class IgniteApiClient {
 
   async getPlayerState(guildId: string): Promise<ApiPlayerState | null> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/player`, {
+      const base = await discoverBaseUrl();
+      const res = await fetch(`${base}/api/guilds/${guildId}/player`, {
         headers: this.headers,
         cache: "no-store",
       });
@@ -138,7 +205,8 @@ class IgniteApiClient {
     params: { query: string; voiceChannelId?: string; userId?: string; next?: boolean; skip?: boolean }
   ): Promise<{ success: boolean; song?: Song; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/play`, {
+      const base = await discoverBaseUrl();
+      const res = await fetch(`${base}/api/guilds/${guildId}/play`, {
         method: "POST",
         headers: this.headers,
         body: JSON.stringify(params),
@@ -158,8 +226,9 @@ class IgniteApiClient {
     const q = query.trim();
     if (q.length < 2 || q.length > 100 || /^https?:\/\//i.test(q)) return [];
     try {
+      const base = await discoverBaseUrl();
       const res = await fetch(
-        `${API_BASE_URL}/api/search/suggest?q=${encodeURIComponent(q)}`,
+        `${base}/api/search/suggest?q=${encodeURIComponent(q)}`,
         { headers: this.headers, cache: "no-store" }
       );
       if (!res.ok) return [];
@@ -176,7 +245,8 @@ class IgniteApiClient {
     value?: any
   ): Promise<{ success: boolean; message?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/control`, {
+      const base = await discoverBaseUrl();
+      const res = await fetch(`${base}/api/guilds/${guildId}/control`, {
         method: "POST",
         headers: this.headers,
         body: JSON.stringify({ action, value }),
@@ -195,8 +265,9 @@ class IgniteApiClient {
     // Intenta resolver una playlist en el backend. Si el endpoint aún no existe,
     // devuelve success:false para que el frontend use el fallback local.
     try {
+      const base = await discoverBaseUrl();
       const res = await fetch(
-        `${API_BASE_URL}/api/guilds/${guildId}/playlist/resolve?url=${encodeURIComponent(url)}`,
+        `${base}/api/guilds/${guildId}/playlist/resolve?url=${encodeURIComponent(url)}`,
         { headers: this.headers, cache: "no-store" }
       );
       if (!res.ok) return { success: false };
@@ -211,7 +282,8 @@ class IgniteApiClient {
 
   async removeFromQueue(guildId: string, index: number): Promise<boolean> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/queue/${index}`, {
+      const base = await discoverBaseUrl();
+      const res = await fetch(`${base}/api/guilds/${guildId}/queue/${index}`, {
         method: "DELETE",
         headers: this.headers,
       });
@@ -223,7 +295,8 @@ class IgniteApiClient {
 
   async moveInQueue(guildId: string, from: number, to: number): Promise<{ success: boolean; message?: string; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/queue/move`, {
+      const base = await discoverBaseUrl();
+      const res = await fetch(`${base}/api/guilds/${guildId}/queue/move`, {
         method: "POST",
         headers: this.headers,
         body: JSON.stringify({ from, to }),
@@ -238,7 +311,8 @@ class IgniteApiClient {
 
   async jumpInQueue(guildId: string, position: number): Promise<{ success: boolean; message?: string; error?: string }> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/queue/jump`, {
+      const base = await discoverBaseUrl();
+      const res = await fetch(`${base}/api/guilds/${guildId}/queue/jump`, {
         method: "POST",
         headers: this.headers,
         body: JSON.stringify({ position }),
@@ -253,7 +327,8 @@ class IgniteApiClient {
 
   async clearQueue(guildId: string): Promise<boolean> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/guilds/${guildId}/queue`, {
+      const base = await discoverBaseUrl();
+      const res = await fetch(`${base}/api/guilds/${guildId}/queue`, {
         method: "DELETE",
         headers: this.headers,
       });
