@@ -6,7 +6,7 @@ import { supabase } from "./supabase";
 // así cambiar de PC/túnel no requiere tocar Vercel.
 const ENV_API_BASE_URL = (
   process.env.NEXT_PUBLIC_IGNITE_API_URL ||
-  "https://amanda-scoring-pond-office.trycloudflare.com"
+  "https://ministry-bacteria-approach-galaxy.trycloudflare.com"
 ).replace(/\/+$/, "");
 
 const API_SECRET =
