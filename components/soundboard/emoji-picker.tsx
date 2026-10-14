@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { SmilePlus, Ban } from "lucide-react";
 
 const EMOJI_GROUPS: { label: string; emojis: string[] }[] = [
@@ -31,6 +32,96 @@ export function EmojiPicker({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [custom, setCustom] = useState("");
+  const [mounted, setMounted] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [positionStyle, setPositionStyle] = useState<React.CSSProperties>({});
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const updateCoords = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+    const DROPDOWN_WIDTH = 256;
+    const DROPDOWN_MAX_HEIGHT = 260;
+    const MARGIN = 8;
+
+    const spaceBelow = vh - rect.bottom - MARGIN;
+    const spaceAbove = rect.top - MARGIN;
+
+    const placeAbove = spaceBelow < DROPDOWN_MAX_HEIGHT && spaceAbove > spaceBelow;
+
+    let left = rect.left;
+    if (left + DROPDOWN_WIDTH > vw - MARGIN) {
+      left = Math.max(MARGIN, vw - DROPDOWN_WIDTH - MARGIN);
+    }
+    if (left < MARGIN) {
+      left = MARGIN;
+    }
+
+    if (placeAbove) {
+      const maxHeight = Math.max(160, Math.min(DROPDOWN_MAX_HEIGHT, spaceAbove - MARGIN));
+      setPositionStyle({
+        position: "fixed",
+        bottom: `${vh - rect.top + MARGIN}px`,
+        left: `${left}px`,
+        maxHeight: `${maxHeight}px`,
+      });
+    } else {
+      const maxHeight = Math.max(160, Math.min(DROPDOWN_MAX_HEIGHT, spaceBelow - MARGIN));
+      setPositionStyle({
+        position: "fixed",
+        top: `${rect.bottom + MARGIN}px`,
+        left: `${left}px`,
+        maxHeight: `${maxHeight}px`,
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleScrollOrResize = () => {
+      updateCoords();
+    };
+
+    window.addEventListener("scroll", handleScrollOrResize, true);
+    window.addEventListener("resize", handleScrollOrResize);
+
+    return () => {
+      window.removeEventListener("scroll", handleScrollOrResize, true);
+      window.removeEventListener("resize", handleScrollOrResize);
+    };
+  }, [isOpen, updateCoords]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        e.stopImmediatePropagation?.();
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [isOpen]);
+
+  const toggleOpen = () => {
+    if (!isOpen) {
+      updateCoords();
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
+  };
 
   const applyCustom = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -44,19 +135,29 @@ export function EmojiPicker({
   return (
     <div className="relative">
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
+        onClick={toggleOpen}
         title="Elegir emoji"
-        className="glass-input w-full px-3.5 py-2 flex items-center justify-between gap-2 cursor-pointer hover:border-purple-500/40 transition-colors"
+        className={`glass-input w-full px-3.5 py-2 flex items-center justify-between gap-2 cursor-pointer hover:border-purple-500/40 transition-colors ${
+          isOpen ? "border-purple-500 ring-2 ring-purple-500/20" : ""
+        }`}
       >
         <span className="text-xl leading-none">{value || "🎵"}</span>
-        <SmilePlus size={15} className="text-slate-400 shrink-0" />
+        <SmilePlus size={15} className={`shrink-0 transition-colors ${isOpen ? "text-purple-500" : "text-slate-400"}`} />
       </button>
 
-      {isOpen && (
+      {isOpen && mounted && typeof document !== "undefined" && createPortal(
         <>
-          <div className="fixed inset-0 z-30" onClick={() => setIsOpen(false)} />
-          <div className="glass-dropdown absolute left-0 mt-2 w-64 max-h-64 overflow-y-auto custom-scrollbar p-2.5 z-40 border border-black/10 dark:border-white/10 shadow-2xl space-y-2.5">
+          <div
+            className="fixed inset-0 z-[10000]"
+            onClick={() => setIsOpen(false)}
+            aria-hidden="true"
+          />
+          <div
+            style={positionStyle}
+            className="glass-dropdown w-64 overflow-y-auto custom-scrollbar p-2.5 z-[10001] border border-black/10 dark:border-white/10 shadow-2xl space-y-2.5 glass-modal-enter"
+          >
             {EMOJI_GROUPS.map((group) => (
               <div key={group.label}>
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
@@ -114,7 +215,8 @@ export function EmojiPicker({
               <span>Sin emoji</span>
             </button>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </div>
   );

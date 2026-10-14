@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useCallback } from "react";
-import { CheckCircle2, AlertCircle, Radio, X } from "lucide-react";
+import { CheckCircle2, AlertCircle, Radio, X, Info } from "lucide-react";
 
 export type ToastType = "success" | "error" | "info" | "emit";
 
@@ -46,6 +46,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           if (t.type === "error") {
             icon = <AlertCircle size={16} className="text-red-400 shrink-0" />;
             borderClass = "border-red-500/20 bg-slate-900/90 text-white";
+          } else if (t.type === "info") {
+            icon = <Info size={16} className="text-sky-400 shrink-0" />;
+            borderClass = "border-sky-500/20 bg-slate-900/90 text-white";
           } else if (t.type === "emit") {
             icon = <Radio size={16} className="text-purple-400 shrink-0" />;
             borderClass = "border-purple-500/30 bg-slate-900/95 text-white";

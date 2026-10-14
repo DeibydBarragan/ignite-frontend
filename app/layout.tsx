@@ -38,11 +38,11 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className={`${inter.className} min-h-screen flex flex-col text-slate-900 dark:text-slate-100`}>
-        <BotProvider>
-          <ToastProvider>
+        <ToastProvider>
+          <BotProvider>
             {children}
-          </ToastProvider>
-        </BotProvider>
+          </BotProvider>
+        </ToastProvider>
       </body>
     </html>
   );

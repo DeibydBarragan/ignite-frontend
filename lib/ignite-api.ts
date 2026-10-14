@@ -192,6 +192,7 @@ class IgniteApiClient {
       const res = await fetch(`${base}/api/guilds/${guildId}/player`, {
         headers: this.headers,
         cache: "no-store",
+        signal: AbortSignal.timeout(5000),
       });
       if (!res.ok) return null;
       return await res.json();
@@ -203,22 +204,24 @@ class IgniteApiClient {
   async play(
     guildId: string,
     params: { query: string; voiceChannelId?: string; userId?: string; next?: boolean; skip?: boolean }
-  ): Promise<{ success: boolean; song?: Song; error?: string }> {
+  ): Promise<{ success: boolean; song?: Song; playlist?: { name: string | null; count: number }; error?: string }> {
     try {
       const base = await discoverBaseUrl();
       const res = await fetch(`${base}/api/guilds/${guildId}/play`, {
         method: "POST",
         headers: this.headers,
         body: JSON.stringify(params),
+        signal: AbortSignal.timeout(10000),
       });
-      const data = await res.json();
-      if (!res.ok) return { success: false, error: data.error };
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return { success: false, error: data.error || `Error ${res.status}` };
       return {
         success: true,
         song: data.song,
+        playlist: data.playlist,
       };
-    } catch (err: any) {
-      return { success: false, error: err.message };
+    } catch {
+      return { success: false, error: "El servicio del bot está desconectado o no responde" };
     }
   }
 
@@ -229,10 +232,10 @@ class IgniteApiClient {
       const base = await discoverBaseUrl();
       const res = await fetch(
         `${base}/api/search/suggest?q=${encodeURIComponent(q)}`,
-        { headers: this.headers, cache: "no-store" }
+        { headers: this.headers, cache: "no-store", signal: AbortSignal.timeout(5000) }
       );
       if (!res.ok) return [];
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       return Array.isArray(data.suggestions) ? data.suggestions : [];
     } catch {
       return [];
@@ -243,18 +246,22 @@ class IgniteApiClient {
     guildId: string,
     action: "pause" | "resume" | "toggle" | "skip" | "previous" | "stop" | "seek" | "volume" | "loop" | "shuffle" | "autoplay" | "filter",
     value?: any
-  ): Promise<{ success: boolean; message?: string }> {
+  ): Promise<{ success: boolean; message?: string; error?: string }> {
     try {
       const base = await discoverBaseUrl();
       const res = await fetch(`${base}/api/guilds/${guildId}/control`, {
         method: "POST",
         headers: this.headers,
         body: JSON.stringify({ action, value }),
+        signal: AbortSignal.timeout(8000),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { success: false, error: data.error || `Error ${res.status}: ${res.statusText}` };
+      }
       return { success: data.success ?? res.ok, message: data.message };
     } catch {
-      return { success: false };
+      return { success: false, error: "El servicio del bot está desconectado o no responde" };
     }
   }
 

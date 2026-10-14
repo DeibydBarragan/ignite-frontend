@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import {
   DiscordUser,
   DiscordGuild,
@@ -19,6 +19,7 @@ import { audioSynth } from "@/lib/audio-synth";
 import { igniteApi } from "@/lib/ignite-api";
 import { soundApi, type SoundboardTrack } from "@/lib/sound-api";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/components/ui/toast";
 
 const SOUND_PRESETS: SoundItem["preset"][] = [
   "airhorn", "violin", "tada", "badumtss", "bruh",
@@ -139,6 +140,9 @@ interface BotContextType {
 const BotContext = createContext<BotContextType | null>(null);
 
 export function BotProvider({ children }: { children: React.ReactNode }) {
+  const { toast } = useToast();
+  const offlineFailsRef = useRef(0);
+
   // User & Guild State
   const [user, setUser] = useState<DiscordUser | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
@@ -331,7 +335,14 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     if (!isLoggedIn || !selectedGuildId) return;
     try {
       const state = await igniteApi.getPlayerState(selectedGuildId);
-      if (!state) return;
+      if (!state) {
+        offlineFailsRef.current += 1;
+        if (offlineFailsRef.current >= 2) {
+          setIsPlaying(false);
+        }
+        return;
+      }
+      offlineFailsRef.current = 0;
 
       if (state.hasQueue && state.currentSong) {
         setCurrentSong(state.currentSong);
@@ -597,22 +608,38 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     setIsPlayerBusy(true);
     setPendingAction("play");
     setLoadingSongId(song.id);
+
+    const prevSong = currentSong;
+    const prevPlaying = isPlaying;
+    const prevTime = currentTime;
+
+    const songWithRequester: Song = {
+      ...song,
+      requestedBy: user
+        ? { id: user.id, username: user.username, avatar: user.avatar || null }
+        : song.requestedBy || null,
+    };
+    setCurrentSong(songWithRequester);
+    setCurrentTime(0);
+    setIsPlaying(true);
+
     try {
-      const songWithRequester: Song = {
-        ...song,
-        requestedBy: user
-          ? { id: user.id, username: user.username, avatar: user.avatar || null }
-          : song.requestedBy || null,
-      };
-      setCurrentSong(songWithRequester);
-      setCurrentTime(0);
-      setIsPlaying(true);
-      await igniteApi.play(selectedGuildId, {
+      const res = await igniteApi.play(selectedGuildId, {
         query: song.url || `${song.title} ${song.artist}`,
         voiceChannelId: currentVoiceChannelId || undefined,
         userId: user?.id || undefined,
         skip: true,
       });
+
+      if (!res.success) {
+        setCurrentSong(prevSong);
+        setIsPlaying(prevPlaying);
+        setCurrentTime(prevTime);
+        toast(res.error || "No se pudo reproducir la canción. El bot no está disponible.", "error");
+        return;
+      }
+
+      toast(`Reproduciendo "${song.title}".`, "success");
       setLiveEvents((prev) => [
         {
           id: "evt-" + Date.now(),
@@ -624,33 +651,43 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         ...prev.slice(0, 19),
       ]);
       await syncPlayerState();
-    } catch (err) {
-      console.error("Error playing song:", err);
+    } catch {
+      setCurrentSong(prevSong);
+      setIsPlaying(prevPlaying);
+      setCurrentTime(prevTime);
+      toast("Error al conectar con el servicio del bot.", "error");
     } finally {
       setIsPlayerBusy(false);
       setPendingAction(null);
       setLoadingSongId(null);
     }
-  }, [isLoggedIn, isPlayerBusy, selectedGuildId, currentVoiceChannelId, user, syncPlayerState]);
+  }, [isLoggedIn, isPlayerBusy, currentSong, isPlaying, currentTime, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
 
   const addToQueue = useCallback(async (song: Song) => {
     if (!isLoggedIn || loadingSongId === song.id) return;
     setPendingAction("queue");
     setLoadingSongId(song.id);
+    const songWithRequester: Song = {
+      ...song,
+      requestedBy: user
+        ? { id: user.id, username: user.username, avatar: user.avatar || null }
+        : song.requestedBy || null,
+    };
     try {
-      const songWithRequester: Song = {
-        ...song,
-        requestedBy: user
-          ? { id: user.id, username: user.username, avatar: user.avatar || null }
-          : song.requestedBy || null,
-      };
-      setQueue((prev) => [...prev, songWithRequester]);
-      await igniteApi.play(selectedGuildId, {
+      const res = await igniteApi.play(selectedGuildId, {
         query: song.url || `${song.title} ${song.artist}`,
         voiceChannelId: currentVoiceChannelId || undefined,
         userId: user?.id || undefined,
         skip: false,
       });
+
+      if (!res.success) {
+        toast(res.error || "No se pudo añadir a la cola. El bot no está disponible.", "error");
+        return;
+      }
+
+      setQueue((prev) => [...prev, songWithRequester]);
+      toast(`"${song.title}" añadida a la cola.`, "success");
       setLiveEvents((prev) => [
         {
           id: "evt-" + Date.now(),
@@ -662,33 +699,40 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         ...prev.slice(0, 19),
       ]);
       await syncPlayerState();
-    } catch (err) {
-      console.error("Error adding to queue:", err);
+    } catch {
+      toast("Error al conectar con el servicio del bot.", "error");
     } finally {
       setPendingAction(null);
       setLoadingSongId(null);
     }
-  }, [isLoggedIn, loadingSongId, selectedGuildId, currentVoiceChannelId, user, syncPlayerState]);
+  }, [isLoggedIn, loadingSongId, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
 
   const playNext = useCallback(async (song: Song) => {
     if (!isLoggedIn || loadingSongId === song.id) return;
     setPendingAction("playNext");
     setLoadingSongId(song.id);
+    const songWithRequester: Song = {
+      ...song,
+      requestedBy: user
+        ? { id: user.id, username: user.username, avatar: user.avatar || null }
+        : song.requestedBy || null,
+    };
     try {
-      const songWithRequester: Song = {
-        ...song,
-        requestedBy: user
-          ? { id: user.id, username: user.username, avatar: user.avatar || null }
-          : song.requestedBy || null,
-      };
-      setQueue((prev) => [songWithRequester, ...prev]);
-      await igniteApi.play(selectedGuildId, {
+      const res = await igniteApi.play(selectedGuildId, {
         query: song.url || `${song.title} ${song.artist}`,
         voiceChannelId: currentVoiceChannelId || undefined,
         userId: user?.id || undefined,
         next: true,
         skip: false,
       });
+
+      if (!res.success) {
+        toast(res.error || "No se pudo añadir la canción. El bot no está disponible.", "error");
+        return;
+      }
+
+      setQueue((prev) => [songWithRequester, ...prev]);
+      toast(`"${song.title}" se reproducirá a continuación.`, "success");
       setLiveEvents((prev) => [
         {
           id: "evt-" + Date.now(),
@@ -700,13 +744,13 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         ...prev.slice(0, 19),
       ]);
       await syncPlayerState();
-    } catch (err) {
-      console.error("Error queueing song next:", err);
+    } catch {
+      toast("Error al conectar con el servicio del bot.", "error");
     } finally {
       setPendingAction(null);
       setLoadingSongId(null);
     }
-  }, [isLoggedIn, loadingSongId, selectedGuildId, currentVoiceChannelId, user, syncPlayerState]);
+  }, [isLoggedIn, loadingSongId, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
 
   const playFavorites = useCallback(async () => {
     if (!isLoggedIn || !favorites.length || isPlayerBusy) return;
@@ -860,48 +904,65 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     if (!isLoggedIn || isPlayerBusy) return;
     setIsPlayerBusy(true);
     setPendingAction("toggle");
-    setIsPlaying((prev) => !prev);
+    const prevPlaying = isPlaying;
+    setIsPlaying(!prevPlaying);
     try {
-      await igniteApi.control(selectedGuildId, "toggle");
+      const res = await igniteApi.control(selectedGuildId, "toggle");
+      if (!res.success) {
+        setIsPlaying(prevPlaying);
+        toast(res.error || "El servicio del bot está desconectado o no responde.", "error");
+        return;
+      }
+      toast(prevPlaying ? "Reproducción pausada." : "Reproducción reanudada.", "info");
       await syncPlayerState();
-    } catch (err) {
-      console.error("Error toggling play/pause:", err);
-      setIsPlaying((prev) => !prev);
+    } catch {
+      setIsPlaying(prevPlaying);
+      toast("Error al conectar con el bot de música.", "error");
     } finally {
       setIsPlayerBusy(false);
       setPendingAction(null);
     }
-  }, [isLoggedIn, isPlayerBusy, selectedGuildId, syncPlayerState]);
+  }, [isLoggedIn, isPlayerBusy, isPlaying, selectedGuildId, syncPlayerState, toast]);
 
   const skipNext = useCallback(async () => {
     if (!isLoggedIn || isPlayerBusy) return;
     setIsPlayerBusy(true);
     setPendingAction("skip");
     try {
-      await igniteApi.control(selectedGuildId, "skip");
+      const res = await igniteApi.control(selectedGuildId, "skip");
+      if (!res.success) {
+        toast(res.error || "No se pudo saltar la pista.", "error");
+      } else {
+        toast("Pista saltada.", "info");
+      }
       await syncPlayerState();
-    } catch (err) {
-      console.error("Error skipping next:", err);
+    } catch {
+      toast("Error al conectar con el bot de música.", "error");
     } finally {
       setIsPlayerBusy(false);
       setPendingAction(null);
     }
-  }, [isLoggedIn, isPlayerBusy, selectedGuildId, syncPlayerState]);
+  }, [isLoggedIn, isPlayerBusy, selectedGuildId, syncPlayerState, toast]);
 
   const skipPrevious = useCallback(async () => {
     if (!isLoggedIn || isPlayerBusy) return;
     setIsPlayerBusy(true);
     setPendingAction("previous");
     try {
-      await igniteApi.control(selectedGuildId, "previous");
+      const res = await igniteApi.control(selectedGuildId, "previous");
+      if (!res.success) {
+        toast(res.error || "No se pudo volver a la pista anterior.", "error");
+      } else {
+        toast("Pista anterior.", "info");
+      }
       await syncPlayerState();
-    } catch (err) {
-      console.error("Error skipping previous:", err);
+    } catch {
+      toast("Error al conectar con el bot de música.", "error");
     } finally {
       setIsPlayerBusy(false);
       setPendingAction(null);
     }
-  }, [isLoggedIn, isPlayerBusy, selectedGuildId, syncPlayerState]);
+  }, [isLoggedIn, isPlayerBusy, selectedGuildId, syncPlayerState, toast]);
 
   const seekTo = useCallback((seconds: number) => {
     if (!isLoggedIn || !currentSong) return;
@@ -968,19 +1029,24 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     setIsPlayerBusy(true);
     setPendingAction("clear");
     try {
-      setCurrentSong(null);
-      setIsPlaying(false);
-      setQueue([]);
-      setCurrentTime(0);
-      await igniteApi.control(selectedGuildId, "stop");
+      const res = await igniteApi.control(selectedGuildId, "stop");
+      if (!res.success) {
+        toast(res.error || "No se pudo detener el reproductor.", "error");
+      } else {
+        setCurrentSong(null);
+        setIsPlaying(false);
+        setQueue([]);
+        setCurrentTime(0);
+        toast("Reproducción detenida.", "info");
+      }
       await syncPlayerState();
-    } catch (err) {
-      console.error("Error stopping playback:", err);
+    } catch {
+      toast("Error al conectar con el servicio del bot.", "error");
     } finally {
       setIsPlayerBusy(false);
       setPendingAction(null);
     }
-  }, [isLoggedIn, isPlayerBusy, selectedGuildId, syncPlayerState]);
+  }, [isLoggedIn, isPlayerBusy, selectedGuildId, syncPlayerState, toast]);
 
   const importUrlSong = useCallback(async (url: string, opts?: { skip?: boolean; next?: boolean }) => {
     if (!isLoggedIn) {
@@ -1007,6 +1073,12 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (res.success && res.song) {
+        const msg = opts?.next
+          ? `¡"${res.song.title}" se reproducirá a continuación!`
+          : res.playlist
+          ? `Playlist "${res.playlist.name || 'Lista'}" (${res.playlist.count} temas) añadida a la cola.`
+          : `"${res.song.title}" añadida a la cola exitosamente!`;
+        toast(msg, "success");
         setLiveEvents((prev) => [
           {
             id: "evt-" + Date.now(),
@@ -1020,15 +1092,15 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         await syncPlayerState();
         return {
           success: true,
-          message: opts?.next
-            ? `¡'${res.song.title}' se reproducirá a continuación (posición 1)!`
-            : `¡'${res.song.title}' añadida a la cola exitosamente!`,
+          message: msg,
           song: res.song,
         };
-      } else if (!res.success && res.error) {
+      } else if (!res.success) {
+        const errMsg = res.error || "El servicio del bot está desconectado o no responde.";
+        toast(errMsg, "error");
         return {
           success: false,
-          message: `Error al procesar: ${res.error}`,
+          message: errMsg,
         };
       }
 
@@ -1068,21 +1140,24 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setQueue((prev) => [...prev, newSong]);
       await syncPlayerState();
 
+      toast(`¡"${title}" añadida a la cola!`, "success");
       return {
         success: true,
-        message: `¡'${title}' añadida a la cola!`,
+        message: `¡"${title}" añadida a la cola!`,
         song: newSong,
       };
     } catch (err: any) {
+      const errMsg = err?.message || "Error al encolar la canción.";
+      toast(errMsg, "error");
       return {
         success: false,
-        message: err?.message || "Error al encolar la canción.",
+        message: errMsg,
       };
     } finally {
       setIsPlayerBusy(false);
       setPendingAction(null);
     }
-  }, [selectedGuildId, currentVoiceChannelId, user, isLoggedIn, syncPlayerState]);
+  }, [selectedGuildId, currentVoiceChannelId, user, isLoggedIn, syncPlayerState, toast]);
 
   const sendTTS = useCallback((text: string, voice: string, pitch: number, rate: number) => {
     if (!isLoggedIn || !text.trim()) return;
