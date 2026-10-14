@@ -148,29 +148,29 @@ export function SongCard({ song }: { song: Song }) {
         >
           {song.title}
         </h3>
-        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5" title={song.artist}>
-          {song.artist}
-        </p>
-      </div>
-
-      {/* Footer & Actions */}
-      <div className="mt-2.5 pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-xs">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-[10px] text-slate-400 flex items-center gap-1 font-mono tabular-nums shrink-0">
-            <Clock size={10} />
-            {formatDuration(song.duration)}
-          </span>
+        <div className="flex items-center justify-between gap-1.5 mt-0.5 min-w-0">
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate flex-1 min-w-0" title={song.artist}>
+            {song.artist}
+          </p>
           {typeof song.playCount === "number" && song.playCount > 0 && (
             <span
               title={`${song.playCount} ${song.playCount === 1 ? "reproducción" : "reproducciones"}`}
-              className="text-[10px] text-amber-500/90 bg-amber-500/10 px-1.5 py-0.2 rounded-full font-bold flex items-center gap-0.5 shrink-0"
+              className="text-[10px] text-amber-500 dark:text-amber-400 font-bold flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 tabular-nums shadow-xs"
             >
               🔥 {song.playCount}
             </span>
           )}
         </div>
+      </div>
 
-        <div className="flex items-center gap-1.5">
+      {/* Footer & Actions */}
+      <div className="mt-2.5 pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between gap-2 text-xs">
+        <span className="text-[10px] text-slate-400 flex items-center gap-1 font-mono tabular-nums shrink-0">
+          <Clock size={10} />
+          {formatDuration(song.duration)}
+        </span>
+
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={() => playNext(song)}
             disabled={isPlayerBusy || isLoadingThisSongNext}

@@ -24,7 +24,22 @@ import {
   Trophy,
   CalendarDays,
   RefreshCw,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
+
+function getPageNumbers(current: number, total: number): (number | "...")[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  if (current <= 4) {
+    return [1, 2, 3, 4, 5, "...", total];
+  }
+  if (current >= total - 3) {
+    return [1, "...", total - 4, total - 3, total - 2, total - 1, total];
+  }
+  return [1, "...", current - 1, current, current + 1, "...", total];
+}
 
 function detectPlatform(text: string): "spotify" | "youtube" | null {
   const lower = text.toLowerCase();
@@ -50,6 +65,34 @@ export function MusicView() {
 
   const [activeTab, setActiveTab] = useState<"favorites" | "catalog" | "playlists">("favorites");
   const [recSubTab, setRecSubTab] = useState<"radio" | "week" | "month" | "all">("radio");
+
+  // Restore sub-tabs from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("ignite_music_subtab");
+      if (saved === "favorites" || saved === "catalog" || saved === "playlists") {
+        setActiveTab(saved);
+      }
+      const savedRec = localStorage.getItem("ignite_music_rec_subtab");
+      if (savedRec === "radio" || savedRec === "week" || savedRec === "month" || savedRec === "all") {
+        setRecSubTab(savedRec);
+      }
+    } catch {}
+  }, []);
+
+  const handleSubTabChange = (tab: "favorites" | "catalog" | "playlists") => {
+    setActiveTab(tab);
+    try {
+      localStorage.setItem("ignite_music_subtab", tab);
+    } catch {}
+  };
+
+  const handleRecSubTabChange = (tab: "radio" | "week" | "month" | "all") => {
+    setRecSubTab(tab);
+    try {
+      localStorage.setItem("ignite_music_rec_subtab", tab);
+    } catch {}
+  };
   const [recSongs, setRecSongs] = useState<Song[]>([]);
   const [basedOnSong, setBasedOnSong] = useState<Song | null>(null);
   const [isLoadingRecs, setIsLoadingRecs] = useState(false);
@@ -136,6 +179,32 @@ export function MusicView() {
       );
     });
   }, [currentList, searchInput, isUrl]);
+
+  // ══════════ PAGINACIÓN TRADICIONAL ══════════
+  const ITEMS_PER_PAGE = 12;
+  const [currentPage, setCurrentPage] = useState(1);
+  const catalogScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Resetear a la página 1 al cambiar de pestaña, subpestaña o escribir en el buscador
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, recSubTab, searchInput]);
+
+  const totalPages = Math.max(1, Math.ceil(displayedSongs.length / ITEMS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const paginatedSongs = useMemo(() => {
+    const start = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
+    return displayedSongs.slice(start, start + ITEMS_PER_PAGE);
+  }, [displayedSongs, safeCurrentPage]);
+
+  const goToPage = (page: number) => {
+    const target = Math.max(1, Math.min(page, totalPages));
+    setCurrentPage(target);
+    if (catalogScrollRef.current) {
+      catalogScrollRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   const handleImport = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -329,10 +398,10 @@ export function MusicView() {
         )}
 
         {/* ══════════ TABS DE NAVEGACIÓN DEL CATÁLOGO ══════════ */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 min-w-0">
+        <div ref={catalogScrollRef} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 min-w-0 scroll-mt-20">
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-full min-w-0 pb-0.5">
             <button
-              onClick={() => setActiveTab("favorites")}
+              onClick={() => handleSubTabChange("favorites")}
               className={`glass-pill px-3 py-1.5 text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === "favorites"
                   ? "glass-pill-active font-semibold"
@@ -352,7 +421,7 @@ export function MusicView() {
             </button>
 
             <button
-              onClick={() => setActiveTab("catalog")}
+              onClick={() => handleSubTabChange("catalog")}
               className={`glass-pill px-3 py-1.5 text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === "catalog"
                   ? "glass-pill-active font-semibold"
@@ -370,7 +439,7 @@ export function MusicView() {
             </button>
 
             <button
-              onClick={() => setActiveTab("playlists")}
+              onClick={() => handleSubTabChange("playlists")}
               className={`glass-pill px-3 py-1.5 text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap ${
                 activeTab === "playlists"
                   ? "glass-pill-active font-semibold"
@@ -404,7 +473,7 @@ export function MusicView() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-1.5 rounded-2xl glass-panel">
           <div className="flex items-center gap-1 overflow-x-auto no-scrollbar max-w-full min-w-0">
             <button
-              onClick={() => setRecSubTab("radio")}
+              onClick={() => handleRecSubTabChange("radio")}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
                 recSubTab === "radio"
                   ? "bg-purple-600 text-white shadow-xs"
@@ -417,7 +486,7 @@ export function MusicView() {
             </button>
 
             <button
-              onClick={() => setRecSubTab("week")}
+              onClick={() => handleRecSubTabChange("week")}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
                 recSubTab === "week"
                   ? "bg-purple-600 text-white shadow-xs"
@@ -429,7 +498,7 @@ export function MusicView() {
             </button>
 
             <button
-              onClick={() => setRecSubTab("month")}
+              onClick={() => handleRecSubTabChange("month")}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
                 recSubTab === "month"
                   ? "bg-purple-600 text-white shadow-xs"
@@ -441,7 +510,7 @@ export function MusicView() {
             </button>
 
             <button
-              onClick={() => setRecSubTab("all")}
+              onClick={() => handleRecSubTabChange("all")}
               className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
                 recSubTab === "all"
                   ? "bg-purple-600 text-white shadow-xs"
@@ -519,7 +588,7 @@ export function MusicView() {
             Presiona el botón <span className="font-semibold text-amber-400">⭐ Favorito</span> en Discord mientras escuchas música, o guarda canciones desde las recomendaciones.
           </p>
           <button
-            onClick={() => setActiveTab("catalog")}
+            onClick={() => handleSubTabChange("catalog")}
             className="mt-4 px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-md shadow-purple-600/20 inline-flex items-center gap-1.5 cursor-pointer"
           >
             <Sparkles size={13} />
@@ -568,10 +637,86 @@ export function MusicView() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          {displayedSongs.map((song) => (
-            <SongCard key={song.id} song={song} />
-          ))}
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {paginatedSongs.map((song) => (
+              <SongCard key={song.id} song={song} />
+            ))}
+          </div>
+
+          {/* ══════════ PAGINACIÓN TRADICIONAL ══════════ */}
+          {displayedSongs.length > ITEMS_PER_PAGE && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-black/5 dark:border-white/5">
+              <div className="text-xs text-slate-500 dark:text-slate-400 font-mono">
+                Mostrando{" "}
+                <span className="font-semibold text-slate-900 dark:text-white">
+                  {(safeCurrentPage - 1) * ITEMS_PER_PAGE + 1}
+                </span>
+                –
+                <span className="font-semibold text-slate-900 dark:text-white">
+                  {Math.min(safeCurrentPage * ITEMS_PER_PAGE, displayedSongs.length)}
+                </span>{" "}
+                de{" "}
+                <span className="font-semibold text-slate-900 dark:text-white">
+                  {displayedSongs.length}
+                </span>{" "}
+                canciones
+              </div>
+
+              <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                {/* Botón Anterior */}
+                <button
+                  type="button"
+                  onClick={() => goToPage(safeCurrentPage - 1)}
+                  disabled={safeCurrentPage === 1}
+                  className="glass-btn px-2.5 py-1.5 text-xs flex items-center gap-1 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:text-purple-400 hover:border-purple-500/30 transition-all cursor-pointer"
+                  aria-label="Página anterior"
+                >
+                  <ChevronLeft size={14} />
+                  <span className="hidden sm:inline">Anterior</span>
+                </button>
+
+                {/* Números de página */}
+                <div className="flex items-center gap-1">
+                  {getPageNumbers(safeCurrentPage, totalPages).map((p, idx) =>
+                    p === "..." ? (
+                      <span
+                        key={`dots-${idx}`}
+                        className="px-2 py-1 text-xs text-slate-400 select-none"
+                      >
+                        …
+                      </span>
+                    ) : (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => goToPage(p)}
+                        className={`min-w-[32px] h-8 px-2 rounded-xl text-xs font-semibold flex items-center justify-center transition-all cursor-pointer ${
+                          safeCurrentPage === p
+                            ? "bg-purple-600 text-white shadow-md shadow-purple-600/30 ring-1 ring-purple-500"
+                            : "glass-btn text-slate-600 dark:text-slate-300 hover:text-purple-400 hover:border-purple-500/30"
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    )
+                  )}
+                </div>
+
+                {/* Botón Siguiente */}
+                <button
+                  type="button"
+                  onClick={() => goToPage(safeCurrentPage + 1)}
+                  disabled={safeCurrentPage === totalPages}
+                  className="glass-btn px-2.5 py-1.5 text-xs flex items-center gap-1 text-slate-600 dark:text-slate-300 disabled:opacity-40 disabled:cursor-not-allowed hover:text-purple-400 hover:border-purple-500/30 transition-all cursor-pointer"
+                  aria-label="Página siguiente"
+                >
+                  <span className="hidden sm:inline">Siguiente</span>
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

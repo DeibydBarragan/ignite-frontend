@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useBot } from "@/context/bot-context";
 import { AppNav } from "@/components/app-nav";
 import { ContextToolbar, type ActiveTab } from "@/components/context-toolbar";
@@ -16,9 +16,68 @@ import {
   ShieldAlert,
 } from "lucide-react";
 
+const VALID_TABS: ActiveTab[] = ["music", "tts", "soundboard"];
+
+function isValidTab(val: unknown): val is ActiveTab {
+  return typeof val === "string" && VALID_TABS.includes(val as ActiveTab);
+}
+
 export default function Home() {
   const { isLoggedIn, isLoadingAuth, loginDiscord } = useBot();
   const [activeTab, setActiveTab] = useState<ActiveTab>("music");
+
+  // Restore active tab from URL hash, query param, or localStorage on mount
+  useEffect(() => {
+    // 1. Check URL hash (e.g. #soundboard, #tts, #music)
+    const hash = window.location.hash.replace(/^#/, "");
+    if (isValidTab(hash)) {
+      setActiveTab(hash);
+      try {
+        localStorage.setItem("ignite_active_tab", hash);
+      } catch {}
+      return;
+    }
+
+    // 2. Check query param (?tab=soundboard)
+    try {
+      const searchTab = new URLSearchParams(window.location.search).get("tab");
+      if (isValidTab(searchTab)) {
+        setActiveTab(searchTab);
+        localStorage.setItem("ignite_active_tab", searchTab);
+        window.history.replaceState(null, "", `#${searchTab}`);
+        return;
+      }
+    } catch {}
+
+    // 3. Fallback to localStorage
+    try {
+      const saved = localStorage.getItem("ignite_active_tab");
+      if (isValidTab(saved)) {
+        setActiveTab(saved);
+        window.history.replaceState(null, "", `#${saved}`);
+      }
+    } catch {}
+  }, []);
+
+  // Listen to browser navigation (back/forward button or hash changes)
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace(/^#/, "");
+      if (isValidTab(hash)) {
+        setActiveTab(hash);
+      }
+    };
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  const handleTabChange = useCallback((tab: ActiveTab) => {
+    setActiveTab(tab);
+    try {
+      localStorage.setItem("ignite_active_tab", tab);
+      window.history.replaceState(null, "", `#${tab}`);
+    } catch {}
+  }, []);
 
   return (
     <div className="min-h-screen flex flex-col relative selection:bg-purple-600 selection:text-white">
@@ -86,7 +145,7 @@ export default function Home() {
           {/* Main Content Container */}
           <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-5 flex flex-col gap-6">
             {/* Context & Navigation Toolbar (Server, Voice Channel, Tabs) */}
-            <ContextToolbar activeTab={activeTab} onTabChange={setActiveTab} />
+            <ContextToolbar activeTab={activeTab} onTabChange={handleTabChange} />
 
             {/* Tab Content Panes */}
             <div className="flex-1">

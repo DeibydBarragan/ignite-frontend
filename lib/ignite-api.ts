@@ -380,10 +380,10 @@ class IgniteApiClient {
     }
   }
 
-  async getTopSongs(guildId: string, timeframe: "week" | "month" | "all" = "week"): Promise<{ success: boolean; songs: Song[] }> {
+  async getTopSongs(guildId: string, timeframe: "week" | "month" | "all" = "week", limit = 100): Promise<{ success: boolean; songs: Song[] }> {
     try {
       const base = await discoverBaseUrl();
-      const res = await fetch(`${base}/api/guilds/${guildId}/top-songs?timeframe=${timeframe}`, {
+      const res = await fetch(`${base}/api/guilds/${guildId}/top-songs?timeframe=${timeframe}&limit=${limit}`, {
         headers: this.headers,
       });
       const data = await res.json();
