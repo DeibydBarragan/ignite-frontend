@@ -25,15 +25,15 @@ export default function Home() {
       {/* Auth Gatekeeper */}
       {isLoadingAuth ? (
         <main className="flex-1 flex flex-col items-center justify-center p-8 min-h-[60vh]">
-          <div className="relative flex items-center justify-center">
-            <div className="w-16 h-16 rounded-2xl bg-purple-600/15 border border-purple-500/30 flex items-center justify-center animate-pulse">
-              <Flame size={32} className="text-purple-400" />
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-purple-600/15 border border-purple-500/30 flex items-center justify-center shadow-lg shadow-purple-600/20">
+              <Flame size={32} className="text-purple-400 animate-pulse" />
             </div>
-            <Loader2 size={44} className="animate-spin text-purple-500 absolute" />
+            <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
+              <Loader2 size={14} className="animate-spin text-purple-500" />
+              <span>Verificando sesión con Discord...</span>
+            </div>
           </div>
-          <p className="mt-4 text-xs font-mono text-slate-400">
-            Verificando sesión con Discord...
-          </p>
         </main>
       ) : !isLoggedIn ? (
         <main className="flex-1 flex items-center justify-center px-4 py-12 max-w-lg mx-auto w-full">

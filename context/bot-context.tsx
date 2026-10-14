@@ -61,6 +61,7 @@ interface BotContextType {
   isVoiceConnected: boolean;
   currentVoiceChannel: VoiceChannel | null;
   setVoiceConnection: (connected: boolean, channelId?: string) => void;
+  isBotOnline: boolean;
 
   // Music Player & Queue
   catalog: Song[];
@@ -153,6 +154,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   );
   const [isVoiceConnected, setIsVoiceConnected] = useState<boolean>(false);
   const [currentVoiceChannelId, setCurrentVoiceChannelId] = useState<string>("");
+  const [isBotOnline, setIsBotOnline] = useState<boolean>(true);
 
   // Servidores y canales de voz REALES desde el bot (sin mocks).
   useEffect(() => {
@@ -337,12 +339,14 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       const state = await igniteApi.getPlayerState(selectedGuildId);
       if (!state) {
         offlineFailsRef.current += 1;
+        setIsBotOnline(false);
         if (offlineFailsRef.current >= 2) {
           setIsPlaying(false);
         }
         return;
       }
       offlineFailsRef.current = 0;
+      setIsBotOnline(true);
 
       if (state.hasQueue && state.currentSong) {
         setCurrentSong(state.currentSong);
@@ -366,9 +370,29 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         setCurrentFilter(null);
       }
     } catch {
-      // Fall back gracefully to local state
+      offlineFailsRef.current += 1;
+      setIsBotOnline(false);
+      if (offlineFailsRef.current >= 2) {
+        setIsPlaying(false);
+      }
     }
   }, [isLoggedIn, selectedGuildId]);
+
+  // Chequeo de salud del bot al iniciar
+  useEffect(() => {
+    let cancelled = false;
+    igniteApi
+      .getHealth()
+      .then((health) => {
+        if (!cancelled) setIsBotOnline(Boolean(health));
+      })
+      .catch(() => {
+        if (!cancelled) setIsBotOnline(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -635,11 +659,12 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         setCurrentSong(prevSong);
         setIsPlaying(prevPlaying);
         setCurrentTime(prevTime);
+        setIsBotOnline(false);
         toast(res.error || "No se pudo reproducir la canción. El bot no está disponible.", "error");
         return;
       }
 
-      toast(`Reproduciendo "${song.title}".`, "success");
+      setIsBotOnline(true);
       setLiveEvents((prev) => [
         {
           id: "evt-" + Date.now(),
@@ -655,6 +680,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setCurrentSong(prevSong);
       setIsPlaying(prevPlaying);
       setCurrentTime(prevTime);
+      setIsBotOnline(false);
       toast("Error al conectar con el servicio del bot.", "error");
     } finally {
       setIsPlayerBusy(false);
@@ -682,12 +708,13 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (!res.success) {
+        setIsBotOnline(false);
         toast(res.error || "No se pudo añadir a la cola. El bot no está disponible.", "error");
         return;
       }
 
+      setIsBotOnline(true);
       setQueue((prev) => [...prev, songWithRequester]);
-      toast(`"${song.title}" añadida a la cola.`, "success");
       setLiveEvents((prev) => [
         {
           id: "evt-" + Date.now(),
@@ -700,6 +727,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       ]);
       await syncPlayerState();
     } catch {
+      setIsBotOnline(false);
       toast("Error al conectar con el servicio del bot.", "error");
     } finally {
       setPendingAction(null);
@@ -727,12 +755,13 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (!res.success) {
+        setIsBotOnline(false);
         toast(res.error || "No se pudo añadir la canción. El bot no está disponible.", "error");
         return;
       }
 
+      setIsBotOnline(true);
       setQueue((prev) => [songWithRequester, ...prev]);
-      toast(`"${song.title}" se reproducirá a continuación.`, "success");
       setLiveEvents((prev) => [
         {
           id: "evt-" + Date.now(),
@@ -745,6 +774,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       ]);
       await syncPlayerState();
     } catch {
+      setIsBotOnline(false);
       toast("Error al conectar con el servicio del bot.", "error");
     } finally {
       setPendingAction(null);
@@ -910,13 +940,15 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       const res = await igniteApi.control(selectedGuildId, "toggle");
       if (!res.success) {
         setIsPlaying(prevPlaying);
+        setIsBotOnline(false);
         toast(res.error || "El servicio del bot está desconectado o no responde.", "error");
         return;
       }
-      toast(prevPlaying ? "Reproducción pausada." : "Reproducción reanudada.", "info");
+      setIsBotOnline(true);
       await syncPlayerState();
     } catch {
       setIsPlaying(prevPlaying);
+      setIsBotOnline(false);
       toast("Error al conectar con el bot de música.", "error");
     } finally {
       setIsPlayerBusy(false);
@@ -931,12 +963,14 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await igniteApi.control(selectedGuildId, "skip");
       if (!res.success) {
+        setIsBotOnline(false);
         toast(res.error || "No se pudo saltar la pista.", "error");
       } else {
-        toast("Pista saltada.", "info");
+        setIsBotOnline(true);
       }
       await syncPlayerState();
     } catch {
+      setIsBotOnline(false);
       toast("Error al conectar con el bot de música.", "error");
     } finally {
       setIsPlayerBusy(false);
@@ -951,12 +985,14 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await igniteApi.control(selectedGuildId, "previous");
       if (!res.success) {
+        setIsBotOnline(false);
         toast(res.error || "No se pudo volver a la pista anterior.", "error");
       } else {
-        toast("Pista anterior.", "info");
+        setIsBotOnline(true);
       }
       await syncPlayerState();
     } catch {
+      setIsBotOnline(false);
       toast("Error al conectar con el bot de música.", "error");
     } finally {
       setIsPlayerBusy(false);
@@ -1031,16 +1067,18 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await igniteApi.control(selectedGuildId, "stop");
       if (!res.success) {
+        setIsBotOnline(false);
         toast(res.error || "No se pudo detener el reproductor.", "error");
       } else {
+        setIsBotOnline(true);
         setCurrentSong(null);
         setIsPlaying(false);
         setQueue([]);
         setCurrentTime(0);
-        toast("Reproducción detenida.", "info");
       }
       await syncPlayerState();
     } catch {
+      setIsBotOnline(false);
       toast("Error al conectar con el servicio del bot.", "error");
     } finally {
       setIsPlayerBusy(false);
@@ -1073,12 +1111,12 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (res.success && res.song) {
+        setIsBotOnline(true);
         const msg = opts?.next
           ? `¡"${res.song.title}" se reproducirá a continuación!`
           : res.playlist
           ? `Playlist "${res.playlist.name || 'Lista'}" (${res.playlist.count} temas) añadida a la cola.`
           : `"${res.song.title}" añadida a la cola exitosamente!`;
-        toast(msg, "success");
         setLiveEvents((prev) => [
           {
             id: "evt-" + Date.now(),
@@ -1096,6 +1134,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
           song: res.song,
         };
       } else if (!res.success) {
+        setIsBotOnline(false);
         const errMsg = res.error || "El servicio del bot está desconectado o no responde.";
         toast(errMsg, "error");
         return {
@@ -1140,13 +1179,13 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setQueue((prev) => [...prev, newSong]);
       await syncPlayerState();
 
-      toast(`¡"${title}" añadida a la cola!`, "success");
       return {
         success: true,
         message: `¡"${title}" añadida a la cola!`,
         song: newSong,
       };
     } catch (err: any) {
+      setIsBotOnline(false);
       const errMsg = err?.message || "Error al encolar la canción.";
       toast(errMsg, "error");
       return {
@@ -1452,6 +1491,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         isVoiceConnected,
         currentVoiceChannel,
         setVoiceConnection,
+        isBotOnline,
 
         catalog,
         queue,

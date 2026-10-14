@@ -16,6 +16,7 @@ export function AppNav() {
     isLoggedIn,
     loginDiscord,
     logoutDiscord,
+    isBotOnline,
   } = useBot();
 
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
@@ -28,10 +29,31 @@ export function AppNav() {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-600 dark:bg-purple-600 text-white shadow-md shadow-purple-600/20">
             <Flame size={18} className="fill-white/20" />
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             <span className="font-semibold tracking-tight text-base text-slate-900 dark:text-white">
               ignite
             </span>
+            {isLoggedIn && (
+              <div
+                title={
+                  isBotOnline
+                    ? "El servicio de Ignite Bot está activo y conectado"
+                    : "El servicio de Ignite Bot está detenido o no responde"
+                }
+                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold tracking-wide uppercase transition-all ${
+                  isBotOnline
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                    : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 animate-pulse"
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    isBotOnline ? "bg-emerald-500" : "bg-rose-500"
+                  }`}
+                />
+                <span>{isBotOnline ? "Online" : "Offline"}</span>
+              </div>
+            )}
           </div>
         </div>
 
