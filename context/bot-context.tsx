@@ -111,7 +111,7 @@ interface BotContextType {
 
   // Loading & Action Locking States
   isPlayerBusy: boolean;
-  pendingAction: "skip" | "previous" | "toggle" | "play" | "playNext" | "queue" | "clear" | "reorder" | null;
+  pendingAction: "skip" | "previous" | "toggle" | "play" | "playNext" | "queue" | "clear" | "reorder" | "stop" | null;
   loadingSongId: string | null;
   removingSongId: string | null;
   isSkipping: boolean;
@@ -331,7 +331,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
 
   // Loading & Action locking state
   const [isPlayerBusy, setIsPlayerBusy] = useState<boolean>(false);
-  const [pendingAction, setPendingAction] = useState<"skip" | "previous" | "toggle" | "play" | "playNext" | "queue" | "clear" | "reorder" | null>(null);
+  const [pendingAction, setPendingAction] = useState<"skip" | "previous" | "toggle" | "play" | "playNext" | "queue" | "clear" | "reorder" | "stop" | null>(null);
   const [loadingSongId, setLoadingSongId] = useState<string | null>(null);
   const [removingSongId, setRemovingSongId] = useState<string | null>(null);
 
@@ -1275,7 +1275,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   const stopPlayback = useCallback(async () => {
     if (!isLoggedIn || isPlayerBusy) return;
     setIsPlayerBusy(true);
-    setPendingAction("clear");
+    setPendingAction("stop");
     try {
       const res = await igniteApi.control(selectedGuildId, "stop");
       if (!res.success) {
@@ -1287,6 +1287,17 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         setIsPlaying(false);
         setQueue([]);
         setCurrentTime(0);
+        toast("Reproductor detenido y bot desconectado del canal de voz.", "info", { duration: 3500 });
+        setLiveEvents((prev) => [
+          {
+            id: "evt-" + Date.now(),
+            type: "voice_trigger",
+            title: "Reproductor Detenido",
+            description: "Reproducción finalizada y bot desconectado del canal de voz",
+            timestamp: "Ahora mismo",
+          },
+          ...prev.slice(0, 19),
+        ]);
       }
       await syncPlayerState();
     } catch {

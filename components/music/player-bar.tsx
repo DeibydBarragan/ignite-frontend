@@ -108,6 +108,8 @@ export function PlayerBar() {
                           ? isPlaying
                             ? "Reanudando..."
                             : "Pausando..."
+                          : pendingAction === "stop"
+                          ? "Deteniendo..."
                           : "Cargando..."}
                       </span>
                     </span>
@@ -361,7 +363,11 @@ export function PlayerBar() {
                 title="Detener y salir del canal de voz"
                 className="glass-btn p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer disabled:opacity-40"
               >
-                <Square size={14} className="fill-current" />
+                {pendingAction === "stop" ? (
+                  <Loader2 size={14} className="animate-spin text-rose-400" />
+                ) : (
+                  <Square size={14} className="fill-current" />
+                )}
               </button>
 
               <button
