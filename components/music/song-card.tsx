@@ -107,6 +107,16 @@ export function SongCard({ song }: { song: Song }) {
             <Star size={12} className={isFav ? "fill-amber-400" : ""} />
           </button>
 
+          {/* Play Count Badge (Bottom-left of cover) */}
+          {typeof song.playCount === "number" && song.playCount > 0 && (
+            <span
+              title={`${song.playCount} ${song.playCount === 1 ? "reproducción" : "reproducciones"}`}
+              className="absolute bottom-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/75 backdrop-blur-md text-amber-400 border border-amber-400/30 flex items-center gap-1 shadow-md z-10 pointer-events-none"
+            >
+              🔥 {song.playCount}
+            </span>
+          )}
+
           {/* Equalizer overlay when playing */}
           {isCurrent && isPlaying && (
             <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center gap-1">
@@ -148,19 +158,9 @@ export function SongCard({ song }: { song: Song }) {
         >
           {song.title}
         </h3>
-        <div className="flex items-center justify-between gap-1.5 mt-0.5 min-w-0">
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate flex-1 min-w-0" title={song.artist}>
-            {song.artist}
-          </p>
-          {typeof song.playCount === "number" && song.playCount > 0 && (
-            <span
-              title={`${song.playCount} ${song.playCount === 1 ? "reproducción" : "reproducciones"}`}
-              className="text-[10px] text-amber-500 dark:text-amber-400 font-bold flex items-center gap-0.5 shrink-0 px-1.5 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 tabular-nums shadow-xs"
-            >
-              🔥 {song.playCount}
-            </span>
-          )}
-        </div>
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5" title={song.artist}>
+          {song.artist}
+        </p>
       </div>
 
       {/* Footer & Actions */}
