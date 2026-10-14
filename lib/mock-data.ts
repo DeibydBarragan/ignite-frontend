@@ -36,6 +36,11 @@ export interface Song {
   url: string;
   category: "lofi" | "gaming" | "synthwave" | "hits" | "rock";
   isLyric?: boolean;
+  requestedBy?: {
+    id: string;
+    username: string;
+    avatar: string | null;
+  } | null;
 }
 
 export type SoundCategory = "memes" | "gaming" | "reactions" | "sfx" | "anime";

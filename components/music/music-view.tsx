@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Plus,
+  ListPlus,
   Loader2,
   Star,
   Flame,
@@ -46,7 +47,7 @@ export function MusicView() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isImporting = isPlayerBusy && pendingAction === "queue";
+  const isImporting = isPlayerBusy && (pendingAction === "queue" || pendingAction === "playNext");
   const detectedPlatform = useMemo(() => detectPlatform(searchInput.trim()), [searchInput]);
   const isUrl = detectedPlatform !== null;
 
@@ -70,7 +71,7 @@ export function MusicView() {
     await submitQuery(searchInput);
   };
 
-  const submitQuery = async (rawQuery: string) => {
+  const submitQuery = async (rawQuery: string, opts?: { next?: boolean }) => {
     if (isPlayerBusy) return;
     const query = rawQuery.trim();
     if (!query) return;
@@ -79,7 +80,7 @@ export function MusicView() {
     setSuggestions([]);
 
     try {
-      const res = await importUrlSong(query);
+      const res = await importUrlSong(query, { next: opts?.next });
       if (res.success) {
         setFeedback({ type: "success", message: res.message });
         setSearchInput("");
@@ -139,12 +140,12 @@ export function MusicView() {
               onKeyDown={(e) => {
                 if (e.key === "Escape") setShowSuggestions(false);
               }}
-              className={`glass-input w-full pl-10 pr-28 sm:pr-36 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-0 ${
+              className={`glass-input w-full pl-10 pr-52 sm:pr-60 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-0 ${
                 isImporting ? "opacity-60 cursor-not-allowed" : ""
               }`}
             />
 
-            {/* Platform badge & Direct action button */}
+            {/* Platform badge & Direct action buttons */}
             {searchInput.trim().length > 0 && (
               <div className="absolute right-2 flex items-center gap-1.5">
                 {isUrl && (
@@ -153,15 +154,39 @@ export function MusicView() {
                   </span>
                 )}
                 <button
+                  type="button"
+                  onClick={() => submitQuery(searchInput, { next: true })}
+                  disabled={isPlayerBusy}
+                  title="Reproducir a continuación (saltarse la cola)"
+                  className={`px-2.5 py-1 rounded-lg bg-purple-600/90 hover:bg-purple-500 text-white text-xs font-semibold shadow-xs flex items-center gap-1 transition-all ${
+                    isPlayerBusy
+                      ? "opacity-60 cursor-not-allowed"
+                      : "active:scale-95 cursor-pointer"
+                  }`}
+                >
+                  {isImporting && pendingAction === "playNext" ? (
+                    <>
+                      <Loader2 size={13} className="animate-spin" />
+                      <span>Sig...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ListPlus size={13} />
+                      <span>Siguiente</span>
+                    </>
+                  )}
+                </button>
+                <button
                   type="submit"
                   disabled={isPlayerBusy}
+                  title="Añadir al final de la cola"
                   className={`px-3 py-1 rounded-lg bg-[#1db954] text-black text-xs font-semibold shadow-xs flex items-center gap-1 transition-all ${
                     isPlayerBusy
                       ? "opacity-60 cursor-not-allowed"
                       : "hover:bg-[#1ed760] active:scale-95 cursor-pointer"
                   }`}
                 >
-                  {isImporting ? (
+                  {isImporting && pendingAction === "queue" ? (
                     <>
                       <Loader2 size={13} className="animate-spin" />
                       <span>Encolando...</span>
@@ -181,19 +206,36 @@ export function MusicView() {
           {showSuggestions && suggestions.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1.5 z-30 glass-panel p-1.5 max-h-60 overflow-y-auto custom-scrollbar">
               {suggestions.map((s) => (
-                <button
+                <div
                   key={s}
-                  type="button"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    setSearchInput(s);
-                    submitQuery(s);
-                  }}
-                  className="w-full text-left px-3 py-2 rounded-lg text-xs text-slate-700 dark:text-slate-300 hover:bg-purple-500/10 hover:text-slate-900 dark:hover:text-white flex items-center gap-2 transition-colors cursor-pointer"
+                  className="w-full px-2 py-1.5 rounded-lg text-xs text-slate-700 dark:text-slate-300 hover:bg-purple-500/10 hover:text-slate-900 dark:hover:text-white flex items-center justify-between gap-2 transition-colors group/item"
                 >
-                  <Search size={12} className="text-slate-400 shrink-0" />
-                  <span className="truncate">{s}</span>
-                </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setSearchInput(s);
+                      submitQuery(s);
+                    }}
+                    className="flex-1 flex items-center gap-2 text-left cursor-pointer truncate"
+                  >
+                    <Search size={12} className="text-slate-400 shrink-0" />
+                    <span className="truncate">{s}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setSearchInput(s);
+                      submitQuery(s, { next: true });
+                    }}
+                    title="Reproducir siguiente (salta la cola)"
+                    className="opacity-0 group-hover/item:opacity-100 px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 text-[10px] flex items-center gap-1 transition-all cursor-pointer shrink-0"
+                  >
+                    <ListPlus size={11} />
+                    <span>Siguiente</span>
+                  </button>
+                </div>
               ))}
             </div>
           )}

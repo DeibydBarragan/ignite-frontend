@@ -72,6 +72,7 @@ interface BotContextType {
   repeatMode: "off" | "track" | "queue";
   shuffle: boolean;
   playSong: (song: Song) => void;
+  playNext: (song: Song) => void;
   addToQueue: (song: Song) => void;
   removeFromQueue: (songId: string) => void;
   moveQueueSong: (fromIndex: number, toIndex: number) => Promise<void>;
@@ -92,7 +93,7 @@ interface BotContextType {
   setFilter: (name: string) => void;
   defaultProvider: MusicSource;
   setDefaultProvider: (provider: MusicSource) => void;
-  importUrlSong: (url: string, opts?: { skip?: boolean }) => Promise<{ success: boolean; message: string; song?: Song }>;
+  importUrlSong: (url: string, opts?: { skip?: boolean; next?: boolean }) => Promise<{ success: boolean; message: string; song?: Song }>;
 
   // Favorites (Supabase & Discord sync)
   favorites: Song[];
@@ -107,7 +108,7 @@ interface BotContextType {
 
   // Loading & Action Locking States
   isPlayerBusy: boolean;
-  pendingAction: "skip" | "previous" | "toggle" | "play" | "queue" | "clear" | null;
+  pendingAction: "skip" | "previous" | "toggle" | "play" | "playNext" | "queue" | "clear" | null;
   loadingSongId: string | null;
   removingSongId: string | null;
   isSkipping: boolean;
@@ -313,7 +314,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
 
   // Loading & Action locking state
   const [isPlayerBusy, setIsPlayerBusy] = useState<boolean>(false);
-  const [pendingAction, setPendingAction] = useState<"skip" | "previous" | "toggle" | "play" | "queue" | "clear" | null>(null);
+  const [pendingAction, setPendingAction] = useState<"skip" | "previous" | "toggle" | "play" | "playNext" | "queue" | "clear" | null>(null);
   const [loadingSongId, setLoadingSongId] = useState<string | null>(null);
   const [removingSongId, setRemovingSongId] = useState<string | null>(null);
 
@@ -597,12 +598,19 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     setPendingAction("play");
     setLoadingSongId(song.id);
     try {
-      setCurrentSong(song);
+      const songWithRequester: Song = {
+        ...song,
+        requestedBy: user
+          ? { id: user.id, username: user.username, avatar: user.avatar || null }
+          : song.requestedBy || null,
+      };
+      setCurrentSong(songWithRequester);
       setCurrentTime(0);
       setIsPlaying(true);
       await igniteApi.play(selectedGuildId, {
         query: song.url || `${song.title} ${song.artist}`,
         voiceChannelId: currentVoiceChannelId || undefined,
+        userId: user?.id || undefined,
         skip: true,
       });
       setLiveEvents((prev) => [
@@ -623,17 +631,24 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setPendingAction(null);
       setLoadingSongId(null);
     }
-  }, [isLoggedIn, isPlayerBusy, selectedGuildId, currentVoiceChannelId, syncPlayerState]);
+  }, [isLoggedIn, isPlayerBusy, selectedGuildId, currentVoiceChannelId, user, syncPlayerState]);
 
   const addToQueue = useCallback(async (song: Song) => {
     if (!isLoggedIn || loadingSongId === song.id) return;
     setPendingAction("queue");
     setLoadingSongId(song.id);
     try {
-      setQueue((prev) => [...prev, song]);
+      const songWithRequester: Song = {
+        ...song,
+        requestedBy: user
+          ? { id: user.id, username: user.username, avatar: user.avatar || null }
+          : song.requestedBy || null,
+      };
+      setQueue((prev) => [...prev, songWithRequester]);
       await igniteApi.play(selectedGuildId, {
         query: song.url || `${song.title} ${song.artist}`,
         voiceChannelId: currentVoiceChannelId || undefined,
+        userId: user?.id || undefined,
         skip: false,
       });
       setLiveEvents((prev) => [
@@ -653,7 +668,45 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setPendingAction(null);
       setLoadingSongId(null);
     }
-  }, [isLoggedIn, loadingSongId, selectedGuildId, currentVoiceChannelId, syncPlayerState]);
+  }, [isLoggedIn, loadingSongId, selectedGuildId, currentVoiceChannelId, user, syncPlayerState]);
+
+  const playNext = useCallback(async (song: Song) => {
+    if (!isLoggedIn || loadingSongId === song.id) return;
+    setPendingAction("playNext");
+    setLoadingSongId(song.id);
+    try {
+      const songWithRequester: Song = {
+        ...song,
+        requestedBy: user
+          ? { id: user.id, username: user.username, avatar: user.avatar || null }
+          : song.requestedBy || null,
+      };
+      setQueue((prev) => [songWithRequester, ...prev]);
+      await igniteApi.play(selectedGuildId, {
+        query: song.url || `${song.title} ${song.artist}`,
+        voiceChannelId: currentVoiceChannelId || undefined,
+        userId: user?.id || undefined,
+        next: true,
+        skip: false,
+      });
+      setLiveEvents((prev) => [
+        {
+          id: "evt-" + Date.now(),
+          type: "music_play",
+          title: "Siguiente en cola",
+          description: `'${song.title}' se reproducirá a continuación`,
+          timestamp: "Ahora mismo",
+        },
+        ...prev.slice(0, 19),
+      ]);
+      await syncPlayerState();
+    } catch (err) {
+      console.error("Error queueing song next:", err);
+    } finally {
+      setPendingAction(null);
+      setLoadingSongId(null);
+    }
+  }, [isLoggedIn, loadingSongId, selectedGuildId, currentVoiceChannelId, user, syncPlayerState]);
 
   const playFavorites = useCallback(async () => {
     if (!isLoggedIn || !favorites.length || isPlayerBusy) return;
@@ -929,7 +982,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isLoggedIn, isPlayerBusy, selectedGuildId, syncPlayerState]);
 
-  const importUrlSong = useCallback(async (url: string, opts?: { skip?: boolean }) => {
+  const importUrlSong = useCallback(async (url: string, opts?: { skip?: boolean; next?: boolean }) => {
     if (!isLoggedIn) {
       return { success: false, message: "Debes iniciar sesión con Discord para reproducir canciones." };
     }
@@ -941,14 +994,16 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       return { success: false, message: "SoundCloud ya no está soportado. Usa un enlace de YouTube o Spotify, o busca por nombre." };
     }
 
-    setPendingAction("queue");
+    setPendingAction(opts?.next ? "playNext" : "queue");
     setIsPlayerBusy(true);
 
     try {
       const res = await igniteApi.play(selectedGuildId, {
         query: trimmed,
         voiceChannelId: currentVoiceChannelId || undefined,
+        userId: user?.id || undefined,
         skip: opts?.skip ?? false,
+        next: opts?.next ?? false,
       });
 
       if (res.success && res.song) {
@@ -956,8 +1011,8 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
           {
             id: "evt-" + Date.now(),
             type: "music_play",
-            title: "Pista Encolada",
-            description: `'${res.song?.title}' enviada al bot`,
+            title: opts?.next ? "Siguiente en cola" : "Pista Encolada",
+            description: `'${res.song?.title}' ${opts?.next ? "se reproducirá a continuación" : "enviada al bot"}`,
             timestamp: "Ahora mismo",
           },
           ...prev.slice(0, 19),
@@ -965,7 +1020,9 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         await syncPlayerState();
         return {
           success: true,
-          message: `¡'${res.song.title}' añadida a la cola exitosamente!`,
+          message: opts?.next
+            ? `¡'${res.song.title}' se reproducirá a continuación (posición 1)!`
+            : `¡'${res.song.title}' añadida a la cola exitosamente!`,
           song: res.song,
         };
       } else if (!res.success && res.error) {
@@ -1003,6 +1060,9 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         source,
         url: trimmed,
         category: "hits",
+        requestedBy: user
+          ? { id: user.id, username: user.username, avatar: user.avatar || null }
+          : null,
       };
 
       setQueue((prev) => [...prev, newSong]);
@@ -1022,7 +1082,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setIsPlayerBusy(false);
       setPendingAction(null);
     }
-  }, [selectedGuildId, currentVoiceChannelId, syncPlayerState]);
+  }, [selectedGuildId, currentVoiceChannelId, user, isLoggedIn, syncPlayerState]);
 
   const sendTTS = useCallback((text: string, voice: string, pitch: number, rate: number) => {
     if (!isLoggedIn || !text.trim()) return;
@@ -1328,6 +1388,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         repeatMode,
         shuffle,
         playSong,
+        playNext,
         addToQueue,
         removeFromQueue,
         moveQueueSong,

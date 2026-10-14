@@ -18,6 +18,7 @@ import {
   Search,
   Link2,
   Plus,
+  ListPlus,
   Play,
   ListMusic,
   Trash2,
@@ -112,6 +113,7 @@ export function PlaylistsView() {
     user,
     selectedGuildId,
     playSong,
+    playNext,
     addToQueue,
     importUrlSong,
     importPlaylistToFavorites,
@@ -604,6 +606,14 @@ export function PlaylistsView() {
                           className="p-1.5 rounded-lg hover:bg-[#1db954]/15 text-slate-400 hover:text-[#1ed760] transition-colors cursor-pointer disabled:opacity-40"
                         >
                           <Play size={13} />
+                        </button>
+                        <button
+                          onClick={() => playNext(track)}
+                          disabled={isPlayerBusy}
+                          title="Reproducir a continuación (saltar cola)"
+                          className="p-1.5 rounded-lg hover:bg-purple-500/15 text-slate-400 hover:text-purple-300 transition-colors cursor-pointer disabled:opacity-40"
+                        >
+                          <ListPlus size={13} />
                         </button>
                         <button
                           onClick={() => addToQueue(track)}

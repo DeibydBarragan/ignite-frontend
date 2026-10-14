@@ -19,6 +19,7 @@ import {
   ExternalLink,
   Loader2,
   Star,
+  User,
 } from "lucide-react";
 import { AUDIO_FILTERS, AUDIO_FILTER_LABELS } from "@/lib/audio-filters";
 
@@ -112,9 +113,30 @@ export function PlayerBar() {
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                  {currentSong.artist}
-                </p>
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                  <span className="truncate">{currentSong.artist}</span>
+                  {currentSong.requestedBy?.username && (
+                    <>
+                      <span className="text-slate-300 dark:text-slate-600 shrink-0">•</span>
+                      <span
+                        className="inline-flex items-center gap-1 text-purple-600 dark:text-purple-400 font-medium shrink-0"
+                        title={`Pedido por ${currentSong.requestedBy.username}`}
+                      >
+                        {currentSong.requestedBy.avatar ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={currentSong.requestedBy.avatar}
+                            alt={currentSong.requestedBy.username}
+                            className="w-3 h-3 rounded-full object-cover inline-block shrink-0"
+                          />
+                        ) : (
+                          <User size={10} className="inline-block shrink-0" />
+                        )}
+                        <span className="truncate max-w-[80px] sm:max-w-[120px]">{currentSong.requestedBy.username}</span>
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
 
               <button

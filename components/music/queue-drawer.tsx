@@ -18,7 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Song } from "@/lib/mock-data";
-import { ListMusic, Trash2, X, Music, Play, Disc3, Loader2, ChevronUp, ChevronDown, GripVertical } from "lucide-react";
+import { ListMusic, Trash2, X, Music, Play, Disc3, Loader2, ChevronUp, ChevronDown, GripVertical, User } from "lucide-react";
 
 function formatDuration(sec: number) {
   const m = Math.floor(sec / 60);
@@ -97,9 +97,30 @@ function SortableQueueItem({
           <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
             {song.title}
           </p>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-            {song.artist}
-          </p>
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 truncate">
+            <span className="truncate">{song.artist}</span>
+            {song.requestedBy?.username && (
+              <>
+                <span className="text-slate-300 dark:text-slate-600 shrink-0">•</span>
+                <span
+                  className="inline-flex items-center gap-1 text-purple-600 dark:text-purple-400 font-medium shrink-0"
+                  title={`Añadido por ${song.requestedBy.username}`}
+                >
+                  {song.requestedBy.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={song.requestedBy.avatar}
+                      alt={song.requestedBy.username}
+                      className="w-3 h-3 rounded-full object-cover inline-block shrink-0"
+                    />
+                  ) : (
+                    <User size={10} className="inline-block shrink-0" />
+                  )}
+                  <span className="truncate max-w-[90px]">{song.requestedBy.username}</span>
+                </span>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
@@ -267,9 +288,30 @@ export function QueueDrawer({
                 <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
                   {currentSong.title}
                 </h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                  {currentSong.artist}
-                </p>
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 truncate">
+                  <span className="truncate">{currentSong.artist}</span>
+                  {currentSong.requestedBy?.username && (
+                    <>
+                      <span className="text-slate-300 dark:text-slate-600 shrink-0">•</span>
+                      <span
+                        className="inline-flex items-center gap-1 text-purple-600 dark:text-purple-400 font-medium shrink-0"
+                        title={`Pedido por ${currentSong.requestedBy.username}`}
+                      >
+                        {currentSong.requestedBy.avatar ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={currentSong.requestedBy.avatar}
+                            alt={currentSong.requestedBy.username}
+                            className="w-3.5 h-3.5 rounded-full object-cover inline-block shrink-0"
+                          />
+                        ) : (
+                          <User size={11} className="inline-block shrink-0" />
+                        )}
+                        <span>Pedido por {currentSong.requestedBy.username}</span>
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>

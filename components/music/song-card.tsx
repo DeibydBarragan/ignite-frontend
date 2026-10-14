@@ -2,7 +2,7 @@
 
 import { Song } from "@/lib/mock-data";
 import { useBot } from "@/context/bot-context";
-import { Play, Plus, Clock, Disc3, Loader2, Star } from "lucide-react";
+import { Play, Plus, ListPlus, Clock, Disc3, Loader2, Star } from "lucide-react";
 
 function formatDuration(sec: number) {
   const m = Math.floor(sec / 60);
@@ -20,6 +20,7 @@ export function SongCard({ song }: { song: Song }) {
     currentSong,
     isPlaying,
     playSong,
+    playNext,
     addToQueue,
     isPlayerBusy,
     pendingAction,
@@ -31,6 +32,7 @@ export function SongCard({ song }: { song: Song }) {
   const isCurrent = currentSong?.id === song.id;
   const isFav = isFavorite(song.id) || isFavorite(song.url);
   const isLoadingThisSongPlay = loadingSongId === song.id && pendingAction === "play";
+  const isLoadingThisSongNext = loadingSongId === song.id && pendingAction === "playNext";
   const isLoadingThisSongQueue = loadingSongId === song.id && pendingAction === "queue";
 
   return (
@@ -141,28 +143,53 @@ export function SongCard({ song }: { song: Song }) {
           {formatDuration(song.duration)}
         </span>
 
-        <button
-          onClick={() => addToQueue(song)}
-          disabled={isPlayerBusy || isLoadingThisSongQueue}
-          title={isLoadingThisSongQueue ? "Añadiendo a la cola..." : "Añadir a la cola"}
-          className={`glass-btn px-2 py-0.5 text-[10px] flex items-center gap-1 transition-colors ${
-            isLoadingThisSongQueue || isPlayerBusy
-              ? "opacity-50 cursor-not-allowed"
-              : "text-slate-600 dark:text-slate-300 hover:text-[#1ed760] hover:border-[#1db954]/30 cursor-pointer"
-          }`}
-        >
-          {isLoadingThisSongQueue ? (
-            <>
-              <Loader2 size={11} className="animate-spin text-purple-400" />
-              <span>Añadiendo...</span>
-            </>
-          ) : (
-            <>
-              <Plus size={11} />
-              <span>Cola</span>
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => playNext(song)}
+            disabled={isPlayerBusy || isLoadingThisSongNext}
+            title={isLoadingThisSongNext ? "Poniendo siguiente..." : "Reproducir siguiente (salta la cola)"}
+            className={`glass-btn px-2 py-0.5 text-[10px] flex items-center gap-1 transition-colors ${
+              isLoadingThisSongNext || isPlayerBusy
+                ? "opacity-50 cursor-not-allowed"
+                : "text-slate-600 dark:text-slate-300 hover:text-purple-400 hover:border-purple-500/30 cursor-pointer"
+            }`}
+          >
+            {isLoadingThisSongNext ? (
+              <>
+                <Loader2 size={11} className="animate-spin text-purple-400" />
+                <span>Sig...</span>
+              </>
+            ) : (
+              <>
+                <ListPlus size={11} />
+                <span>Sig.</span>
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={() => addToQueue(song)}
+            disabled={isPlayerBusy || isLoadingThisSongQueue}
+            title={isLoadingThisSongQueue ? "Añadiendo a la cola..." : "Añadir a la cola"}
+            className={`glass-btn px-2 py-0.5 text-[10px] flex items-center gap-1 transition-colors ${
+              isLoadingThisSongQueue || isPlayerBusy
+                ? "opacity-50 cursor-not-allowed"
+                : "text-slate-600 dark:text-slate-300 hover:text-[#1ed760] hover:border-[#1db954]/30 cursor-pointer"
+            }`}
+          >
+            {isLoadingThisSongQueue ? (
+              <>
+                <Loader2 size={11} className="animate-spin text-purple-400" />
+                <span>Cola...</span>
+              </>
+            ) : (
+              <>
+                <Plus size={11} />
+                <span>Cola</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
