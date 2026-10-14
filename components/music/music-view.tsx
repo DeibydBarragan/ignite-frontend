@@ -190,8 +190,8 @@ export function MusicView() {
     <div className="space-y-4 pb-28">
       {/* ══════════ COMANDO: BÚSQUEDA Y DETECCIÓN DE ENLACES ══════════ */}
       <div className="space-y-3">
-        <form onSubmit={handleImport} className="relative flex items-center">
-          <div className="relative flex-1 flex items-center">
+        <form onSubmit={handleImport} className="relative w-full">
+          <div className="relative w-full flex items-center">
             {isUrl ? (
               <Link2 size={16} className="absolute left-3.5 text-[#1ed760] transition-colors" />
             ) : (
@@ -207,7 +207,9 @@ export function MusicView() {
               onFocus={() => {
                 if (suggestions.length > 0) setShowSuggestions(true);
               }}
-              onBlur={() => setShowSuggestions(false)}
+              onBlur={() => {
+                setTimeout(() => setShowSuggestions(false), 150);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Escape") setShowSuggestions(false);
               }}
@@ -275,15 +277,15 @@ export function MusicView() {
 
           {/* Sugerencias de YouTube (igual que /play en Discord) */}
           {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1.5 z-30 glass-panel p-1.5 max-h-60 overflow-y-auto custom-scrollbar">
+            <div className="absolute top-full left-0 right-0 mt-1.5 z-40 glass-dropdown p-1.5 max-h-60 overflow-y-auto custom-scrollbar border border-black/10 dark:border-white/10 shadow-2xl space-y-0.5">
               {suggestions.map((s) => (
                 <div
                   key={s}
-                  className="w-full px-2 py-1.5 rounded-lg text-xs text-slate-700 dark:text-slate-300 hover:bg-purple-500/10 hover:text-slate-900 dark:hover:text-white flex items-center justify-between gap-2 transition-colors group/item"
+                  className="w-full px-2.5 py-1.5 rounded-lg text-xs text-slate-700 dark:text-slate-300 hover:bg-purple-500/10 hover:text-slate-900 dark:hover:text-white flex items-center justify-between gap-2 transition-colors group/item"
                 >
                   <button
                     type="button"
-                    onMouseDown={(e) => {
+                    onPointerDown={(e) => {
                       e.preventDefault();
                       setSearchInput(s);
                       submitQuery(s);
@@ -295,16 +297,16 @@ export function MusicView() {
                   </button>
                   <button
                     type="button"
-                    onMouseDown={(e) => {
+                    onPointerDown={(e) => {
                       e.preventDefault();
                       setSearchInput(s);
                       submitQuery(s, { next: true });
                     }}
                     title="Reproducir siguiente (salta la cola)"
-                    className="opacity-0 group-hover/item:opacity-100 px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 text-[10px] flex items-center gap-1 transition-all cursor-pointer shrink-0"
+                    className="opacity-0 group-hover/item:opacity-100 sm:group-hover/item:opacity-100 px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 dark:text-purple-300 hover:bg-purple-500/30 text-[10px] flex items-center gap-1 transition-all cursor-pointer shrink-0"
                   >
                     <ListPlus size={11} />
-                    <span>Siguiente</span>
+                    <span className="hidden sm:inline">Siguiente</span>
                   </button>
                 </div>
               ))}
