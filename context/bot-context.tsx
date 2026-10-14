@@ -1099,12 +1099,15 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
               setPendingAction("reorder");
               setQueue(backupQueue);
               try {
-                for (const song of backupQueue) {
-                  await igniteApi.play(selectedGuildId, {
-                    query: song.url || `${song.title} ${song.artist}`,
-                    userId: song.requestedBy?.id || user?.id || undefined,
-                    skip: false,
-                  });
+                const undoRes = await igniteApi.undoClearQueue(selectedGuildId);
+                if (!undoRes.success) {
+                  for (const song of backupQueue) {
+                    await igniteApi.play(selectedGuildId, {
+                      query: song.url || `${song.title} ${song.artist}`,
+                      userId: song.requestedBy?.id || user?.id || undefined,
+                      skip: false,
+                    });
+                  }
                 }
                 await syncPlayerState();
               } finally {

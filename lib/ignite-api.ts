@@ -345,6 +345,21 @@ class IgniteApiClient {
       return false;
     }
   }
+
+  async undoClearQueue(guildId: string): Promise<{ success: boolean; restored?: number; error?: string }> {
+    try {
+      const base = await discoverBaseUrl();
+      const res = await fetch(`${base}/api/guilds/${guildId}/queue/undo`, {
+        method: "POST",
+        headers: this.headers,
+      });
+      const data = await res.json();
+      if (!res.ok) return { success: false, error: data.error };
+      return { success: data.success ?? true, restored: data.restored };
+    } catch (err: any) {
+      return { success: false, error: err?.message };
+    }
+  }
 }
 
 export const igniteApi = new IgniteApiClient();
