@@ -437,67 +437,64 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isLoggedIn, selectedGuildId, toast]);
 
-  const checkVoiceRequirement = useCallback(async (): Promise<boolean> => {
-    if (!isLoggedIn || !user || !selectedGuildId) return true;
+  const checkVoiceRequirement = useCallback(async (): Promise<{ canPlay: boolean; reason?: string }> => {
+    if (!isLoggedIn || !user || !selectedGuildId) return { canPlay: true };
+
+    if (!isBotOnline) {
+      toast("El bot de música está desconectado. Inicia el bot para reproducir música.", "error");
+      return { canPlay: false, reason: "El bot de música está desconectado. Inicia el bot para reproducir música." };
+    }
 
     try {
       const status = await igniteApi.getVoiceStatus(selectedGuildId, user.id);
-      if (status) {
-        if (status.user) {
-          setIsVoiceConnected(true);
-          setCurrentVoiceChannelId(status.user.id);
-        } else {
-          setIsVoiceConnected(false);
-          setCurrentVoiceChannelId("");
-        }
-        if (status.bot) {
-          botVoiceChannelRef.current = status.bot;
-        } else {
-          botVoiceChannelRef.current = null;
-        }
-
-        // 1. Debe estar en un canal de voz
-        if (!status.user) {
-          toast("¡Debes estar en un canal de voz en Discord para reproducir música!", "error", {
-            duration: 5000,
-          });
-          return false;
-        }
-
-        // 2. Si el bot ya está en un canal, el usuario debe estar en el mismo canal
-        if (status.bot && status.user.id !== status.bot.id) {
-          toast(
-            `¡Debes estar en el mismo canal de voz que el bot ("${status.bot.name}")! Estás en "${status.user.name}".`,
-            "error",
-            { duration: 5500 }
-          );
-          return false;
-        }
-        return true;
+      if (!status) {
+        setIsBotOnline(false);
+        toast("El bot de música está desconectado. Inicia el bot para reproducir música.", "error");
+        return { canPlay: false, reason: "El bot de música está desconectado. Inicia el bot para reproducir música." };
       }
+
+      setIsBotOnline(true);
+      if (status.user) {
+        setIsVoiceConnected(true);
+        setCurrentVoiceChannelId(status.user.id);
+      } else {
+        setIsVoiceConnected(false);
+        setCurrentVoiceChannelId("");
+      }
+      if (status.bot) {
+        botVoiceChannelRef.current = status.bot;
+      } else {
+        botVoiceChannelRef.current = null;
+      }
+
+      // 1. Debe estar en un canal de voz
+      if (!status.user) {
+        toast("¡Debes estar en un canal de voz en Discord para reproducir música!", "error", {
+          duration: 5000,
+        });
+        return { canPlay: false, reason: "¡Debes estar en un canal de voz en Discord para reproducir música!" };
+      }
+
+      // 2. Si el bot ya está en un canal, el usuario debe estar en el mismo canal
+      if (status.bot && status.user.id !== status.bot.id) {
+        toast(
+          `¡Debes estar en el mismo canal de voz que el bot ("${status.bot.name}")! Estás en "${status.user.name}".`,
+          "error",
+          { duration: 5500 }
+        );
+        return {
+          canPlay: false,
+          reason: `¡Debes estar en el mismo canal de voz que el bot ("${status.bot.name}")!`,
+        };
+      }
+
+      return { canPlay: true };
     } catch {
-      // Ignorar fallo de red y verificar estado local
+      setIsBotOnline(false);
+      toast("El bot de música está desconectado. Inicia el bot para reproducir música.", "error");
+      return { canPlay: false, reason: "El bot de música está desconectado. Inicia el bot para reproducir música." };
     }
-
-    if (!isVoiceConnected) {
-      toast("¡Debes estar en un canal de voz en Discord para reproducir música!", "error", {
-        duration: 5000,
-      });
-      return false;
-    }
-
-    const botChannel = botVoiceChannelRef.current;
-    if (botChannel && currentVoiceChannel && currentVoiceChannel.id !== botChannel.id) {
-      toast(
-        `¡Debes estar en el mismo canal de voz que el bot ("${botChannel.name}")! Estás en "${currentVoiceChannel.name}".`,
-        "error",
-        { duration: 5500 }
-      );
-      return false;
-    }
-
-    return true;
-  }, [isLoggedIn, user, selectedGuildId, isVoiceConnected, currentVoiceChannel, toast]);
+  }, [isLoggedIn, user, selectedGuildId, isBotOnline, toast]);
 
   // Chequeo de salud del bot al iniciar
   useEffect(() => {
@@ -751,8 +748,8 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   const playSong = useCallback(async (song: Song) => {
     if (!isLoggedIn || isPlayerBusy) return;
 
-    const canPlay = await checkVoiceRequirement();
-    if (!canPlay) return;
+    const voiceCheck = await checkVoiceRequirement();
+    if (!voiceCheck.canPlay) return;
 
     setIsPlayerBusy(true);
     setPendingAction("play");
@@ -819,8 +816,8 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   const addToQueue = useCallback(async (song: Song) => {
     if (!isLoggedIn || loadingSongId === song.id) return;
 
-    const canPlay = await checkVoiceRequirement();
-    if (!canPlay) return;
+    const voiceCheck = await checkVoiceRequirement();
+    if (!voiceCheck.canPlay) return;
 
     setPendingAction("queue");
     setLoadingSongId(song.id);
@@ -871,8 +868,8 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   const playNext = useCallback(async (song: Song) => {
     if (!isLoggedIn || loadingSongId === song.id) return;
 
-    const canPlay = await checkVoiceRequirement();
-    if (!canPlay) return;
+    const voiceCheck = await checkVoiceRequirement();
+    if (!voiceCheck.canPlay) return;
 
     setPendingAction("playNext");
     setLoadingSongId(song.id);
@@ -1324,9 +1321,9 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       return { success: false, message: "SoundCloud ya no está soportado. Usa un enlace de YouTube o Spotify, o busca por nombre." };
     }
 
-    const canPlay = await checkVoiceRequirement();
-    if (!canPlay) {
-      return { success: false, message: "¡Debes estar en el canal de voz adecuado en Discord!" };
+    const voiceCheck = await checkVoiceRequirement();
+    if (!voiceCheck.canPlay) {
+      return { success: false, message: voiceCheck.reason || "El bot de música no está disponible." };
     }
 
     setPendingAction(opts?.next ? "playNext" : "queue");
