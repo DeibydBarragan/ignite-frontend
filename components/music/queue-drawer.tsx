@@ -18,7 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Song } from "@/lib/mock-data";
-import { ListMusic, Trash2, X, Music, Play, Disc3, Loader2, ChevronUp, ChevronDown, GripVertical, User } from "lucide-react";
+import { ListMusic, Trash2, X, Music, Play, Disc3, Loader2, ChevronUp, ChevronDown, GripVertical, User, Star } from "lucide-react";
 
 function formatDuration(sec: number) {
   const m = Math.floor(sec / 60);
@@ -36,6 +36,8 @@ function SortableQueueItem({
   onMove,
   onJump,
   onRemove,
+  isFav,
+  onToggleFavorite,
 }: {
   id: string;
   song: Song;
@@ -46,6 +48,8 @@ function SortableQueueItem({
   onMove: (from: number, to: number) => void;
   onJump: (index: number) => void;
   onRemove: (songId: string) => void;
+  isFav: boolean;
+  onToggleFavorite: (song: Song) => void;
 }) {
   const {
     attributes,
@@ -129,6 +133,18 @@ function SortableQueueItem({
           {formatDuration(song.duration)}
         </span>
         <button
+          type="button"
+          onClick={() => onToggleFavorite(song)}
+          title={isFav ? "Quitar de favoritos" : "Guardar en favoritos"}
+          className={`p-1 rounded-lg transition-colors cursor-pointer ${
+            isFav
+              ? "text-amber-400 hover:bg-amber-400/10"
+              : "text-slate-400 hover:text-amber-400 hover:bg-amber-400/10"
+          }`}
+        >
+          <Star size={13} className={isFav ? "fill-amber-400" : ""} />
+        </button>
+        <button
           onClick={() => onMove(index, index - 1)}
           disabled={disabled || index === 0}
           title="Subir en la cola"
@@ -205,6 +221,8 @@ export function QueueDrawer({
     pendingAction,
     removingSongId,
     isReordering,
+    isFavorite,
+    toggleFavorite,
   } = useBot();
 
   const sensors = useSensors(
@@ -315,6 +333,29 @@ export function QueueDrawer({
                   )}
                 </div>
               </div>
+              <button
+                type="button"
+                onClick={() => toggleFavorite(currentSong)}
+                title={
+                  (isFavorite(currentSong.id) || isFavorite(currentSong.url))
+                    ? "Quitar de favoritos"
+                    : "Guardar en favoritos"
+                }
+                className={`p-2 rounded-xl transition-colors cursor-pointer shrink-0 ${
+                  (isFavorite(currentSong.id) || isFavorite(currentSong.url))
+                    ? "text-amber-400 bg-amber-400/10 hover:bg-amber-400/20"
+                    : "text-slate-400 hover:text-amber-400 hover:bg-black/5 dark:hover:bg-white/5"
+                }`}
+              >
+                <Star
+                  size={16}
+                  className={
+                    (isFavorite(currentSong.id) || isFavorite(currentSong.url))
+                      ? "fill-amber-400"
+                      : ""
+                  }
+                />
+              </button>
             </div>
           </div>
         )}
@@ -369,6 +410,8 @@ export function QueueDrawer({
                         onMove={moveQueueSong}
                         onJump={jumpToQueueSong}
                         onRemove={removeFromQueue}
+                        isFav={isFavorite(song.id) || isFavorite(song.url)}
+                        onToggleFavorite={toggleFavorite}
                       />
                     ))}
                   </div>
