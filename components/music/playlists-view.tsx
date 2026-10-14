@@ -29,6 +29,7 @@ import {
   AlertCircle,
   Music2,
   Star,
+  ExternalLink,
 } from "lucide-react";
 
 function formatDuration(sec: number) {
@@ -41,6 +42,19 @@ function totalDuration(tracks: Song[]) {
   return tracks.reduce((acc, t) => acc + (t.duration || 180), 0);
 }
 
+const SOURCE_THEMES: Record<string, { label: string; badge: string; dot: string }> = {
+  spotify: {
+    label: "Spotify",
+    badge: "bg-[#1db954]/20 text-[#1ed760] border-[#1db954]/40",
+    dot: "bg-[#1ed760]",
+  },
+  youtube: {
+    label: "YouTube",
+    badge: "bg-red-500/20 text-red-400 border-red-500/40",
+    dot: "bg-red-500",
+  },
+};
+
 interface LiveState {
   playlistId: string;
   status: "loading" | "ok" | "error";
@@ -49,7 +63,17 @@ interface LiveState {
 }
 
 /** Portada con placeholder shimmer mientras carga la imagen. */
-function CoverImage({ src, alt, className = "" }: { src: string; alt: string; className?: string }) {
+function CoverImage({
+  src,
+  alt,
+  className = "",
+  imgClassName = "",
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+  imgClassName?: string;
+}) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
   const [broken, setBroken] = useState(false);
@@ -64,7 +88,7 @@ function CoverImage({ src, alt, className = "" }: { src: string; alt: string; cl
     <span className={`relative block overflow-hidden bg-black/5 dark:bg-white/5 ${className}`}>
       {(!loaded || broken) && (
         <span className="absolute inset-0 ignite-shimmer flex items-center justify-center bg-gradient-to-br from-purple-600/70 via-indigo-600/60 to-slate-900/90">
-          <Music2 size={20} className="relative text-white/85" />
+          <Music2 size={24} className="relative text-white/85" />
         </span>
       )}
       {!broken && (
@@ -79,9 +103,9 @@ function CoverImage({ src, alt, className = "" }: { src: string; alt: string; cl
             if (!failed) setFailed(true);
             else setBroken(true);
           }}
-          className={`h-full w-full object-cover transition-opacity duration-300 ${
+          className={`h-full w-full object-cover transition-all duration-500 ${
             loaded ? "opacity-100" : "opacity-0"
-          }`}
+          } ${imgClassName}`}
         />
       )}
     </span>
@@ -205,13 +229,19 @@ export function PlaylistsView() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, name?: string) => {
+    if (name && !window.confirm(`¿Seguro que deseas eliminar la playlist "${name}" de tu colección?`)) {
+      return;
+    }
     setPlaylists((prev) => prev.filter((p) => p.id !== id));
     if (selected?.id === id) {
       setSelected(null);
       setLive(null);
     }
     await deleteUserPlaylist(id);
+    if (name) {
+      showFeedback("success", `Playlist "${name}" eliminada.`);
+    }
   };
 
   // Abrir detalle = sincronizar con el estado ACTUAL de la plataforma
@@ -392,96 +422,201 @@ export function PlaylistsView() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map((pl) => {
             const isPlayingThis = playingId === pl.id;
             const isQueueingThis = queueingId === pl.id;
             const neverSynced = pl.tracks.length === 0;
+            const sourceKey = (pl.source || "").toLowerCase();
+            const sourceTheme = SOURCE_THEMES[sourceKey] || {
+              label: pl.source || "Playlist",
+              badge: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+              dot: "bg-purple-400",
+            };
+
             return (
               <div
                 key={pl.id}
-                className="glass-panel p-3.5 flex flex-col gap-3 hover:border-purple-500/30 transition-colors"
+                className={`group relative glass-panel p-3.5 flex flex-col justify-between transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/5 ${
+                  isPlayingThis
+                    ? "border-[#1db954]/50 bg-[#1db954]/5 ring-1 ring-[#1db954]/30"
+                    : "hover:border-purple-500/40"
+                }`}
               >
-                <div className="flex items-start gap-3">
-                  <CoverImage
-                    src={pl.cover}
-                    alt={pl.name}
-                    className="w-14 h-14 rounded-xl ring-1 ring-black/10 dark:ring-white/10 shrink-0"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <h4 className="text-xs font-bold text-slate-900 dark:text-white truncate" title={pl.name}>
-                      {pl.name}
-                    </h4>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <span className="text-[10px] uppercase font-bold px-1.5 py-0.2 rounded-full border bg-purple-500/10 text-purple-400 border-purple-500/20">
-                        {pl.source}
+                <div>
+                  {/* Artwork Banner Container */}
+                  <div
+                    onClick={() => openPlaylist(pl)}
+                    className="relative aspect-[16/10] w-full rounded-2xl overflow-hidden mb-3 bg-black/10 dark:bg-black/30 cursor-pointer select-none"
+                  >
+                    <CoverImage
+                      src={pl.cover}
+                      alt={pl.name}
+                      className="w-full h-full"
+                      imgClassName="group-hover:scale-105 transition-transform duration-500 ease-out"
+                    />
+
+                    {/* Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
+
+                    {/* Source Badge */}
+                    <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 z-10">
+                      <span
+                        className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border backdrop-blur-md flex items-center gap-1 shadow-xs ${sourceTheme.badge}`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${sourceTheme.dot}`} />
+                        {sourceTheme.label}
                       </span>
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono tabular-nums flex items-center gap-1">
-                        <Music2 size={10} />
+                    </div>
+
+                    {/* Delete Action Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(pl.id, pl.name);
+                      }}
+                      title="Eliminar playlist"
+                      className="absolute top-2.5 right-2.5 p-1.5 rounded-full bg-black/60 hover:bg-rose-500/80 text-white/70 hover:text-white backdrop-blur-md border border-white/10 hover:border-rose-400/50 opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer z-10 shadow-xs"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+
+                    {/* Track count pill */}
+                    <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1 z-10 pointer-events-none">
+                      <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-white/90 border border-white/10 flex items-center gap-1 shadow-xs">
+                        <Music2 size={11} className="text-purple-400" />
                         {neverSynced ? "Sin sincronizar" : `${pl.tracks.length} temas`}
                       </span>
                     </div>
-                    {!neverSynced && (
-                      <p className="text-[10px] text-slate-400 font-mono tabular-nums mt-1 flex items-center gap-1">
-                        <Clock size={10} />
-                        ~{formatDuration(totalDuration(pl.tracks))}
-                      </p>
+
+                    {/* Equalizer overlay when playing */}
+                    {isPlayingThis && (
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center gap-1.5 z-10">
+                        <span className="w-1.5 h-6 bg-[#1ed760] rounded-full animate-pulse" />
+                        <span className="w-1.5 h-8 bg-purple-400 rounded-full animate-pulse [animation-delay:150ms]" />
+                        <span className="w-1.5 h-5 bg-[#1ed760] rounded-full animate-pulse [animation-delay:300ms]" />
+                      </div>
                     )}
+
+                    {/* Quick Play Floating Button (Spotify style) */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handlePlayPlaylist(pl);
+                      }}
+                      disabled={isPlayerBusy || isPlayingThis}
+                      aria-label={`Reproducir ${pl.name}`}
+                      className={`absolute bottom-2.5 right-2.5 w-11 h-11 rounded-full bg-[#1db954] text-black shadow-lg shadow-[#1db954]/30 flex items-center justify-center transition-all duration-300 transform z-10 ${
+                        isPlayingThis
+                          ? "opacity-100 scale-100 cursor-not-allowed"
+                          : "opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 hover:scale-110 active:scale-95 hover:bg-[#1ed760] cursor-pointer"
+                      }`}
+                    >
+                      {isPlayingThis ? (
+                        <Loader2 size={18} className="animate-spin text-black" />
+                      ) : (
+                        <Play size={18} className="fill-current ml-0.5" />
+                      )}
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleDelete(pl.id)}
-                    title="Eliminar playlist"
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer shrink-0"
-                  >
-                    <Trash2 size={13} />
-                  </button>
+
+                  {/* Title & Metadata */}
+                  <div className="mb-2">
+                    <h4
+                      onClick={() => openPlaylist(pl)}
+                      className="text-sm font-bold text-slate-900 dark:text-white truncate cursor-pointer hover:text-purple-400 dark:hover:text-purple-300 transition-colors"
+                      title={pl.name}
+                    >
+                      {pl.name}
+                    </h4>
+
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-1">
+                      {!neverSynced ? (
+                        <span className="flex items-center gap-1 text-slate-400 dark:text-slate-400">
+                          <Clock size={11} />
+                          ~{formatDuration(totalDuration(pl.tracks))}
+                        </span>
+                      ) : (
+                        <span className="text-amber-500/90 dark:text-amber-400/90 text-[10px]">
+                          No sincronizada
+                        </span>
+                      )}
+                      {pl.synced_at && (
+                        <span className="text-[10px] text-slate-400/70 dark:text-slate-500">
+                          {timeAgo(pl.synced_at)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Top Tracks preview */}
+                  {pl.tracks.length > 0 ? (
+                    <p
+                      className="text-[11px] text-slate-500 dark:text-slate-400/80 truncate mb-3"
+                      title={pl.tracks.slice(0, 4).map((t) => t.title).join(" • ")}
+                    >
+                      {pl.tracks.slice(0, 3).map((t) => t.title).join(" • ")}
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-slate-400/60 dark:text-slate-500 italic truncate mb-3">
+                      Abre la playlist para sincronizar sus temas
+                    </p>
+                  )}
                 </div>
 
-                <div className="flex items-center gap-1.5 pt-2 border-t border-black/5 dark:border-white/5">
+                {/* Streamlined Action Buttons */}
+                <div className="flex items-center gap-2 pt-2.5 border-t border-black/5 dark:border-white/5 mt-auto">
                   <button
+                    type="button"
                     onClick={() => openPlaylist(pl)}
-                    className="flex-1 px-2 py-1.5 rounded-lg text-[11px] font-medium bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                    className="flex-1 py-2 px-2.5 rounded-xl text-xs font-medium bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                   >
-                    <Eye size={12} />
+                    <Eye size={13} />
                     <span>Ver temas</span>
                   </button>
+
                   <button
+                    type="button"
                     onClick={() => handlePlayPlaylist(pl)}
                     disabled={isPlayerBusy || isPlayingThis}
-                    className="flex-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold bg-[#1db954] hover:bg-[#1ed760] disabled:opacity-50 text-black flex items-center justify-center gap-1 transition-all cursor-pointer disabled:cursor-not-allowed"
+                    className="flex-1 py-2 px-2.5 rounded-xl text-xs font-semibold bg-[#1db954] hover:bg-[#1ed760] disabled:opacity-50 text-black flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:cursor-not-allowed shadow-xs"
                   >
                     {isPlayingThis ? (
-                      <Loader2 size={12} className="animate-spin" />
+                      <Loader2 size={13} className="animate-spin" />
                     ) : (
-                      <Play size={12} className="fill-current" />
+                      <Play size={13} className="fill-current" />
                     )}
-                    <span>{isPlayingThis ? "Sonando..." : "Reproducir"}</span>
+                    <span>{isPlayingThis ? "Sonando" : "Reproducir"}</span>
                   </button>
+
                   <button
+                    type="button"
                     onClick={() => handleQueuePlaylist(pl)}
                     disabled={isPlayerBusy || isQueueingThis}
                     title="Añadir toda la playlist a la cola"
-                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium glass-btn text-slate-600 dark:text-slate-300 hover:text-[#1ed760] flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
+                    className="p-2 rounded-xl glass-btn text-slate-500 dark:text-slate-300 hover:text-emerald-400 hover:border-emerald-500/30 flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50 shrink-0"
                   >
                     {isQueueingThis ? (
-                      <Loader2 size={12} className="animate-spin" />
+                      <Loader2 size={14} className="animate-spin text-emerald-400" />
                     ) : (
-                      <Plus size={12} />
+                      <Plus size={14} />
                     )}
-                    <span>Cola</span>
                   </button>
+
                   <button
+                    type="button"
                     onClick={() => handleImportFavorites(pl)}
                     disabled={!!importingFavId}
-                    title="Guardar los temas en favoritos"
-                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium glass-btn text-slate-600 dark:text-slate-300 hover:text-amber-400 flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
+                    title="Guardar todos los temas en favoritos"
+                    className="p-2 rounded-xl glass-btn text-slate-500 dark:text-slate-300 hover:text-amber-400 hover:border-amber-400/30 flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50 shrink-0"
                   >
                     {importingFavId === pl.id ? (
-                      <Loader2 size={12} className="animate-spin" />
+                      <Loader2 size={14} className="animate-spin text-amber-400" />
                     ) : (
-                      <Star size={12} />
+                      <Star size={14} />
                     )}
-                    <span>Favs</span>
                   </button>
                 </div>
               </div>
@@ -506,9 +641,20 @@ export function PlaylistsView() {
         }
         footer={
           selected && !isSyncing && modalTracks.length > 0 ? (
-            <div className="flex items-center justify-end gap-2 w-full">
-              <button
-                onClick={() => selected && handleImportFavorites(selected)}
+            <div className="flex items-center justify-between gap-2 w-full">
+              <a
+                href={selected.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={`Abrir playlist en ${selected.source}`}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-medium glass-btn text-slate-400 hover:text-slate-100 flex items-center gap-1.5 transition-colors"
+              >
+                <ExternalLink size={12} />
+                <span className="hidden sm:inline">Abrir en {selected.source}</span>
+              </a>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => selected && handleImportFavorites(selected)}
                 disabled={!!importingFavId}
                 title="Guardar los temas en favoritos"
                 className="px-3 py-1.5 rounded-lg text-xs font-medium glass-btn text-slate-600 dark:text-slate-300 hover:text-amber-400 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
@@ -539,6 +685,7 @@ export function PlaylistsView() {
                 <Play size={13} className="fill-current" />
                 <span>Reproducir todo</span>
               </button>
+              </div>
             </div>
           ) : undefined
         }

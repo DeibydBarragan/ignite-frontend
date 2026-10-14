@@ -57,9 +57,26 @@ export function SongCard({ song }: { song: Song }) {
             loading="lazy"
           />
 
+          {/* Rank Badge */}
+          {typeof song.rank === "number" && (
+            <span
+              className={`absolute top-2 left-2 text-[10px] font-black px-2 py-0.5 rounded-full border backdrop-blur-md z-10 shadow-sm ${
+                song.rank === 1
+                  ? "bg-amber-400 text-slate-950 border-amber-300 ring-2 ring-amber-400/50"
+                  : song.rank === 2
+                  ? "bg-slate-200 text-slate-900 border-slate-300"
+                  : song.rank === 3
+                  ? "bg-amber-700/90 text-amber-100 border-amber-600"
+                  : "bg-black/60 text-slate-200 border-white/10"
+              }`}
+            >
+              #{song.rank}
+            </span>
+          )}
+
           {/* Source badge */}
           <span
-            className={`absolute top-2 left-2 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border backdrop-blur-md ${SOURCE_COLORS[song.source].bg} ${SOURCE_COLORS[song.source].text}`}
+            className={`absolute ${typeof song.rank === "number" ? "top-8" : "top-2"} left-2 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border backdrop-blur-md ${SOURCE_COLORS[song.source].bg} ${SOURCE_COLORS[song.source].text}`}
           >
             {SOURCE_COLORS[song.source].label}
           </span>
@@ -68,7 +85,7 @@ export function SongCard({ song }: { song: Song }) {
           {song.isLyric && (
             <span
               title="Video con letra"
-              className="absolute top-9 left-2 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border backdrop-blur-md bg-sky-500/10 text-sky-500 border-sky-500/20"
+              className={`absolute ${typeof song.rank === "number" ? "top-14" : "top-9"} left-2 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border backdrop-blur-md bg-sky-500/10 text-sky-500 border-sky-500/20`}
             >
               Lyric
             </span>
@@ -138,10 +155,20 @@ export function SongCard({ song }: { song: Song }) {
 
       {/* Footer & Actions */}
       <div className="mt-2.5 pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between text-xs">
-        <span className="text-[10px] text-slate-400 flex items-center gap-1 font-mono tabular-nums">
-          <Clock size={10} />
-          {formatDuration(song.duration)}
-        </span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-[10px] text-slate-400 flex items-center gap-1 font-mono tabular-nums shrink-0">
+            <Clock size={10} />
+            {formatDuration(song.duration)}
+          </span>
+          {typeof song.playCount === "number" && song.playCount > 0 && (
+            <span
+              title={`${song.playCount} ${song.playCount === 1 ? "reproducción" : "reproducciones"}`}
+              className="text-[10px] text-amber-500/90 bg-amber-500/10 px-1.5 py-0.2 rounded-full font-bold flex items-center gap-0.5 shrink-0"
+            >
+              🔥 {song.playCount}
+            </span>
+          )}
+        </div>
 
         <div className="flex items-center gap-1.5">
           <button

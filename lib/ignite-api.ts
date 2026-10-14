@@ -360,6 +360,39 @@ class IgniteApiClient {
       return { success: false, error: err?.message };
     }
   }
+
+  async getRecommendations(guildId: string): Promise<{ success: boolean; source: "radio" | "top" | "empty"; basedOn: Song | null; songs: Song[] }> {
+    try {
+      const base = await discoverBaseUrl();
+      const res = await fetch(`${base}/api/guilds/${guildId}/recommendations`, {
+        headers: this.headers,
+      });
+      const data = await res.json();
+      if (!res.ok) return { success: false, source: "empty", basedOn: null, songs: [] };
+      return {
+        success: true,
+        source: data.source || "empty",
+        basedOn: data.basedOn || null,
+        songs: data.songs || [],
+      };
+    } catch {
+      return { success: false, source: "empty", basedOn: null, songs: [] };
+    }
+  }
+
+  async getTopSongs(guildId: string, timeframe: "week" | "month" | "all" = "week"): Promise<{ success: boolean; songs: Song[] }> {
+    try {
+      const base = await discoverBaseUrl();
+      const res = await fetch(`${base}/api/guilds/${guildId}/top-songs?timeframe=${timeframe}`, {
+        headers: this.headers,
+      });
+      const data = await res.json();
+      if (!res.ok) return { success: false, songs: [] };
+      return { success: true, songs: data.songs || [] };
+    } catch {
+      return { success: false, songs: [] };
+    }
+  }
 }
 
 export const igniteApi = new IgniteApiClient();

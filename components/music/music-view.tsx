@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useBot } from "@/context/bot-context";
 import { igniteApi } from "@/lib/ignite-api";
+import { Song, MOCK_SONGS } from "@/lib/mock-data";
 import { SongCard } from "@/components/music/song-card";
 import { PlaylistsView } from "@/components/music/playlists-view";
 import {
@@ -19,6 +20,10 @@ import {
   Play,
   Sparkles,
   ListMusic,
+  Radio,
+  Trophy,
+  CalendarDays,
+  RefreshCw,
 } from "lucide-react";
 
 function detectPlatform(text: string): "spotify" | "youtube" | null {
@@ -31,27 +36,93 @@ function detectPlatform(text: string): "spotify" | "youtube" | null {
 
 export function MusicView() {
   const {
-    catalog,
     favorites,
     isLoadingFavorites,
     playFavorites,
     importUrlSong,
     isPlayerBusy,
     pendingAction,
+    selectedGuildId,
+    currentSong,
+    playSong,
+    addToQueue,
   } = useBot();
 
   const [activeTab, setActiveTab] = useState<"favorites" | "catalog" | "playlists">("favorites");
+  const [recSubTab, setRecSubTab] = useState<"radio" | "week" | "month" | "all">("radio");
+  const [recSongs, setRecSongs] = useState<Song[]>([]);
+  const [basedOnSong, setBasedOnSong] = useState<Song | null>(null);
+  const [isLoadingRecs, setIsLoadingRecs] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const fetchRecs = useCallback(
+    async (mode: "radio" | "week" | "month" | "all") => {
+      if (!selectedGuildId) return;
+      setIsLoadingRecs(true);
+      try {
+        if (mode === "radio") {
+          const res = await igniteApi.getRecommendations(selectedGuildId);
+          if (res.success && res.songs.length > 0) {
+            setRecSongs(res.songs);
+            setBasedOnSong(res.basedOn);
+          } else {
+            setRecSongs(MOCK_SONGS);
+            setBasedOnSong(null);
+          }
+        } else {
+          const res = await igniteApi.getTopSongs(selectedGuildId, mode);
+          if (res.success && res.songs.length > 0) {
+            setRecSongs(res.songs);
+          } else {
+            setRecSongs([]);
+          }
+          setBasedOnSong(null);
+        }
+      } catch (err) {
+        console.error("Error loading recommendations:", err);
+        if (mode === "radio") {
+          setRecSongs(MOCK_SONGS);
+        } else {
+          setRecSongs([]);
+        }
+      } finally {
+        setIsLoadingRecs(false);
+      }
+    },
+    [selectedGuildId]
+  );
+
+  useEffect(() => {
+    if (activeTab === "catalog") {
+      fetchRecs(recSubTab);
+    }
+  }, [activeTab, recSubTab, fetchRecs]);
+
+  // Si cambia la canción en reproducción y estamos en la radio, actualizar las recomendaciones afines
+  useEffect(() => {
+    if (activeTab === "catalog" && recSubTab === "radio" && currentSong?.id) {
+      fetchRecs("radio");
+    }
+  }, [currentSong?.id, activeTab, recSubTab, fetchRecs]);
+
+  const playAllRecs = async () => {
+    if (isPlayerBusy || recSongs.length === 0) return;
+    const [first, ...rest] = recSongs;
+    await playSong(first);
+    for (const song of rest) {
+      await addToQueue(song);
+    }
+  };
+
   const isImporting = isPlayerBusy && (pendingAction === "queue" || pendingAction === "playNext");
   const detectedPlatform = useMemo(() => detectPlatform(searchInput.trim()), [searchInput]);
   const isUrl = detectedPlatform !== null;
 
-  const currentList = activeTab === "favorites" ? favorites : catalog;
+  const currentList = activeTab === "favorites" ? favorites : recSongs;
 
   const displayedSongs = useMemo(() => {
     if (isUrl) return currentList;
@@ -292,7 +363,7 @@ export function MusicView() {
               />
               <span>Recomendadas</span>
               <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-500/15 text-purple-400 font-mono">
-                {catalog.length}
+                {recSongs.length}
               </span>
             </button>
 
@@ -326,6 +397,108 @@ export function MusicView() {
         </div>
       </div>
 
+      {/* ══════════ SUB-CABECERA DE RECOMENDADAS & RANKINGS ══════════ */}
+      {activeTab === "catalog" && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-1.5 rounded-2xl glass-panel">
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar max-w-full min-w-0">
+            <button
+              onClick={() => setRecSubTab("radio")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                recSubTab === "radio"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
+              }`}
+            >
+              <Radio size={12} className={currentSong ? "text-emerald-300 animate-pulse" : ""} />
+              <span>Radio en vivo</span>
+              {currentSong && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />}
+            </button>
+
+            <button
+              onClick={() => setRecSubTab("week")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                recSubTab === "week"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
+              }`}
+            >
+              <Flame size={12} className="text-amber-400" />
+              <span>Top Semanal</span>
+            </button>
+
+            <button
+              onClick={() => setRecSubTab("month")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                recSubTab === "month"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
+              }`}
+            >
+              <CalendarDays size={12} className="text-sky-400" />
+              <span>Top Mensual</span>
+            </button>
+
+            <button
+              onClick={() => setRecSubTab("all")}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                recSubTab === "all"
+                  ? "bg-purple-600 text-white shadow-xs"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5"
+              }`}
+            >
+              <Trophy size={12} className="text-amber-400" />
+              <span>De siempre</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+            <button
+              onClick={() => fetchRecs(recSubTab)}
+              disabled={isLoadingRecs}
+              title="Refrescar recomendaciones"
+              className="glass-btn p-1.5 text-slate-400 hover:text-purple-400 transition-colors disabled:opacity-50 cursor-pointer rounded-lg"
+            >
+              <RefreshCw size={13} className={isLoadingRecs ? "animate-spin text-purple-400" : ""} />
+            </button>
+
+            {recSongs.length > 0 && (
+              <button
+                onClick={playAllRecs}
+                disabled={isPlayerBusy}
+                className="glass-btn px-3 py-1 text-xs flex items-center gap-1.5 text-[#1ed760] border-[#1db954]/30 hover:bg-[#1db954]/10 cursor-pointer disabled:opacity-50 font-semibold"
+              >
+                <Play size={11} className="fill-current" />
+                <span>
+                  {recSubTab === "radio" ? "Reproducir Radio" : "Reproducir todo el Top"}
+                </span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ══════════ BANNER INSPIRACIÓN RADIO EN VIVO ══════════ */}
+      {activeTab === "catalog" && recSubTab === "radio" && basedOnSong && (
+        <div className="p-3 rounded-2xl glass-panel border border-purple-500/25 bg-purple-500/5 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-black/20 shadow-xs">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={basedOnSong.albumArt} alt="" className="w-full h-full object-cover" />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Radio en vivo generada a partir de
+              </span>
+              <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                {basedOnSong.title}{" "}
+                <span className="font-normal text-slate-500 dark:text-slate-400">— {basedOnSong.artist}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ══════════ LISTA DE CANCIONES / PLAYLISTS / ESTADOS ══════════ */}
       {activeTab === "playlists" ? (
         <PlaylistsView />
@@ -351,15 +524,36 @@ export function MusicView() {
             <span>Explorar sugerencias</span>
           </button>
         </div>
-      ) : activeTab === "catalog" && catalog.length === 0 ? (
-        <div className="p-12 text-center glass-panel border border-dashed border-black/10 dark:border-white/10">
-          <Flame size={36} className="mx-auto text-purple-400/40 mb-3" />
-          <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-            No hay recomendaciones por ahora
-          </h4>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
-            Usa el buscador de arriba para encontrar música por nombre o pega un enlace directo de Spotify o YouTube.
+      ) : activeTab === "catalog" && isLoadingRecs ? (
+        <div className="p-12 text-center glass-panel">
+          <Loader2 size={28} className="mx-auto text-purple-400 animate-spin mb-2" />
+          <p className="text-xs text-slate-400">
+            {recSubTab === "radio" ? "Sintonizando radio contextual..." : "Cargando el ranking del servidor..."}
           </p>
+        </div>
+      ) : activeTab === "catalog" && recSongs.length === 0 ? (
+        <div className="p-12 text-center glass-panel border border-dashed border-black/10 dark:border-white/10">
+          {recSubTab === "radio" ? (
+            <>
+              <Radio size={36} className="mx-auto text-purple-400/40 mb-3" />
+              <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                La Radio en vivo se activa con la música
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
+                No hay ninguna canción sonando ahora mismo en el bot. Pon una canción en Discord o desde el buscador para generar una radio con temas afines.
+              </p>
+            </>
+          ) : (
+            <>
+              <Trophy size={36} className="mx-auto text-amber-400/40 mb-3" />
+              <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                Aún no hay reproducciones en el {recSubTab === "week" ? "Top Semanal" : recSubTab === "month" ? "Top Mensual" : "Top Histórico"}
+              </h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
+                Cada canción que tú o tus amigos escuchen en Discord sumará reproducciones y aparecerá aquí automáticamente.
+              </p>
+            </>
+          )}
         </div>
       ) : displayedSongs.length === 0 ? (
         <div className="p-12 text-center glass-panel">

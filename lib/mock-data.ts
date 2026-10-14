@@ -37,6 +37,8 @@ export interface Song {
   category: "lofi" | "gaming" | "synthwave" | "hits" | "rock";
   isLyric?: boolean;
   isAutoplay?: boolean;
+  playCount?: number;
+  rank?: number;
   requestedBy?: {
     id: string;
     username: string;
