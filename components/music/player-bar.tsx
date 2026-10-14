@@ -106,8 +106,8 @@ export function PlayerBar() {
                           ? "Pista anterior..."
                           : pendingAction === "toggle"
                           ? isPlaying
-                            ? "Pausando..."
-                            : "Reanudando..."
+                            ? "Reanudando..."
+                            : "Pausando..."
                           : "Cargando..."}
                       </span>
                     </span>
