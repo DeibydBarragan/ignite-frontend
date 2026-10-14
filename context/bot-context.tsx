@@ -203,7 +203,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     };
   }, [isLoggedIn]);
 
-  // Presencia de voz REAL del usuario vía el bot (poll cada 5s).
+  // Presencia de voz REAL del usuario vía el bot (poll cada 3s).
   useEffect(() => {
     if (!isLoggedIn || !user || !selectedGuildId) return;
     let cancelled = false;
@@ -215,10 +215,16 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         setCurrentVoiceChannelId(status.user.id);
       } else {
         setIsVoiceConnected(false);
+        setCurrentVoiceChannelId("");
+      }
+      if (status.bot) {
+        botVoiceChannelRef.current = status.bot;
+      } else {
+        botVoiceChannelRef.current = null;
       }
     };
     check();
-    const interval = setInterval(check, 5000);
+    const interval = setInterval(check, 3000);
     return () => {
       cancelled = true;
       clearInterval(interval);
@@ -429,24 +435,67 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isLoggedIn, selectedGuildId, toast]);
 
-  const checkVoiceChannelMismatch = useCallback(() => {
-    const botChannel = botVoiceChannelRef.current;
-    if (!botChannel) return;
+  const checkVoiceRequirement = useCallback(async (): Promise<boolean> => {
+    if (!isLoggedIn || !user || !selectedGuildId) return true;
 
-    if (isVoiceConnected && currentVoiceChannel && currentVoiceChannel.id !== botChannel.id) {
+    try {
+      const status = await igniteApi.getVoiceStatus(selectedGuildId, user.id);
+      if (status) {
+        if (status.user) {
+          setIsVoiceConnected(true);
+          setCurrentVoiceChannelId(status.user.id);
+        } else {
+          setIsVoiceConnected(false);
+          setCurrentVoiceChannelId("");
+        }
+        if (status.bot) {
+          botVoiceChannelRef.current = status.bot;
+        } else {
+          botVoiceChannelRef.current = null;
+        }
+
+        // 1. Debe estar en un canal de voz
+        if (!status.user) {
+          toast("¡Debes estar en un canal de voz en Discord para reproducir música!", "error", {
+            duration: 5000,
+          });
+          return false;
+        }
+
+        // 2. Si el bot ya está en un canal, el usuario debe estar en el mismo canal
+        if (status.bot && status.user.id !== status.bot.id) {
+          toast(
+            `¡Debes estar en el mismo canal de voz que el bot ("${status.bot.name}")! Estás en "${status.user.name}".`,
+            "error",
+            { duration: 5500 }
+          );
+          return false;
+        }
+        return true;
+      }
+    } catch {
+      // Ignorar fallo de red y verificar estado local
+    }
+
+    if (!isVoiceConnected) {
+      toast("¡Debes estar en un canal de voz en Discord para reproducir música!", "error", {
+        duration: 5000,
+      });
+      return false;
+    }
+
+    const botChannel = botVoiceChannelRef.current;
+    if (botChannel && currentVoiceChannel && currentVoiceChannel.id !== botChannel.id) {
       toast(
-        `Estás en "${currentVoiceChannel.name}", pero el bot está en "${botChannel.name}". Únete a su canal para escuchar la música.`,
-        "info",
+        `¡Debes estar en el mismo canal de voz que el bot ("${botChannel.name}")! Estás en "${currentVoiceChannel.name}".`,
+        "error",
         { duration: 5500 }
       );
-    } else if (!isVoiceConnected) {
-      toast(
-        `El bot está reproduciendo en "${botChannel.name}". Conéctate al canal en Discord para escuchar.`,
-        "info",
-        { duration: 5000 }
-      );
+      return false;
     }
-  }, [isVoiceConnected, currentVoiceChannel, toast]);
+
+    return true;
+  }, [isLoggedIn, user, selectedGuildId, isVoiceConnected, currentVoiceChannel, toast]);
 
   // Chequeo de salud del bot al iniciar
   useEffect(() => {
@@ -535,7 +584,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
           discriminator: "0",
           avatar,
           status: "online",
-          isVoiceConnected: true,
+          isVoiceConnected: false,
           currentChannelId: null,
         });
         setIsLoggedIn(true);
@@ -569,7 +618,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
           discriminator: "0",
           avatar,
           status: "online",
-          isVoiceConnected: true,
+          isVoiceConnected: false,
           currentChannelId: null,
         });
         setIsLoggedIn(true);
@@ -699,6 +748,10 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
 
   const playSong = useCallback(async (song: Song) => {
     if (!isLoggedIn || isPlayerBusy) return;
+
+    const canPlay = await checkVoiceRequirement();
+    if (!canPlay) return;
+
     setIsPlayerBusy(true);
     setPendingAction("play");
     setLoadingSongId(song.id);
@@ -729,7 +782,9 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         setCurrentSong(prevSong);
         setIsPlaying(prevPlaying);
         setCurrentTime(prevTime);
-        setIsBotOnline(false);
+        if (!res.error?.includes("canal de voz")) {
+          setIsBotOnline(false);
+        }
         toast(res.error || "No se pudo reproducir la canción. El bot no está disponible.", "error");
         return;
       }
@@ -746,7 +801,6 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         ...prev.slice(0, 19),
       ]);
       await syncPlayerState();
-      checkVoiceChannelMismatch();
     } catch {
       setCurrentSong(prevSong);
       setIsPlaying(prevPlaying);
@@ -758,10 +812,14 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setPendingAction(null);
       setLoadingSongId(null);
     }
-  }, [isLoggedIn, isPlayerBusy, currentSong, isPlaying, currentTime, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, checkVoiceChannelMismatch, toast]);
+  }, [isLoggedIn, isPlayerBusy, checkVoiceRequirement, currentSong, isPlaying, currentTime, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
 
   const addToQueue = useCallback(async (song: Song) => {
     if (!isLoggedIn || loadingSongId === song.id) return;
+
+    const canPlay = await checkVoiceRequirement();
+    if (!canPlay) return;
+
     setPendingAction("queue");
     setLoadingSongId(song.id);
     const songWithRequester: Song = {
@@ -779,7 +837,9 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (!res.success) {
-        setIsBotOnline(false);
+        if (!res.error?.includes("canal de voz")) {
+          setIsBotOnline(false);
+        }
         toast(res.error || "No se pudo añadir a la cola. El bot no está disponible.", "error");
         return;
       }
@@ -797,7 +857,6 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         ...prev.slice(0, 19),
       ]);
       await syncPlayerState();
-      checkVoiceChannelMismatch();
     } catch {
       setIsBotOnline(false);
       toast("Error al conectar con el servicio del bot.", "error");
@@ -805,10 +864,14 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setPendingAction(null);
       setLoadingSongId(null);
     }
-  }, [isLoggedIn, loadingSongId, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, checkVoiceChannelMismatch, toast]);
+  }, [isLoggedIn, loadingSongId, checkVoiceRequirement, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
 
   const playNext = useCallback(async (song: Song) => {
     if (!isLoggedIn || loadingSongId === song.id) return;
+
+    const canPlay = await checkVoiceRequirement();
+    if (!canPlay) return;
+
     setPendingAction("playNext");
     setLoadingSongId(song.id);
     const songWithRequester: Song = {
@@ -827,7 +890,9 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (!res.success) {
-        setIsBotOnline(false);
+        if (!res.error?.includes("canal de voz")) {
+          setIsBotOnline(false);
+        }
         toast(res.error || "No se pudo añadir la canción. El bot no está disponible.", "error");
         return;
       }
@@ -845,7 +910,6 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         ...prev.slice(0, 19),
       ]);
       await syncPlayerState();
-      checkVoiceChannelMismatch();
     } catch {
       setIsBotOnline(false);
       toast("Error al conectar con el servicio del bot.", "error");
@@ -853,7 +917,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setPendingAction(null);
       setLoadingSongId(null);
     }
-  }, [isLoggedIn, loadingSongId, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, checkVoiceChannelMismatch, toast]);
+  }, [isLoggedIn, loadingSongId, checkVoiceRequirement, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
 
   const playFavorites = useCallback(async () => {
     if (!isLoggedIn || !favorites.length || isPlayerBusy) return;
@@ -1223,6 +1287,11 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       return { success: false, message: "SoundCloud ya no está soportado. Usa un enlace de YouTube o Spotify, o busca por nombre." };
     }
 
+    const canPlay = await checkVoiceRequirement();
+    if (!canPlay) {
+      return { success: false, message: "¡Debes estar en el canal de voz adecuado en Discord!" };
+    }
+
     setPendingAction(opts?.next ? "playNext" : "queue");
     setIsPlayerBusy(true);
 
@@ -1253,14 +1322,15 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
           ...prev.slice(0, 19),
         ]);
         await syncPlayerState();
-        checkVoiceChannelMismatch();
         return {
           success: true,
           message: msg,
           song: res.song,
         };
       } else if (!res.success) {
-        setIsBotOnline(false);
+        if (!res.error?.includes("canal de voz")) {
+          setIsBotOnline(false);
+        }
         const errMsg = res.error || "El servicio del bot está desconectado o no responde.";
         toast(errMsg, "error");
         return {
@@ -1304,7 +1374,6 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
 
       setQueue((prev) => [...prev, newSong]);
       await syncPlayerState();
-      checkVoiceChannelMismatch();
 
       return {
         success: true,
@@ -1323,7 +1392,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setIsPlayerBusy(false);
       setPendingAction(null);
     }
-  }, [selectedGuildId, currentVoiceChannelId, user, isLoggedIn, syncPlayerState, checkVoiceChannelMismatch, toast]);
+  }, [isLoggedIn, checkVoiceRequirement, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
 
   const sendTTS = useCallback((text: string, voice: string, pitch: number, rate: number) => {
     if (!isLoggedIn || !text.trim()) return;
