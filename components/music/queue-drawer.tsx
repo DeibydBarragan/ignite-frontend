@@ -204,6 +204,7 @@ export function QueueDrawer({
     isPlayerBusy,
     pendingAction,
     removingSongId,
+    isReordering,
   } = useBot();
 
   const sensors = useSensors(
@@ -212,6 +213,7 @@ export function QueueDrawer({
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
+    if (isPlayerBusy) return;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const from = Number(active.id);
@@ -321,12 +323,17 @@ export function QueueDrawer({
         <div>
           <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 flex items-center justify-between">
             <span>A continuación ({queue.length})</span>
-            {queue.length > 1 && !isPlayerBusy && (
+            {isReordering ? (
+              <span className="text-[11px] font-medium text-purple-600 dark:text-purple-400 flex items-center gap-1.5 animate-pulse">
+                <Loader2 size={12} className="animate-spin" />
+                Actualizando orden...
+              </span>
+            ) : queue.length > 1 && !isPlayerBusy ? (
               <span className="text-[10px] font-normal text-slate-400 flex items-center gap-1">
                 <GripVertical size={11} />
                 Arrastra para reordenar
               </span>
-            )}
+            ) : null}
           </div>
 
           {queue.length === 0 ? (
@@ -340,32 +347,34 @@ export function QueueDrawer({
               </p>
             </div>
           ) : (
-            <DndContext
-              sensors={sensors}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={queue.map((_, index) => String(index))}
-                strategy={verticalListSortingStrategy}
+            <div className={`relative transition-opacity duration-200 ${isReordering ? "pointer-events-none opacity-60 select-none" : ""}`}>
+              <DndContext
+                sensors={sensors}
+                onDragEnd={handleDragEnd}
               >
-                <div className="space-y-1.5 max-h-72 overflow-y-auto custom-scrollbar pr-1">
-                  {queue.map((song, index) => (
-                    <SortableQueueItem
-                      key={song.id + "-" + index}
-                      id={String(index)}
-                      song={song}
-                      index={index}
-                      isLast={index === queue.length - 1}
-                      disabled={isPlayerBusy}
-                      removing={removingSongId === song.id}
-                      onMove={moveQueueSong}
-                      onJump={jumpToQueueSong}
-                      onRemove={removeFromQueue}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
+                <SortableContext
+                  items={queue.map((_, index) => String(index))}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-1.5 max-h-72 overflow-y-auto custom-scrollbar pr-1">
+                    {queue.map((song, index) => (
+                      <SortableQueueItem
+                        key={song.id + "-" + index}
+                        id={String(index)}
+                        song={song}
+                        index={index}
+                        isLast={index === queue.length - 1}
+                        disabled={isPlayerBusy}
+                        removing={removingSongId === song.id}
+                        onMove={moveQueueSong}
+                        onJump={jumpToQueueSong}
+                        onRemove={removeFromQueue}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            </div>
           )}
         </div>
       </div>

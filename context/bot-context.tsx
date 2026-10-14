@@ -111,12 +111,13 @@ interface BotContextType {
 
   // Loading & Action Locking States
   isPlayerBusy: boolean;
-  pendingAction: "skip" | "previous" | "toggle" | "play" | "playNext" | "queue" | "clear" | null;
+  pendingAction: "skip" | "previous" | "toggle" | "play" | "playNext" | "queue" | "clear" | "reorder" | null;
   loadingSongId: string | null;
   removingSongId: string | null;
   isSkipping: boolean;
   isTogglingPlay: boolean;
   isAddingToQueue: boolean;
+  isReordering: boolean;
   syncPlayerState: () => Promise<void>;
 
   // TTS
@@ -330,13 +331,14 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
 
   // Loading & Action locking state
   const [isPlayerBusy, setIsPlayerBusy] = useState<boolean>(false);
-  const [pendingAction, setPendingAction] = useState<"skip" | "previous" | "toggle" | "play" | "playNext" | "queue" | "clear" | null>(null);
+  const [pendingAction, setPendingAction] = useState<"skip" | "previous" | "toggle" | "play" | "playNext" | "queue" | "clear" | "reorder" | null>(null);
   const [loadingSongId, setLoadingSongId] = useState<string | null>(null);
   const [removingSongId, setRemovingSongId] = useState<string | null>(null);
 
   const isSkipping = pendingAction === "skip";
   const isTogglingPlay = pendingAction === "toggle";
   const isAddingToQueue = pendingAction === "queue";
+  const isReordering = pendingAction === "reorder";
 
   // Favorites State (Supabase sync)
   const [favorites, setFavorites] = useState<Song[]>([]);
@@ -1022,7 +1024,12 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     if (!isLoggedIn || isPlayerBusy) return;
     if (fromIndex === toIndex) return;
     if (fromIndex < 0 || toIndex < 0 || fromIndex >= queue.length || toIndex >= queue.length) return;
-    const movedSong = queue[fromIndex];
+
+    setIsPlayerBusy(true);
+    setPendingAction("reorder");
+
+    const previousQueue = [...queue];
+
     setQueue((prev) => {
       const next = [...prev];
       const [song] = next.splice(fromIndex, 1);
@@ -1036,14 +1043,20 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      await igniteApi.moveInQueue(selectedGuildId, fromIndex + 1, toIndex + 1);
+      const res = await igniteApi.moveInQueue(selectedGuildId, fromIndex + 1, toIndex + 1);
+      if (res && res.success === false) {
+        throw new Error(res.error || "No se pudo actualizar el orden en la cola.");
+      }
       await syncPlayerState();
-      toast(`"${movedSong?.title || "Canción"}" movida a la posición #${toIndex + 1}`, "info", {
-        duration: 2500,
-      });
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error moving song in queue:", err);
+      // Revertir el orden optimista si falló
+      setQueue(previousQueue);
+      toast(err?.message || "No se pudo cambiar el orden en la cola. Inténtalo de nuevo.", "error");
       await syncPlayerState();
+    } finally {
+      setIsPlayerBusy(false);
+      setPendingAction(null);
     }
   }, [isLoggedIn, isPlayerBusy, queue, selectedGuildId, syncPlayerState, toast]);
 
@@ -1751,6 +1764,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         isSkipping,
         isTogglingPlay,
         isAddingToQueue,
+        isReordering,
         syncPlayerState,
 
         recentTTS,
