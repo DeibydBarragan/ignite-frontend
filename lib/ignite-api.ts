@@ -77,6 +77,7 @@ export interface ApiPlayerState {
   voiceChannel: { id: string; name: string } | null;
   currentSong: Song | null;
   queue: Song[];
+  disconnectReason?: string | null;
 }
 
 export interface ApiGuild {

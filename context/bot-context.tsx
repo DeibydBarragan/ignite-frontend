@@ -20,6 +20,7 @@ import { igniteApi } from "@/lib/ignite-api";
 import { soundApi, type SoundboardTrack } from "@/lib/sound-api";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/toast";
+import { AUDIO_FILTER_LABELS } from "@/lib/audio-filters";
 
 const SOUND_PRESETS: SoundItem["preset"][] = [
   "airhorn", "violin", "tada", "badumtss", "bruh",
@@ -143,6 +144,9 @@ const BotContext = createContext<BotContextType | null>(null);
 export function BotProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
   const offlineFailsRef = useRef(0);
+  const lastNotifiedDisconnectRef = useRef<string | null>(null);
+  const knownSongIdsRef = useRef<Set<string>>(new Set());
+  const botVoiceChannelRef = useRef<{ id: string; name: string } | null>(null);
 
   // User & Guild State
   const [user, setUser] = useState<DiscordUser | null>(null);
@@ -359,7 +363,31 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         setQueue(state.queue);
         setIsVoiceConnected(true);
         if (state.voiceChannel) {
+          botVoiceChannelRef.current = state.voiceChannel;
           setCurrentVoiceChannelId(state.voiceChannel.id);
+        }
+
+        // Detectar canciones añadidas automáticamente por Autoplay
+        const allSongs = [state.currentSong, ...(state.queue || [])];
+        for (const s of allSongs) {
+          if (s.isAutoplay && !knownSongIdsRef.current.has(s.id)) {
+            knownSongIdsRef.current.add(s.id);
+            toast(`Autoplay: canción recomendada añadida a la cola ("${s.title}")`, "info", {
+              duration: 4000,
+            });
+            setLiveEvents((prev) => [
+              {
+                id: "evt-" + Date.now(),
+                type: "music_play",
+                title: "Autoplay",
+                description: `Canción recomendada añadida: '${s.title}'`,
+                timestamp: "Ahora mismo",
+              },
+              ...prev.slice(0, 19),
+            ]);
+          } else {
+            knownSongIdsRef.current.add(s.id);
+          }
         }
       } else if (!state.hasQueue) {
         setCurrentSong(null);
@@ -368,6 +396,29 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         setCurrentTime(0);
         setAutoplay(state.autoplay);
         setCurrentFilter(null);
+        botVoiceChannelRef.current = null;
+      }
+
+      // Notificar desconexión por inactividad si el bot la reporta
+      if (state.disconnectReason && lastNotifiedDisconnectRef.current !== state.disconnectReason) {
+        lastNotifiedDisconnectRef.current = state.disconnectReason;
+        const msg =
+          state.disconnectReason === "inactivity_empty"
+            ? "El bot se desconectó del canal de voz porque no quedaba nadie en la sala."
+            : "El bot se desconectó por inactividad tras finalizar la música.";
+        toast(msg, "info", { duration: 6000 });
+        setLiveEvents((prev) => [
+          {
+            id: "evt-" + Date.now(),
+            type: "voice_trigger",
+            title: "Desconexión por inactividad",
+            description: msg,
+            timestamp: "Ahora mismo",
+          },
+          ...prev.slice(0, 19),
+        ]);
+      } else if (!state.disconnectReason) {
+        lastNotifiedDisconnectRef.current = null;
       }
     } catch {
       offlineFailsRef.current += 1;
@@ -376,7 +427,26 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         setIsPlaying(false);
       }
     }
-  }, [isLoggedIn, selectedGuildId]);
+  }, [isLoggedIn, selectedGuildId, toast]);
+
+  const checkVoiceChannelMismatch = useCallback(() => {
+    const botChannel = botVoiceChannelRef.current;
+    if (!botChannel) return;
+
+    if (isVoiceConnected && currentVoiceChannel && currentVoiceChannel.id !== botChannel.id) {
+      toast(
+        `Estás en "${currentVoiceChannel.name}", pero el bot está en "${botChannel.name}". Únete a su canal para escuchar la música.`,
+        "info",
+        { duration: 5500 }
+      );
+    } else if (!isVoiceConnected) {
+      toast(
+        `El bot está reproduciendo en "${botChannel.name}". Conéctate al canal en Discord para escuchar.`,
+        "info",
+        { duration: 5000 }
+      );
+    }
+  }, [isVoiceConnected, currentVoiceChannel, toast]);
 
   // Chequeo de salud del bot al iniciar
   useEffect(() => {
@@ -676,6 +746,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         ...prev.slice(0, 19),
       ]);
       await syncPlayerState();
+      checkVoiceChannelMismatch();
     } catch {
       setCurrentSong(prevSong);
       setIsPlaying(prevPlaying);
@@ -687,7 +758,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setPendingAction(null);
       setLoadingSongId(null);
     }
-  }, [isLoggedIn, isPlayerBusy, currentSong, isPlaying, currentTime, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
+  }, [isLoggedIn, isPlayerBusy, currentSong, isPlaying, currentTime, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, checkVoiceChannelMismatch, toast]);
 
   const addToQueue = useCallback(async (song: Song) => {
     if (!isLoggedIn || loadingSongId === song.id) return;
@@ -726,6 +797,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         ...prev.slice(0, 19),
       ]);
       await syncPlayerState();
+      checkVoiceChannelMismatch();
     } catch {
       setIsBotOnline(false);
       toast("Error al conectar con el servicio del bot.", "error");
@@ -733,7 +805,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setPendingAction(null);
       setLoadingSongId(null);
     }
-  }, [isLoggedIn, loadingSongId, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
+  }, [isLoggedIn, loadingSongId, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, checkVoiceChannelMismatch, toast]);
 
   const playNext = useCallback(async (song: Song) => {
     if (!isLoggedIn || loadingSongId === song.id) return;
@@ -773,6 +845,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         ...prev.slice(0, 19),
       ]);
       await syncPlayerState();
+      checkVoiceChannelMismatch();
     } catch {
       setIsBotOnline(false);
       toast("Error al conectar con el servicio del bot.", "error");
@@ -780,7 +853,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setPendingAction(null);
       setLoadingSongId(null);
     }
-  }, [isLoggedIn, loadingSongId, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
+  }, [isLoggedIn, loadingSongId, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, checkVoiceChannelMismatch, toast]);
 
   const playFavorites = useCallback(async () => {
     if (!isLoggedIn || !favorites.length || isPlayerBusy) return;
@@ -885,20 +958,30 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     if (!isLoggedIn || isPlayerBusy) return;
     if (fromIndex === toIndex) return;
     if (fromIndex < 0 || toIndex < 0 || fromIndex >= queue.length || toIndex >= queue.length) return;
+    const movedSong = queue[fromIndex];
     setQueue((prev) => {
       const next = [...prev];
       const [song] = next.splice(fromIndex, 1);
       next.splice(toIndex, 0, song);
       return next;
     });
+
+    // Feedback háptico táctil en dispositivos móviles
+    if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+      navigator.vibrate(35);
+    }
+
     try {
       await igniteApi.moveInQueue(selectedGuildId, fromIndex + 1, toIndex + 1);
       await syncPlayerState();
+      toast(`"${movedSong?.title || "Canción"}" movida a la posición #${toIndex + 1}`, "info", {
+        duration: 2500,
+      });
     } catch (err) {
       console.error("Error moving song in queue:", err);
       await syncPlayerState();
     }
-  }, [isLoggedIn, isPlayerBusy, queue.length, selectedGuildId, syncPlayerState]);
+  }, [isLoggedIn, isPlayerBusy, queue, selectedGuildId, syncPlayerState, toast]);
 
   const jumpToQueueSong = useCallback(async (index: number) => {
     if (!isLoggedIn || isPlayerBusy) return;
@@ -915,20 +998,43 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   }, [isLoggedIn, isPlayerBusy, queue.length, selectedGuildId, syncPlayerState]);
 
   const clearQueue = useCallback(async () => {
-    if (!isLoggedIn || isPlayerBusy) return;
+    if (!isLoggedIn || isPlayerBusy || queue.length === 0) return;
     setIsPlayerBusy(true);
     setPendingAction("clear");
+    const backupQueue = [...queue];
     try {
       setQueue([]);
       await igniteApi.clearQueue(selectedGuildId);
       await syncPlayerState();
+
+      toast(
+        `Cola vaciada (${backupQueue.length} ${backupQueue.length === 1 ? "canción" : "canciones"}).`,
+        "info",
+        {
+          duration: 7000,
+          action: {
+            label: "Deshacer",
+            onClick: async () => {
+              setQueue(backupQueue);
+              for (const song of backupQueue) {
+                await igniteApi.play(selectedGuildId, {
+                  query: song.url || `${song.title} ${song.artist}`,
+                  userId: song.requestedBy?.id || user?.id || undefined,
+                  skip: false,
+                });
+              }
+              await syncPlayerState();
+            },
+          },
+        }
+      );
     } catch (err) {
       console.error("Error clearing queue:", err);
     } finally {
       setIsPlayerBusy(false);
       setPendingAction(null);
     }
-  }, [isLoggedIn, isPlayerBusy, selectedGuildId, syncPlayerState]);
+  }, [isLoggedIn, isPlayerBusy, queue, selectedGuildId, syncPlayerState, toast, user?.id]);
 
   const togglePlayPause = useCallback(async () => {
     if (!isLoggedIn || isPlayerBusy) return;
@@ -1056,9 +1162,28 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
 
   const setFilter = useCallback((name: string) => {
     if (!isLoggedIn) return;
-    setCurrentFilter(name === "none" ? null : name);
+    const filterKey = name === "none" ? null : name;
+    setCurrentFilter(filterKey);
     igniteApi.control(selectedGuildId, "filter", name);
-  }, [isLoggedIn, selectedGuildId]);
+
+    const filterLabel = AUDIO_FILTER_LABELS[name as keyof typeof AUDIO_FILTER_LABELS] || name;
+    if (!filterKey) {
+      toast("Filtros de audio desactivados.", "info", { duration: 2500 });
+    } else {
+      toast(`Efecto "${filterLabel}" activado en Discord.`, "info", { duration: 3000 });
+    }
+
+    setLiveEvents((prev) => [
+      {
+        id: "evt-" + Date.now(),
+        type: "music_play",
+        title: "Filtro de Audio",
+        description: filterKey ? `Efecto '${filterLabel}' activado` : "Filtros de audio desactivados",
+        timestamp: "Ahora mismo",
+      },
+      ...prev.slice(0, 19),
+    ]);
+  }, [isLoggedIn, selectedGuildId, toast]);
 
   const stopPlayback = useCallback(async () => {
     if (!isLoggedIn || isPlayerBusy) return;
@@ -1128,6 +1253,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
           ...prev.slice(0, 19),
         ]);
         await syncPlayerState();
+        checkVoiceChannelMismatch();
         return {
           success: true,
           message: msg,
@@ -1178,6 +1304,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
 
       setQueue((prev) => [...prev, newSong]);
       await syncPlayerState();
+      checkVoiceChannelMismatch();
 
       return {
         success: true,
@@ -1196,7 +1323,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setIsPlayerBusy(false);
       setPendingAction(null);
     }
-  }, [selectedGuildId, currentVoiceChannelId, user, isLoggedIn, syncPlayerState, toast]);
+  }, [selectedGuildId, currentVoiceChannelId, user, isLoggedIn, syncPlayerState, checkVoiceChannelMismatch, toast]);
 
   const sendTTS = useCallback((text: string, voice: string, pitch: number, rate: number) => {
     if (!isLoggedIn || !text.trim()) return;
@@ -1298,7 +1425,10 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         file: soundData.file,
         userId: user?.id,
       });
-      if (!res.success || !res.sound) return false;
+      if (!res.success || !res.sound) {
+        toast(res.error || "No se pudo subir el sonido al catálogo.", "error");
+        return false;
+      }
       const s = res.sound;
       const newSound: SoundItem = {
         id: s.id,
@@ -1312,6 +1442,9 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         uploadedBy: s.uploadedBy ?? user?.id ?? null,
       };
       setSounds((prev) => [newSound, ...prev]);
+      toast(`Sonido "${newSound.name}" subido correctamente al catálogo.`, "success", {
+        duration: 3500,
+      });
       return true;
     }
 
@@ -1327,8 +1460,11 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       uploadedBy: user?.id ?? null,
     };
     setSounds((prev) => [newSound, ...prev]);
+    toast(`Sonido "${newSound.name}" guardado en el catálogo local.`, "success", {
+      duration: 3000,
+    });
     return true;
-  }, [isLoggedIn, user?.id]);
+  }, [isLoggedIn, user?.id, toast]);
 
   const editCustomSound = useCallback(async (
     soundId: string,
@@ -1343,12 +1479,14 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       category: data.category,
     });
     if (!res.success || !res.sound) {
+      const errMsg = res.error || "No se pudo actualizar el sonido.";
+      toast(errMsg, "error");
       setLiveEvents((prev) => [
         {
           id: "evt-" + Date.now(),
           type: "soundboard",
           title: "Error al editar",
-          description: res.error || "No se pudo actualizar el sonido.",
+          description: errMsg,
           timestamp: "Ahora mismo",
         },
         ...prev.slice(0, 19),
@@ -1368,19 +1506,22 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
           : x
       )
     );
+    toast(`Sonido "${s.name}" actualizado correctamente.`, "success", { duration: 2500 });
     return true;
-  }, [isLoggedIn]);
+  }, [isLoggedIn, toast]);
 
   const attachSoundAudio = useCallback(async (soundId: string, file: File) => {
     if (!isLoggedIn) return false;
     const res = await soundApi.attachSoundFile(soundId, file);
     if (!res.success || !res.sound) {
+      const errMsg = res.error || "No se pudo adjuntar el audio al sonido.";
+      toast(errMsg, "error");
       setLiveEvents((prev) => [
         {
           id: "evt-" + Date.now(),
           type: "soundboard",
           title: "Error al subir audio",
-          description: res.error || "No se pudo adjuntar el audio al sonido.",
+          description: errMsg,
           timestamp: "Ahora mismo",
         },
         ...prev.slice(0, 19),
@@ -1410,8 +1551,9 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       },
       ...prev.slice(0, 19),
     ]);
+    toast(`Audio adjuntado a "${s.name}" correctamente.`, "success", { duration: 3500 });
     return true;
-  }, [isLoggedIn]);
+  }, [isLoggedIn, toast]);
 
   const addPhraseTrigger = useCallback((data: { phrase: string; soundId: string; exactMatch: boolean; channelTarget: string }) => {
     if (!isLoggedIn) return;

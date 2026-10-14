@@ -5,14 +5,25 @@ import { CheckCircle2, AlertCircle, Radio, X, Info } from "lucide-react";
 
 export type ToastType = "success" | "error" | "info" | "emit";
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
+export interface ToastOptions {
+  action?: ToastAction;
+  duration?: number;
+}
+
 interface ToastItem {
   id: string;
   message: string;
   type: ToastType;
+  action?: ToastAction;
 }
 
 interface ToastContextType {
-  toast: (message: string, type?: ToastType) => void;
+  toast: (message: string, type?: ToastType, options?: ToastOptions) => void;
 }
 
 const ToastContext = createContext<ToastContextType | null>(null);
@@ -20,14 +31,18 @@ const ToastContext = createContext<ToastContextType | null>(null);
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-  const toast = useCallback((message: string, type: ToastType = "success") => {
-    const id = "toast-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6);
-    setToasts((prev) => [...prev, { id, message, type }]);
+  const toast = useCallback(
+    (message: string, type: ToastType = "success", options?: ToastOptions) => {
+      const id = "toast-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6);
+      setToasts((prev) => [...prev, { id, message, type, action: options?.action }]);
 
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
-  }, []);
+      const timeoutMs = options?.duration ?? (options?.action ? 6000 : 4000);
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, timeoutMs);
+    },
+    []
+  );
 
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -59,16 +74,29 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               key={t.id}
               className={`pointer-events-auto p-3.5 rounded-2xl border backdrop-blur-xl shadow-2xl flex items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-bottom-3 duration-200 transition-all ${borderClass}`}
             >
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 min-w-0">
                 {icon}
-                <span className="font-medium leading-relaxed">{t.message}</span>
+                <span className="font-medium leading-relaxed truncate">{t.message}</span>
               </div>
-              <button
-                onClick={() => removeToast(t.id)}
-                className="text-slate-400 hover:text-white p-1 rounded transition-colors shrink-0"
-              >
-                <X size={13} />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                {t.action && (
+                  <button
+                    onClick={() => {
+                      t.action?.onClick();
+                      removeToast(t.id);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 hover:text-white font-semibold text-[11px] transition-colors cursor-pointer"
+                  >
+                    {t.action.label}
+                  </button>
+                )}
+                <button
+                  onClick={() => removeToast(t.id)}
+                  className="text-slate-400 hover:text-white p-1 rounded transition-colors"
+                >
+                  <X size={13} />
+                </button>
+              </div>
             </div>
           );
         })}
