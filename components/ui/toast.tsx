@@ -52,8 +52,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={{ toast }}>
       {children}
 
-      {/* Floating Toasts Container */}
-      <div className="fixed bottom-24 right-5 sm:right-8 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
+      {/* Floating Toasts Container (Top-Right, debajo del navbar) */}
+      <div className="fixed top-20 right-4 sm:right-6 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
         {toasts.map((t) => {
           let icon = <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />;
           let borderClass = "border-emerald-500/20 bg-slate-900/90 text-white";
@@ -72,11 +72,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           return (
             <div
               key={t.id}
-              className={`pointer-events-auto p-3.5 rounded-2xl border backdrop-blur-xl shadow-2xl flex items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-bottom-3 duration-200 transition-all ${borderClass}`}
+              className={`pointer-events-auto p-3.5 rounded-2xl border backdrop-blur-xl shadow-2xl flex items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-3 duration-200 transition-all ${borderClass}`}
             >
-              <div className="flex items-center gap-2.5 min-w-0">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
                 {icon}
-                <span className="font-medium leading-relaxed truncate">{t.message}</span>
+                <span className="font-medium leading-relaxed break-words">{t.message}</span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 {t.action && (
