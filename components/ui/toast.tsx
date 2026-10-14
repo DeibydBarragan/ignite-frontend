@@ -1,14 +1,17 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { CheckCircle2, AlertCircle, Radio, X, Info } from "lucide-react";
+import { CheckCircle2, AlertCircle, Radio, X, Info, Loader2 } from "lucide-react";
 
 export type ToastType = "success" | "error" | "info" | "emit";
 
 export interface ToastAction {
   label: string;
-  onClick: () => void;
+  onClick: () => Promise<void> | void;
+  loadingLabel?: string;
+  loadingMessage?: string;
+  successMessage?: string;
 }
 
 export interface ToastOptions {
@@ -21,6 +24,7 @@ interface ToastItem {
   message: string;
   type: ToastType;
   action?: ToastAction;
+  isLoading?: boolean;
 }
 
 interface ToastContextType {
@@ -32,9 +36,21 @@ const ToastContext = createContext<ToastContextType | null>(null);
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [mounted, setMounted] = useState(false);
+  const timersRef = useRef<Record<string, NodeJS.Timeout>>({});
 
   useEffect(() => {
     setMounted(true);
+    return () => {
+      Object.values(timersRef.current).forEach(clearTimeout);
+    };
+  }, []);
+
+  const removeToast = useCallback((id: string) => {
+    if (timersRef.current[id]) {
+      clearTimeout(timersRef.current[id]);
+      delete timersRef.current[id];
+    }
+    setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
   const toast = useCallback(
@@ -43,15 +59,72 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       setToasts((prev) => [...prev, { id, message, type, action: options?.action }]);
 
       const timeoutMs = options?.duration ?? (options?.action ? 6000 : 4000);
-      setTimeout(() => {
-        setToasts((prev) => prev.filter((t) => t.id !== id));
+      timersRef.current[id] = setTimeout(() => {
+        removeToast(id);
       }, timeoutMs);
     },
-    []
+    [removeToast]
   );
 
-  const removeToast = (id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id));
+  const handleActionClick = async (t: ToastItem) => {
+    if (!t.action || t.isLoading) return;
+
+    if (timersRef.current[t.id]) {
+      clearTimeout(timersRef.current[t.id]);
+      delete timersRef.current[t.id];
+    }
+
+    const action = t.action;
+
+    setToasts((prev) =>
+      prev.map((item) =>
+        item.id === t.id
+          ? {
+              ...item,
+              isLoading: true,
+              message: action.loadingMessage || item.message,
+            }
+          : item
+      )
+    );
+
+    try {
+      await action.onClick();
+      setToasts((prev) =>
+        prev.map((item) =>
+          item.id === t.id
+            ? {
+                ...item,
+                isLoading: false,
+                type: "success",
+                action: undefined,
+                message: action.successMessage || "Acción completada con éxito.",
+              }
+            : item
+        )
+      );
+      timersRef.current[t.id] = setTimeout(() => {
+        removeToast(t.id);
+      }, 2000);
+    } catch (err: any) {
+      console.error("[Toast action error]:", err);
+      setToasts((prev) =>
+        prev.map((item) =>
+          item.id === t.id
+            ? {
+                ...item,
+                isLoading: false,
+                type: "error",
+                action: undefined,
+                message: err?.message || "Ocurrió un error al realizar la acción.",
+              }
+            : item
+        )
+      );
+      timersRef.current[t.id] = setTimeout(() => {
+        removeToast(t.id);
+      }, 4000);
+    }
   };
 
   return (
@@ -66,7 +139,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               let icon = <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />;
               let borderClass = "border-emerald-500/20 bg-slate-900/90 text-white";
 
-              if (t.type === "error") {
+              if (t.isLoading) {
+                icon = <Loader2 size={16} className="text-purple-400 animate-spin shrink-0" />;
+                borderClass = "border-purple-500/40 bg-slate-900/95 text-white";
+              } else if (t.type === "error") {
                 icon = <AlertCircle size={16} className="text-red-400 shrink-0" />;
                 borderClass = "border-red-500/20 bg-slate-900/90 text-white";
               } else if (t.type === "info") {
@@ -89,21 +165,32 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                   <div className="flex items-center gap-2 shrink-0">
                     {t.action && (
                       <button
-                        onClick={() => {
-                          t.action?.onClick();
-                          removeToast(t.id);
-                        }}
-                        className="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 hover:text-white font-semibold text-[11px] transition-colors cursor-pointer"
+                        onClick={() => handleActionClick(t)}
+                        disabled={t.isLoading}
+                        className={`px-2.5 py-1 rounded-lg border font-semibold text-[11px] transition-colors flex items-center gap-1.5 ${
+                          t.isLoading
+                            ? "bg-purple-600/20 border-purple-500/30 text-purple-300 opacity-80 cursor-wait"
+                            : "bg-purple-600/30 hover:bg-purple-600/50 border-purple-500/40 text-purple-200 hover:text-white cursor-pointer"
+                        }`}
                       >
-                        {t.action.label}
+                        {t.isLoading ? (
+                          <>
+                            <Loader2 size={12} className="animate-spin text-purple-300" />
+                            <span>{t.action.loadingLabel || "Deshaciendo..."}</span>
+                          </>
+                        ) : (
+                          <span>{t.action.label}</span>
+                        )}
                       </button>
                     )}
-                    <button
-                      onClick={() => removeToast(t.id)}
-                      className="text-slate-400 hover:text-white p-1 rounded transition-colors"
-                    >
-                      <X size={13} />
-                    </button>
+                    {!t.isLoading && (
+                      <button
+                        onClick={() => removeToast(t.id)}
+                        className="text-slate-400 hover:text-white p-1 rounded transition-colors"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
                   </div>
                 </div>
               );

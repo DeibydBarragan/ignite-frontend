@@ -1091,16 +1091,26 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
           duration: 7000,
           action: {
             label: "Deshacer",
+            loadingLabel: "Restaurando...",
+            loadingMessage: `Restaurando ${backupQueue.length} ${backupQueue.length === 1 ? "canción" : "canciones"} en la cola...`,
+            successMessage: "Cola restaurada exitosamente.",
             onClick: async () => {
+              setIsPlayerBusy(true);
+              setPendingAction("reorder");
               setQueue(backupQueue);
-              for (const song of backupQueue) {
-                await igniteApi.play(selectedGuildId, {
-                  query: song.url || `${song.title} ${song.artist}`,
-                  userId: song.requestedBy?.id || user?.id || undefined,
-                  skip: false,
-                });
+              try {
+                for (const song of backupQueue) {
+                  await igniteApi.play(selectedGuildId, {
+                    query: song.url || `${song.title} ${song.artist}`,
+                    userId: song.requestedBy?.id || user?.id || undefined,
+                    skip: false,
+                  });
+                }
+                await syncPlayerState();
+              } finally {
+                setIsPlayerBusy(false);
+                setPendingAction(null);
               }
-              await syncPlayerState();
             },
           },
         }
