@@ -55,13 +55,13 @@ body {
 
 /* ═══════════════════ GLASSMORPHISM SYSTEM (IDÉNTICO A TASKS) ═══════════════════ */
 
-/* Fondo oscuro para modales (sin desenfoque de pantalla completa, el blur reside en la tarjeta) */
+/* Fondo oscuro para modales (dim suave para que el contenido de la página sea visible a través del cristal) */
 .glass-backdrop {
-  background: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.25);
   transition: opacity 0.2s ease;
 }
 .dark .glass-backdrop {
-  background: rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.35);
 }
 
 .glass-panel {
@@ -82,45 +82,45 @@ body {
   background: rgba(18, 21, 31, 0.65);
 }
 
-/* Modal con fondo traslúcido y blur auténtico (como el navbar/player, manteniendo legibilidad) */
+/* Modal con fondo traslúcido y blur idéntico al reproductor de música (65% opacidad) */
 .glass-modal-panel {
   position: relative;
   border-radius: 1.5rem;
   border: 1px solid rgba(255, 255, 255, 0.35);
-  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.25),
-              inset 0 1px 0 rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(24px) saturate(1.6);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6);
-  background: rgba(255, 255, 255, 0.80);
+  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.3),
+              inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  background: rgba(255, 255, 255, 0.65);
 }
 
 .dark .glass-modal-panel {
-  border-color: rgba(255, 255, 255, 0.1);
-  box-shadow: 0 30px 70px -15px rgba(0, 0, 0, 0.8),
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 30px 70px -15px rgba(0, 0, 0, 0.7),
               inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(24px) saturate(1.6);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6);
-  background: rgba(11, 13, 20, 0.82);
+  backdrop-filter: blur(24px) saturate(1.5);
+  -webkit-backdrop-filter: blur(24px) saturate(1.5);
+  background: rgba(18, 21, 31, 0.65);
 }
 
-/* Menús desplegables y popovers con transparencia y blur idénticos al navbar */
+/* Menús desplegables y popovers con alta transparencia (55%) y blur notable sobre los elementos */
 .glass-dropdown {
   border-radius: 1rem;
   border: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.18),
-              inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  backdrop-filter: blur(24px) saturate(1.6);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6);
-  background: rgba(255, 255, 255, 0.70);
+  box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.2),
+              inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  background: rgba(255, 255, 255, 0.55);
 }
 
 .dark .glass-dropdown {
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.12);
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6),
               inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(24px) saturate(1.6);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6);
-  background: rgba(11, 13, 20, 0.75);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  background: rgba(18, 21, 31, 0.55);
 }
 
 .glass-input {
@@ -292,4 +292,29 @@ body {
 
 .ignite-progress-slide {
   animation: ignite-slide 1.2s ease-in-out infinite;
+}
+
+/* Animación de barras de ecualizador para reproductor contraído */
+@keyframes ignite-eq-bar {
+  0%, 100% {
+    height: 4px;
+    opacity: 0.6;
+  }
+  50% {
+    height: 16px;
+    opacity: 1;
+  }
+}
+
+.ignite-eq-1 {
+  animation: ignite-eq-bar 0.75s ease-in-out infinite;
+}
+.ignite-eq-2 {
+  animation: ignite-eq-bar 0.55s ease-in-out infinite 0.15s;
+}
+.ignite-eq-3 {
+  animation: ignite-eq-bar 0.9s ease-in-out infinite 0.3s;
+}
+.ignite-eq-4 {
+  animation: ignite-eq-bar 0.65s ease-in-out infinite 0.45s;
 }

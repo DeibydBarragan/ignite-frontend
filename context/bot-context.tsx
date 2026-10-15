@@ -143,6 +143,8 @@ interface BotContextType {
   stopPlayback: () => void;
   autoplay: boolean;
   toggleAutoplay: () => void;
+  isPlayerCollapsed: boolean;
+  setIsPlayerCollapsed: (val: boolean | ((prev: boolean) => boolean)) => void;
   currentFilter: string | null;
   setFilter: (name: string) => void;
   defaultProvider: MusicSource;
@@ -312,6 +314,24 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   const [autoplay, setAutoplay] = useState<boolean>(false);
   const [currentFilter, setCurrentFilter] = useState<string | null>(null);
   const [defaultProvider, setDefaultProvider] = useState<MusicSource>("youtube");
+  const [isPlayerCollapsed, setIsPlayerCollapsedState] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return localStorage.getItem("ignite_player_collapsed") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const setIsPlayerCollapsed = useCallback((val: boolean | ((prev: boolean) => boolean)) => {
+    setIsPlayerCollapsedState((prev) => {
+      const next = typeof val === "function" ? val(prev) : val;
+      try {
+        localStorage.setItem("ignite_player_collapsed", String(next));
+      } catch {}
+      return next;
+    });
+  }, []);
 
   // TTS State
   const [recentTTS, setRecentTTS] = useState<TTSMessage[]>([
@@ -1934,6 +1954,8 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         stopPlayback,
         autoplay,
         toggleAutoplay,
+        isPlayerCollapsed,
+        setIsPlayerCollapsed,
         currentFilter,
         setFilter,
         defaultProvider,

@@ -23,7 +23,7 @@ function isValidTab(val: unknown): val is ActiveTab {
 }
 
 export default function Home() {
-  const { isLoggedIn, isLoadingAuth, loginDiscord, currentSong } = useBot();
+  const { isLoggedIn, isLoadingAuth, loginDiscord, currentSong, isPlayerCollapsed } = useBot();
   const [activeTab, setActiveTab] = useState<ActiveTab>("music");
 
   // Restore active tab from URL hash, query param, or localStorage on mount
@@ -145,7 +145,11 @@ export default function Home() {
           {/* Main Content Container */}
           <main
             className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 pt-5 flex flex-col gap-6 transition-[padding] duration-200 ${
-              currentSong ? "pb-72 sm:pb-60 md:pb-28" : "pb-10"
+              currentSong
+                ? isPlayerCollapsed
+                  ? "pb-24 sm:pb-20"
+                  : "pb-72 sm:pb-60 md:pb-28"
+                : "pb-10"
             }`}
           >
             {/* Context & Navigation Toolbar (Server, Voice Channel, Tabs) */}
