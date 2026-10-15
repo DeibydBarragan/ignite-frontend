@@ -252,7 +252,6 @@ export function SoundboardView() {
                       )}
                     </span>
                     <span className="flex items-center gap-1">
-                      <span>{snd.playsCount} plays</span>
                       <span
                         role="button"
                         tabIndex={0}
