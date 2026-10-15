@@ -5,6 +5,7 @@ import { useBot } from "@/context/bot-context";
 import { SoundItem, SoundCategory } from "@/lib/mock-data";
 import { AddSoundModal } from "@/components/soundboard/add-sound-modal";
 import { EditSoundModal } from "@/components/soundboard/edit-sound-modal";
+import { DeleteSoundModal } from "@/components/soundboard/delete-sound-modal";
 import {
   Volume2,
   Play,
@@ -14,6 +15,7 @@ import {
   Radio,
   Upload,
   Pencil,
+  Trash2,
 } from "lucide-react";
 
 const CATEGORIES: { id: "all" | SoundCategory; label: string }[] = [
@@ -41,6 +43,7 @@ export function SoundboardView() {
   const [soundScope, setSoundScope] = useState<"all" | "mine">("all");
   const [isAddSoundOpen, setIsAddSoundOpen] = useState(false);
   const [editingSound, setEditingSound] = useState<SoundItem | null>(null);
+  const [deletingSound, setDeletingSound] = useState<SoundItem | null>(null);
   const [isAttaching, setIsAttaching] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const attachTargetRef = useRef<string | null>(null);
@@ -70,8 +73,11 @@ export function SoundboardView() {
   };
 
   const mySounds = useMemo(() => {
-    if (!user) return [];
-    return sounds.filter((s) => s.uploadedBy && s.uploadedBy === user.id);
+    return sounds.filter((s) => {
+      if (!s.uploadedBy) return false;
+      if (user?.id) return s.uploadedBy === user.id || s.uploadedBy === "local-user";
+      return true;
+    });
   }, [sounds, user]);
 
   const scopeSounds = soundScope === "mine" ? mySounds : sounds;
@@ -195,7 +201,7 @@ export function SoundboardView() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
           {filteredSounds.map((snd) => {
             const isPlayingThis = activeSoundId === snd.id;
-            const isMine = !!user && !!snd.uploadedBy && snd.uploadedBy === user.id;
+            const isMine = Boolean(snd.uploadedBy) && (user ? snd.uploadedBy === user.id || snd.uploadedBy === "local-user" : true);
 
             return (
               <button
@@ -250,7 +256,7 @@ export function SoundboardView() {
                       <span
                         role="button"
                         tabIndex={0}
-                        title="Editar nombre, emoji y categoría"
+                        title="Editar nombre, emoji, categoría y ámbito"
                         onClick={(ev) => {
                           ev.stopPropagation();
                           setEditingSound(snd);
@@ -282,6 +288,24 @@ export function SoundboardView() {
                         className={`p-0.5 rounded transition-colors cursor-pointer ${snd.hasFile ? "text-[#1db954] hover:text-[#1ed760]" : "text-slate-300 dark:text-slate-600 hover:text-purple-400"}`}
                       >
                         <Upload size={11} />
+                      </span>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        title="Eliminar sonido"
+                        onClick={(ev) => {
+                          ev.stopPropagation();
+                          setDeletingSound(snd);
+                        }}
+                        onKeyDown={(ev) => {
+                          if (ev.key === "Enter" || ev.key === " ") {
+                            ev.stopPropagation();
+                            setDeletingSound(snd);
+                          }
+                        }}
+                        className="p-0.5 rounded transition-colors cursor-pointer text-slate-300 dark:text-slate-600 hover:text-rose-500"
+                      >
+                        <Trash2 size={11} />
                       </span>
                     </span>
                   </div>
@@ -355,6 +379,7 @@ export function SoundboardView() {
       {/* Modals */}
       <AddSoundModal isOpen={isAddSoundOpen} onClose={() => setIsAddSoundOpen(false)} />
       <EditSoundModal sound={editingSound} onClose={() => setEditingSound(null)} />
+      <DeleteSoundModal sound={deletingSound} onClose={() => setDeletingSound(null)} />
 
       {/* Hidden file picker for attaching MP3 audio to existing sounds */}
       <input

@@ -270,7 +270,7 @@ class SoundApiClient {
 
   async updateSound(
     id: string,
-    data: { name?: string; emoji?: string; category?: string }
+    data: { name?: string; emoji?: string; category?: string; uploadedBy?: string | null }
   ): Promise<{ success: boolean; sound?: SoundboardTrack; error?: string }> {
     try {
       const res = await fetch(`${SOUND_API_URL}/api/sounds/${encodeURIComponent(id)}`, {

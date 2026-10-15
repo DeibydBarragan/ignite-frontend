@@ -130,8 +130,24 @@ interface BotContextType {
   liveEvents: LiveEvent[];
   activeSoundId: string | null;
   playSound: (soundId: string) => void;
-  addCustomSound: (sound: { name: string; emoji?: string; category: SoundItem["category"]; file?: File }) => Promise<boolean>;
-  editCustomSound: (soundId: string, data: { name: string; emoji?: string; category: SoundItem["category"] }) => Promise<boolean>;
+  addCustomSound: (sound: {
+    name: string;
+    emoji?: string;
+    category: SoundItem["category"];
+    file?: File;
+    scope?: "mine" | "all";
+  }) => Promise<boolean>;
+  editCustomSound: (
+    soundId: string,
+    data: {
+      name: string;
+      emoji?: string;
+      category: SoundItem["category"];
+      scope?: "mine" | "all";
+      uploadedBy?: string | null;
+    }
+  ) => Promise<boolean>;
+  deleteCustomSound: (soundId: string) => Promise<boolean>;
   attachSoundAudio: (soundId: string, file: File) => Promise<boolean>;
   addPhraseTrigger: (trigger: { phrase: string; soundId: string; exactMatch: boolean; channelTarget: string }) => void;
   togglePhraseTrigger: (id: string) => void;
@@ -1516,8 +1532,15 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       });
   }, [isLoggedIn, sounds, currentVoiceChannel, selectedGuildId, volume]);
 
-  const addCustomSound = useCallback(async (soundData: { name: string; emoji?: string; category: SoundItem["category"]; file?: File }) => {
-    if (!isLoggedIn) return false;
+  const addCustomSound = useCallback(async (soundData: {
+    name: string;
+    emoji?: string;
+    category: SoundItem["category"];
+    file?: File;
+    scope?: "mine" | "all";
+  }) => {
+    const isMine = soundData.scope !== "all";
+    const uploadedBy = isMine ? (user?.id || "local-user") : null;
 
     // Con archivo: subida real al bot (sonará en Discord). Sin archivo: solo local (preview synth).
     if (soundData.file) {
@@ -1526,7 +1549,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         emoji: soundData.emoji,
         category: soundData.category,
         file: soundData.file,
-        userId: user?.id,
+        userId: uploadedBy || undefined,
       });
       if (!res.success || !res.sound) {
         toast(res.error || "No se pudo subir el sonido al catálogo.", "error");
@@ -1542,7 +1565,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         preset: "tada",
         playsCount: s.playsCount ?? 0,
         hasFile: true,
-        uploadedBy: s.uploadedBy ?? user?.id ?? null,
+        uploadedBy: uploadedBy,
       };
       setSounds((prev) => [newSound, ...prev]);
       toast(`Sonido "${newSound.name}" subido correctamente al catálogo.`, "success", {
@@ -1560,28 +1583,42 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       preset: "tada",
       playsCount: 0,
       hasFile: false,
-      uploadedBy: user?.id ?? null,
+      uploadedBy: uploadedBy,
     };
     setSounds((prev) => [newSound, ...prev]);
     toast(`Sonido "${newSound.name}" guardado en el catálogo local.`, "success", {
       duration: 3000,
     });
     return true;
-  }, [isLoggedIn, user?.id, toast]);
+  }, [user?.id, toast]);
 
   const editCustomSound = useCallback(async (
     soundId: string,
-    data: { name: string; emoji?: string; category: SoundItem["category"] }
+    data: {
+      name: string;
+      emoji?: string;
+      category: SoundItem["category"];
+      scope?: "mine" | "all";
+      uploadedBy?: string | null;
+    }
   ) => {
-    if (!isLoggedIn) return false;
     const trimmed = data.name.trim();
     if (!trimmed) return false;
+
+    const newUploadedBy = data.uploadedBy !== undefined
+      ? data.uploadedBy
+      : data.scope !== undefined
+      ? (data.scope === "all" ? null : (user?.id || "local-user"))
+      : undefined;
+
     const res = await soundApi.updateSound(soundId, {
       name: trimmed,
       emoji: data.emoji?.trim() || undefined,
       category: data.category,
+      uploadedBy: newUploadedBy,
     });
-    if (!res.success || !res.sound) {
+
+    if (!res.success && !sounds.some((s) => s.id === soundId)) {
       const errMsg = res.error || "No se pudo actualizar el sonido.";
       toast(errMsg, "error");
       setLiveEvents((prev) => [
@@ -1596,22 +1633,51 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       ]);
       return false;
     }
+
     const s = res.sound;
     setSounds((prev) =>
       prev.map((x) =>
         x.id === soundId
           ? {
               ...x,
-              name: s.name,
-              emoji: s.emoji || x.emoji,
-              category: (s.category as SoundItem["category"]) || x.category,
+              name: s?.name || trimmed,
+              emoji: s?.emoji || data.emoji?.trim() || x.emoji,
+              category: (s?.category as SoundItem["category"]) || data.category,
+              uploadedBy: newUploadedBy !== undefined ? newUploadedBy : (s?.uploadedBy ?? x.uploadedBy),
             }
           : x
       )
     );
-    toast(`Sonido "${s.name}" actualizado correctamente.`, "success", { duration: 2500 });
+    toast(`Sonido "${trimmed}" actualizado correctamente.`, "success", { duration: 2500 });
     return true;
-  }, [isLoggedIn, toast]);
+  }, [user?.id, sounds, toast]);
+
+  const deleteCustomSound = useCallback(async (soundId: string) => {
+    const target = sounds.find((s) => s.id === soundId);
+    if (!target) return false;
+
+    try {
+      await soundApi.deleteSound(soundId);
+    } catch (e) {
+      console.warn("deleteSound API error:", e);
+    }
+
+    setSounds((prev) => prev.filter((s) => s.id !== soundId));
+    setPhraseTriggers((prev) => prev.filter((t) => t.soundId !== soundId));
+
+    toast(`Sonido "${target.name}" eliminado del catálogo.`, "success", { duration: 3000 });
+    setLiveEvents((prev) => [
+      {
+        id: "evt-" + Date.now(),
+        type: "soundboard",
+        title: "Sonido Eliminado",
+        description: `Se eliminó el sonido '${target.name}' del soundboard.`,
+        timestamp: "Ahora mismo",
+      },
+      ...prev.slice(0, 19),
+    ]);
+    return true;
+  }, [sounds, toast]);
 
   const attachSoundAudio = useCallback(async (soundId: string, file: File) => {
     if (!isLoggedIn) return false;
@@ -1798,6 +1864,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         playSound,
         addCustomSound,
         editCustomSound,
+        deleteCustomSound,
         attachSoundAudio,
         addPhraseTrigger,
         togglePhraseTrigger,
