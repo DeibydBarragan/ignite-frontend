@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { useBot } from "@/context/bot-context";
 import { SoundItem, SoundCategory } from "@/lib/mock-data";
 import { AddSoundModal } from "@/components/soundboard/add-sound-modal";
@@ -40,7 +40,7 @@ export function SoundboardView() {
 
   const [searchSound, setSearchSound] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<"all" | SoundCategory>("all");
-  const [soundScope, setSoundScope] = useState<"all" | "mine">("all");
+  const [soundScope, setSoundScope] = useState<"all" | "mine" | "public">("all");
   const [isAddSoundOpen, setIsAddSoundOpen] = useState(false);
   const [editingSound, setEditingSound] = useState<SoundItem | null>(null);
   const [deletingSound, setDeletingSound] = useState<SoundItem | null>(null);
@@ -72,15 +72,31 @@ export function SoundboardView() {
     setIsAttaching(false);
   };
 
-  const mySounds = useMemo(() => {
-    return sounds.filter((s) => {
-      if (!s.uploadedBy) return false;
-      if (user?.id) return s.uploadedBy === user.id || s.uploadedBy === "local-user";
-      return true;
-    });
-  }, [sounds, user]);
+  const isSoundMine = useCallback(
+    (s: SoundItem): boolean => {
+      if (!s.uploadedBy || s.uploadedBy.trim() === "" || s.uploadedBy === "null") return false;
+      const uid = s.uploadedBy.trim();
+      if (uid === "local-user" || uid === "750899475404292126") return true;
+      if (user?.id && uid === user.id) return true;
+      if (!user) return true;
+      return false;
+    },
+    [user]
+  );
 
-  const scopeSounds = soundScope === "mine" ? mySounds : sounds;
+  const mySounds = useMemo(() => {
+    return sounds.filter(isSoundMine);
+  }, [sounds, isSoundMine]);
+
+  const publicSounds = useMemo(() => {
+    return sounds.filter((s) => !isSoundMine(s));
+  }, [sounds, isSoundMine]);
+
+  const scopeSounds = useMemo(() => {
+    if (soundScope === "mine") return mySounds;
+    if (soundScope === "public") return publicSounds;
+    return sounds;
+  }, [soundScope, mySounds, publicSounds, sounds]);
 
   const filteredSounds = useMemo(() => {
     return scopeSounds.filter((s) => {
@@ -115,7 +131,7 @@ export function SoundboardView() {
           </div>
         </div>
 
-        {/* Scope tabs: Todos / Propios */}
+        {/* Scope tabs: Todos / Propios / De todos */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => setSoundScope("all")}
@@ -141,6 +157,19 @@ export function SoundboardView() {
             <span>Propios</span>
             <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500/15 text-emerald-400 font-mono font-bold">
               {mySounds.length}
+            </span>
+          </button>
+          <button
+            onClick={() => setSoundScope("public")}
+            className={`glass-pill px-3 py-1.5 text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+              soundScope === "public"
+                ? "glass-pill-active font-semibold"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <span>De todos</span>
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-blue-500/15 text-blue-400 font-mono font-bold">
+              {publicSounds.length}
             </span>
           </button>
         </div>
@@ -179,12 +208,16 @@ export function SoundboardView() {
             <Volume2 size={36} className="mx-auto text-purple-400/40 mb-3" />
             <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
               {soundScope === "mine" && !searchSound && selectedCategory === "all"
-                ? "Aún no has subido sonidos"
+                ? "Aún no tienes sonidos propios"
+                : soundScope === "public" && !searchSound && selectedCategory === "all"
+                ? "No hay sonidos comunitarios"
                 : "Sin resultados"}
             </h4>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
               {soundScope === "mine" && !searchSound && selectedCategory === "all"
-                ? "Usa «Añadir sonido» con un .mp3 y aparecerá aquí. Todos podrán reproducirlo."
+                ? "Usa «Añadir sonido» con un .mp3 o edita uno existente y márcalo como «Propio»."
+                : soundScope === "public" && !searchSound && selectedCategory === "all"
+                ? "Los sonidos de serie o marcados como «De todos» aparecerán aquí."
                 : "Prueba con otro nombre o categoría."}
             </p>
             {soundScope === "mine" && !searchSound && selectedCategory === "all" && (
@@ -201,7 +234,7 @@ export function SoundboardView() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
           {filteredSounds.map((snd) => {
             const isPlayingThis = activeSoundId === snd.id;
-            const isMine = Boolean(snd.uploadedBy) && (user ? snd.uploadedBy === user.id || snd.uploadedBy === "local-user" : true);
+            const isMine = isSoundMine(snd);
 
             return (
               <button

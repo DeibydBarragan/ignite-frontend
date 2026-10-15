@@ -29,8 +29,12 @@ export function EditSoundModal({
     if (sound) {
       setName(sound.name);
       setEmoji(sound.emoji || "");
-      setCategory(sound.category);
-      setScope(sound.uploadedBy ? "mine" : "all");
+      const isMine = Boolean(
+        sound.uploadedBy &&
+        sound.uploadedBy.trim() !== "" &&
+        sound.uploadedBy !== "null"
+      );
+      setScope(isMine ? "mine" : "all");
       setConfirmDelete(false);
       setError(null);
     }

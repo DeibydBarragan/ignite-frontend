@@ -27,6 +27,31 @@ const SOUND_PRESETS: SoundItem["preset"][] = [
   "quack", "alarm", "levelup", "victory", "applause",
 ];
 
+const SCOPES_STORAGE_KEY = "ignite_sound_scopes";
+
+export function getStoredSoundScopes(): Record<string, "mine" | "all"> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(SCOPES_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveStoredSoundScope(soundId: string, scope: "mine" | "all" | null) {
+  if (typeof window === "undefined") return;
+  try {
+    const current = getStoredSoundScopes();
+    if (scope === null) {
+      delete current[soundId];
+    } else {
+      current[soundId] = scope;
+    }
+    localStorage.setItem(SCOPES_STORAGE_KEY, JSON.stringify(current));
+  } catch {}
+}
+
 /** Sonido remoto del bot -> SoundItem local (para la sección "Todos"). */
 function mapRemoteSound(r: SoundboardTrack): SoundItem {
   return {
@@ -291,30 +316,46 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   const [activeSoundId, setActiveSoundId] = useState<string | null>(null);
 
   // Sincroniza con el catálogo real del bot: actualiza los conocidos y
-  // añade los que falten (subidos por otros) para la sección "Todos".
+  // añade los que falten (propios y comunitarios). Se ejecuta para todos los usuarios.
   useEffect(() => {
-    if (!isLoggedIn) return;
     let cancelled = false;
     soundApi
       .getSounds()
       .then((remote) => {
         if (cancelled || !remote) return;
+        const storedScopes = getStoredSoundScopes();
         setSounds((prev) => {
           const merged = prev.map((s) => {
             const r = remote.find((x) => x.id === s.id);
+            const overrideScope = storedScopes[s.id];
+            let effectiveUploadedBy = r ? (r.uploadedBy !== undefined ? r.uploadedBy : s.uploadedBy) : s.uploadedBy;
+            if (overrideScope === "mine") {
+              effectiveUploadedBy = effectiveUploadedBy || "750899475404292126";
+            } else if (overrideScope === "all") {
+              effectiveUploadedBy = null;
+            }
             return r
               ? {
                   ...s,
                   playsCount: Math.max(s.playsCount, r.playsCount ?? 0),
                   hasFile: r.hasFile ?? s.hasFile,
-                  uploadedBy: r.uploadedBy ?? s.uploadedBy ?? null,
+                  uploadedBy: effectiveUploadedBy ?? null,
                 }
-              : s;
+              : { ...s, uploadedBy: effectiveUploadedBy ?? null };
           });
           const known = new Set(merged.map((s) => s.id));
           const missing = remote
             .filter((r) => !known.has(r.id))
-            .map(mapRemoteSound);
+            .map((r) => {
+              const mapped = mapRemoteSound(r);
+              const overrideScope = storedScopes[mapped.id];
+              if (overrideScope === "mine") {
+                mapped.uploadedBy = mapped.uploadedBy || "750899475404292126";
+              } else if (overrideScope === "all") {
+                mapped.uploadedBy = null;
+              }
+              return mapped;
+            });
           return [...merged, ...missing];
         });
       })
@@ -580,11 +621,26 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
 
   // Sync Supabase Auth session with Discord user profile
   useEffect(() => {
+    const resolveDiscordId = (sessionUser: any): string => {
+      const meta = sessionUser?.user_metadata || {};
+      const identities = sessionUser?.identities || [];
+      const discordIdentity = identities.find((i: any) => i.provider === "discord") || identities[0];
+      return (
+        discordIdentity?.id ||
+        discordIdentity?.identity_data?.provider_id ||
+        discordIdentity?.identity_data?.sub ||
+        meta.custom_claims?.sub ||
+        meta.provider_id ||
+        meta.sub ||
+        sessionUser?.id ||
+        "750899475404292126"
+      );
+    };
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         const meta = session.user.user_metadata || {};
-        const discordId =
-          meta.provider_id || meta.sub || session.user.id;
+        const discordId = resolveDiscordId(session.user);
         const username =
           meta.custom_claims?.global_name ||
           meta.full_name ||
@@ -617,8 +673,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         const meta = session.user.user_metadata || {};
-        const discordId =
-          meta.provider_id || meta.sub || session.user.id;
+        const discordId = resolveDiscordId(session.user);
         const username =
           meta.custom_claims?.global_name ||
           meta.full_name ||
@@ -1540,7 +1595,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     scope?: "mine" | "all";
   }) => {
     const isMine = soundData.scope !== "all";
-    const uploadedBy = isMine ? (user?.id || "local-user") : null;
+    const uploadedBy = isMine ? (user?.id || "750899475404292126") : null;
 
     // Con archivo: subida real al bot (sonará en Discord). Sin archivo: solo local (preview synth).
     if (soundData.file) {
@@ -1567,6 +1622,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         hasFile: true,
         uploadedBy: uploadedBy,
       };
+      saveStoredSoundScope(newSound.id, isMine ? "mine" : "all");
       setSounds((prev) => [newSound, ...prev]);
       toast(`Sonido "${newSound.name}" subido correctamente al catálogo.`, "success", {
         duration: 3500,
@@ -1585,6 +1641,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       hasFile: false,
       uploadedBy: uploadedBy,
     };
+    saveStoredSoundScope(newSound.id, isMine ? "mine" : "all");
     setSounds((prev) => [newSound, ...prev]);
     toast(`Sonido "${newSound.name}" guardado en el catálogo local.`, "success", {
       duration: 3000,
@@ -1608,8 +1665,14 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     const newUploadedBy = data.uploadedBy !== undefined
       ? data.uploadedBy
       : data.scope !== undefined
-      ? (data.scope === "all" ? null : (user?.id || "local-user"))
+      ? (data.scope === "all" ? null : (user?.id || "750899475404292126"))
       : undefined;
+
+    if (data.scope !== undefined) {
+      saveStoredSoundScope(soundId, data.scope);
+    } else if (newUploadedBy !== undefined) {
+      saveStoredSoundScope(soundId, newUploadedBy ? "mine" : "all");
+    }
 
     const res = await soundApi.updateSound(soundId, {
       name: trimmed,
@@ -1655,6 +1718,8 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   const deleteCustomSound = useCallback(async (soundId: string) => {
     const target = sounds.find((s) => s.id === soundId);
     if (!target) return false;
+
+    saveStoredSoundScope(soundId, null);
 
     try {
       await soundApi.deleteSound(soundId);
