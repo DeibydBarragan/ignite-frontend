@@ -68,47 +68,47 @@ function CoverImage({
   alt,
   className = "",
   imgClassName = "",
+  iconSize = 18,
 }: {
   src: string;
   alt: string;
   className?: string;
   imgClassName?: string;
+  iconSize?: number;
 }) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [broken, setBroken] = useState(false);
 
   useEffect(() => {
     setLoaded(false);
     setFailed(false);
-    setBroken(false);
   }, [src]);
 
+  const showPlaceholder = !src || failed || !loaded;
+
   return (
-    <span className={`relative block overflow-hidden bg-black/5 dark:bg-white/5 ${className}`}>
-      {(!loaded || broken) && (
-        <span className="absolute inset-0 ignite-shimmer flex items-center justify-center bg-gradient-to-br from-purple-600/70 via-indigo-600/60 to-slate-900/90">
-          <Music2 size={24} className="relative text-white/85" />
-        </span>
+    <div className={`relative overflow-hidden bg-black/5 dark:bg-white/5 ${className}`}>
+      {showPlaceholder && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-600/80 via-indigo-600/70 to-slate-900/90 z-0">
+          <Music2 size={iconSize} className="text-white/90 drop-shadow-xs shrink-0" />
+          <div className="absolute inset-0 ignite-shimmer opacity-25 pointer-events-none" />
+        </div>
       )}
-      {!broken && (
+      {src && !failed && (
         /* eslint-disable-next-line @next/next/no-img-element */
         <img
-          src={failed ? FALLBACK_COVER : src}
+          src={src}
           alt={alt}
           loading="lazy"
           draggable={false}
           onLoad={() => setLoaded(true)}
-          onError={() => {
-            if (!failed) setFailed(true);
-            else setBroken(true);
-          }}
-          className={`h-full w-full object-cover transition-all duration-500 ${
+          onError={() => setFailed(true)}
+          className={`h-full w-full object-cover transition-opacity duration-300 relative z-10 ${
             loaded ? "opacity-100" : "opacity-0"
           } ${imgClassName}`}
         />
       )}
-    </span>
+    </div>
   );
 }
 
@@ -453,6 +453,7 @@ export function PlaylistsView() {
                       src={pl.cover}
                       alt={pl.name}
                       className="w-full h-full"
+                      iconSize={36}
                       imgClassName="group-hover:scale-105 transition-transform duration-500 ease-out"
                     />
 
@@ -641,51 +642,58 @@ export function PlaylistsView() {
         }
         footer={
           selected && !isSyncing && modalTracks.length > 0 ? (
-            <div className="flex items-center justify-between gap-2 w-full">
-              <a
-                href={selected.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                title={`Abrir playlist en ${selected.source}`}
-                className="px-2.5 py-1.5 rounded-lg text-xs font-medium glass-btn text-slate-400 hover:text-slate-100 flex items-center gap-1.5 transition-colors"
-              >
-                <ExternalLink size={12} />
-                <span className="hidden sm:inline">Abrir en {selected.source}</span>
-              </a>
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 w-full">
+              {/* Botones secundarios (favs, cola, link) */}
+              <div className="flex items-center gap-2 justify-between sm:justify-start w-full sm:w-auto">
+                <a
+                  href={selected.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={`Abrir playlist en ${selected.source}`}
+                  className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-medium glass-btn text-slate-400 hover:text-slate-100 flex items-center justify-center gap-1.5 transition-colors shrink-0"
+                >
+                  <ExternalLink size={13} />
+                  <span className="hidden md:inline">Abrir en {selected.source}</span>
+                </a>
+
                 <button
                   onClick={() => selected && handleImportFavorites(selected)}
-                disabled={!!importingFavId}
-                title="Guardar los temas en favoritos"
-                className="px-3 py-1.5 rounded-lg text-xs font-medium glass-btn text-slate-600 dark:text-slate-300 hover:text-amber-400 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                {importingFavId ? (
-                  <Loader2 size={13} className="animate-spin" />
-                ) : (
-                  <Star size={13} />
-                )}
-                <span>Guardar en favs</span>
-              </button>
-              <button
-                onClick={() => handleQueuePlaylist(selected)}
-                disabled={isPlayerBusy}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium glass-btn text-slate-600 dark:text-slate-300 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                <Plus size={13} />
-                <span>Añadir todo a la cola</span>
-              </button>
+                  disabled={!!importingFavId}
+                  title="Guardar todos los temas en favoritos"
+                  className="flex-1 sm:flex-none px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-xl text-xs font-medium glass-btn text-slate-700 dark:text-slate-200 hover:text-amber-400 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors whitespace-nowrap"
+                >
+                  {importingFavId ? (
+                    <Loader2 size={13} className="animate-spin text-amber-400" />
+                  ) : (
+                    <Star size={13} className="text-amber-400" />
+                  )}
+                  <span>Favoritos</span>
+                </button>
+
+                <button
+                  onClick={() => handleQueuePlaylist(selected)}
+                  disabled={isPlayerBusy}
+                  title="Añadir todos los temas a la cola"
+                  className="flex-1 sm:flex-none px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-xl text-xs font-medium glass-btn text-slate-700 dark:text-slate-200 hover:text-purple-400 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors whitespace-nowrap"
+                >
+                  <Plus size={13} className="text-purple-400" />
+                  <span className="inline sm:hidden">A la cola</span>
+                  <span className="hidden sm:inline">Añadir a la cola</span>
+                </button>
+              </div>
+
+              {/* Botón primario: Reproducir todo */}
               <button
                 onClick={() => {
                   handlePlayPlaylist(selected);
                   closeModal();
                 }}
                 disabled={isPlayerBusy}
-                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#1db954] hover:bg-[#1ed760] text-black flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl text-xs font-bold bg-[#1db954] hover:bg-[#1ed760] text-black shadow-lg shadow-[#1db954]/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all shrink-0 active:scale-[0.98]"
               >
-                <Play size={13} className="fill-current" />
+                <Play size={14} className="fill-current" />
                 <span>Reproducir todo</span>
               </button>
-              </div>
             </div>
           ) : undefined
         }

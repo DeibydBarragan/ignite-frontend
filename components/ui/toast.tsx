@@ -136,27 +136,27 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         createPortal(
           <div className="fixed top-20 right-4 sm:right-6 z-[99999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
             {toasts.map((t) => {
-              let icon = <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />;
-              let borderClass = "border-emerald-500/20 bg-slate-900/90 text-white";
+              let icon = <CheckCircle2 size={16} className="text-[#1ed760] shrink-0" />;
+              let accentClass = "border-emerald-500/30 dark:border-emerald-400/30 bg-emerald-500/[0.08] dark:bg-emerald-500/[0.08]";
 
               if (t.isLoading) {
                 icon = <Loader2 size={16} className="text-purple-400 animate-spin shrink-0" />;
-                borderClass = "border-purple-500/40 bg-slate-900/95 text-white";
+                accentClass = "border-purple-500/35 dark:border-purple-400/35 bg-purple-500/[0.08] dark:bg-purple-500/[0.08]";
               } else if (t.type === "error") {
-                icon = <AlertCircle size={16} className="text-red-400 shrink-0" />;
-                borderClass = "border-red-500/20 bg-slate-900/90 text-white";
+                icon = <AlertCircle size={16} className="text-rose-400 shrink-0" />;
+                accentClass = "border-rose-500/30 dark:border-rose-400/30 bg-rose-500/[0.08] dark:bg-rose-500/[0.08]";
               } else if (t.type === "info") {
                 icon = <Info size={16} className="text-sky-400 shrink-0" />;
-                borderClass = "border-sky-500/20 bg-slate-900/90 text-white";
+                accentClass = "border-sky-500/30 dark:border-sky-400/30 bg-sky-500/[0.08] dark:bg-sky-500/[0.08]";
               } else if (t.type === "emit") {
                 icon = <Radio size={16} className="text-purple-400 shrink-0" />;
-                borderClass = "border-purple-500/30 bg-slate-900/95 text-white";
+                accentClass = "border-purple-500/35 dark:border-purple-400/35 bg-purple-500/[0.08] dark:bg-purple-500/[0.08]";
               }
 
               return (
                 <div
                   key={t.id}
-                  className={`pointer-events-auto p-3.5 rounded-2xl border backdrop-blur-xl shadow-2xl flex items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-3 duration-200 transition-all ${borderClass}`}
+                  className={`pointer-events-auto p-3.5 rounded-2xl border backdrop-blur-xl shadow-2xl [box-shadow:0_20px_45px_-10px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] bg-white/80 dark:bg-[#12151f]/70 text-slate-800 dark:text-slate-100 flex items-center justify-between gap-3 text-xs animate-in fade-in slide-in-from-top-3 duration-200 transition-all ${accentClass}`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
                     {icon}
