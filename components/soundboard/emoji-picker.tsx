@@ -424,7 +424,7 @@ export function EmojiPicker({
         type="button"
         onClick={toggleOpen}
         title="Elegir emoji"
-        className={`glass-input w-full px-3.5 py-2 flex items-center justify-between gap-2 cursor-pointer hover:border-purple-500/40 transition-colors ${
+        className={`glass-input w-full h-10 px-3.5 flex items-center justify-between gap-2 cursor-pointer hover:border-purple-500/40 transition-colors ${
           isOpen ? "border-purple-500 ring-2 ring-purple-500/20" : ""
         }`}
       >
