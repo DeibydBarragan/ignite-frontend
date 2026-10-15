@@ -76,7 +76,7 @@ export function GlassModal({
     <div className="fixed inset-0 z-[9999]" role="dialog" aria-modal="true">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/20 dark:bg-black/25 transition-opacity duration-200"
+        className="fixed inset-0 transition-opacity duration-200"
         onClick={handleClose}
         aria-hidden="true"
       />
@@ -84,7 +84,7 @@ export function GlassModal({
       {/* Modal Dialog Content */}
       <div className="fixed inset-0 z-10 flex items-center justify-center p-4 overflow-y-auto pointer-events-none">
         <div
-          className={`w-full ${MAX_WIDTH_MAP[maxWidth]} max-h-[calc(100dvh-3rem)] my-auto shrink-0 bg-white/60 dark:bg-[#12151f]/60 backdrop-blur-2xl border border-black/10 dark:border-white/10 rounded-3xl shadow-2xl glass-modal-enter p-6 sm:p-7 flex flex-col pointer-events-auto relative ${className}`}
+          className={`w-full ${MAX_WIDTH_MAP[maxWidth]} max-h-[calc(100dvh-3rem)] my-auto shrink-0 glass-modal-panel backdrop-blur-md rounded-3xl glass-modal-enter p-6 sm:p-7 flex flex-col pointer-events-auto relative ${className}`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Close button */}

@@ -82,25 +82,25 @@ body {
   background: rgba(18, 21, 31, 0.65);
 }
 
-/* Modal con fondo traslúcido y blur idéntico al reproductor de música (60% opacidad) */
+/* Modal con fondo traslúcido y acabado frosted glass (glassmorphism auténtico) */
 .glass-modal-panel {
   position: relative;
   border-radius: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.3),
-              inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  backdrop-filter: blur(24px) saturate(1.5);
-  -webkit-backdrop-filter: blur(24px) saturate(1.5);
-  background: rgba(255, 255, 255, 0.60) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.12),
+              inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(16px) saturate(1.6);
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  background: rgba(255, 255, 255, 0.65) !important;
 }
 
 .dark .glass-modal-panel {
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 30px 70px -15px rgba(0, 0, 0, 0.7),
-              inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(24px) saturate(1.5);
-  -webkit-backdrop-filter: blur(24px) saturate(1.5);
-  background: rgba(18, 21, 31, 0.60) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.6),
+              inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(14px) saturate(1.8);
+  -webkit-backdrop-filter: blur(14px) saturate(1.8);
+  background: rgba(255, 255, 255, 0.07) !important;
 }
 
 /* Menús desplegables y popovers con alta transparencia (55%) y blur notable sobre los elementos */

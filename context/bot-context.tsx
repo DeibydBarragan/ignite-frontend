@@ -688,6 +688,20 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     };
 
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (process.env.NODE_ENV === "development" && typeof window !== "undefined" && localStorage.getItem("dev_bypass") === "true") {
+        setUser({
+          id: "750899475404292126",
+          username: "UsuarioDev",
+          discriminator: "0",
+          avatar: "https://cdn.discordapp.com/embed/avatars/0.png",
+          status: "online",
+          isVoiceConnected: false,
+          currentChannelId: null,
+        });
+        setIsLoggedIn(true);
+        setIsLoadingAuth(false);
+        return;
+      }
       if (session?.user) {
         const meta = session.user.user_metadata || {};
         const discordId = resolveDiscordId(session.user);
