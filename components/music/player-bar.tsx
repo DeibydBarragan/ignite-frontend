@@ -302,7 +302,7 @@ export function PlayerBar() {
                 {isFxOpen && (
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setIsFxOpen(false)} />
-                    <div className="glass-dropdown absolute right-0 bottom-full mb-2 w-48 p-1.5 z-40 border border-black/10 dark:border-white/10 shadow-2xl max-h-64 overflow-y-auto custom-scrollbar">
+                    <div className="glass-dropdown absolute right-0 bottom-full mb-2 w-48 p-1.5 z-40 bg-white/85 dark:bg-[#0e111c]/85 backdrop-blur-2xl border border-black/10 dark:border-white/10 shadow-2xl max-h-64 overflow-y-auto custom-scrollbar">
                       <button
                         onClick={() => {
                           setFilter("none");

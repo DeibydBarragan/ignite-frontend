@@ -70,7 +70,7 @@ export function AppNav() {
                     className="fixed inset-0 z-30"
                     onClick={() => setIsUserDropdownOpen(false)}
                   />
-                  <div className="glass-dropdown absolute right-0 mt-2 w-56 p-2 z-40 border border-black/10 dark:border-white/10 glass-modal-enter shadow-2xl">
+                  <div className="glass-dropdown absolute right-0 mt-2 w-56 p-2 z-40 bg-white/85 dark:bg-[#0e111c]/85 backdrop-blur-2xl border border-black/10 dark:border-white/15 glass-modal-enter shadow-2xl">
                     <div className="px-3 py-2 border-b border-black/5 dark:border-white/10">
                       <p className="text-xs font-bold text-slate-900 dark:text-white">
                         @{user.username}
