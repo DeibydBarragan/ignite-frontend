@@ -55,16 +55,13 @@ body {
 
 /* ═══════════════════ GLASSMORPHISM SYSTEM (IDÉNTICO A TASKS) ═══════════════════ */
 
+/* Fondo oscuro para modales (sin desenfoque de pantalla completa, el blur reside en la tarjeta) */
 .glass-backdrop {
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(14px) saturate(1.4);
-  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  background: rgba(0, 0, 0, 0.45);
   transition: opacity 0.2s ease;
 }
 .dark .glass-backdrop {
-  background: rgba(4, 6, 12, 0.55);
-  backdrop-filter: blur(14px) saturate(1.4);
-  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  background: rgba(0, 0, 0, 0.65);
 }
 
 .glass-panel {
@@ -85,44 +82,45 @@ body {
   background: rgba(18, 21, 31, 0.65);
 }
 
-/* Modal específico con mayor opacidad para legibilidad pero manteniendo el auténtico blur glassmorphism */
+/* Modal con fondo traslúcido y blur auténtico (como el navbar/player, manteniendo legibilidad) */
 .glass-modal-panel {
   position: relative;
   border-radius: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.35);
   box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.25),
-              inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(32px) saturate(1.6);
-  -webkit-backdrop-filter: blur(32px) saturate(1.6);
-  background: rgba(255, 255, 255, 0.88);
+              inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  background: rgba(255, 255, 255, 0.80);
 }
 
 .dark .glass-modal-panel {
-  border-color: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.1);
   box-shadow: 0 30px 70px -15px rgba(0, 0, 0, 0.8),
-              inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(32px) saturate(1.6);
-  -webkit-backdrop-filter: blur(32px) saturate(1.6);
-  background: rgba(14, 17, 28, 0.88);
-}
-
-.glass-dropdown {
-  border-radius: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.2),
-              inset 0 1px 0 rgba(255, 255, 255, 0.4);
+              inset 0 1px 0 rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(24px) saturate(1.6);
   -webkit-backdrop-filter: blur(24px) saturate(1.6);
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(11, 13, 20, 0.82);
+}
+
+/* Menús desplegables y popovers con transparencia y blur idénticos al navbar */
+.glass-dropdown {
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 20px 40px -8px rgba(0, 0, 0, 0.18),
+              inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+  background: rgba(255, 255, 255, 0.70);
 }
 
 .dark .glass-dropdown {
-  border-color: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7),
-              inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6),
+              inset 0 1px 0 rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(24px) saturate(1.6);
   -webkit-backdrop-filter: blur(24px) saturate(1.6);
-  background: rgba(14, 17, 28, 0.84);
+  background: rgba(11, 13, 20, 0.75);
 }
 
 .glass-input {

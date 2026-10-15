@@ -346,7 +346,7 @@ export function MusicView() {
 
           {/* Sugerencias de YouTube (igual que /play en Discord) */}
           {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1.5 z-40 glass-dropdown bg-white/85 dark:bg-[#0e111c]/85 backdrop-blur-2xl p-1.5 max-h-60 overflow-y-auto custom-scrollbar border border-black/10 dark:border-white/15 shadow-2xl space-y-0.5">
+            <div className="absolute top-full left-0 right-0 mt-1.5 z-40 glass-dropdown bg-white/70 dark:bg-[#0b0d14]/75 backdrop-blur-xl p-1.5 max-h-60 overflow-y-auto custom-scrollbar border border-black/10 dark:border-white/10 shadow-2xl space-y-0.5">
               {suggestions.map((s) => (
                 <div
                   key={s}

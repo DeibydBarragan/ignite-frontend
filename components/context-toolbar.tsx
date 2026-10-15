@@ -100,7 +100,7 @@ export function ContextToolbar({ activeTab, onTabChange }: ContextToolbarProps) 
                 className="fixed inset-0 z-30"
                 onClick={() => setIsGuildDropdownOpen(false)}
               />
-              <div className="glass-dropdown absolute left-0 mt-2 w-64 p-2 z-40 bg-white/85 dark:bg-[#0e111c]/85 backdrop-blur-2xl border border-black/10 dark:border-white/15 glass-modal-enter shadow-2xl">
+              <div className="glass-dropdown absolute left-0 mt-2 w-64 p-2 z-40 bg-white/70 dark:bg-[#0b0d14]/75 backdrop-blur-xl border border-black/10 dark:border-white/10 glass-modal-enter shadow-2xl">
                 <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                   <Server size={12} />
                   <span>Servidores disponibles</span>

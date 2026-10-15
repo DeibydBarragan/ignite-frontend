@@ -441,7 +441,7 @@ export function EmojiPicker({
           />
           <div
             style={positionStyle}
-            className="glass-dropdown w-80 max-w-[calc(100vw-20px)] flex flex-col p-2.5 z-[10001] bg-white/85 dark:bg-[#0e111c]/85 backdrop-blur-2xl border border-black/10 dark:border-white/15 shadow-2xl glass-modal-enter gap-2"
+            className="glass-dropdown w-80 max-w-[calc(100vw-20px)] flex flex-col p-2.5 z-[10001] bg-white/70 dark:bg-[#0b0d14]/75 backdrop-blur-xl border border-black/10 dark:border-white/10 shadow-2xl glass-modal-enter gap-2"
           >
             {/* Buscador de emojis */}
             <div className="relative shrink-0">
