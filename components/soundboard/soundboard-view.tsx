@@ -144,7 +144,7 @@ export function SoundboardView() {
   }, [scopeSounds, searchSound, selectedCategory, sortBy]);
 
   return (
-    <div className="space-y-8 pb-28">
+    <div className="space-y-8">
       {/* ═══════════════════ PARTE 1: CATÁLOGO DE SOUNDBOARD ═══════════════════ */}
       <section className="space-y-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">

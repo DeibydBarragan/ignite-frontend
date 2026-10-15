@@ -256,7 +256,7 @@ export function MusicView() {
   }, [searchInput, isUrl]);
 
   return (
-    <div className="space-y-4 pb-28">
+    <div className="space-y-4">
       {/* ══════════ COMANDO: BÚSQUEDA Y DETECCIÓN DE ENLACES ══════════ */}
       <div className="space-y-3">
         <form onSubmit={handleImport} className="relative w-full">

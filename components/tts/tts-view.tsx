@@ -161,7 +161,7 @@ export function TTSView() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 pb-28">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
       {/* ─── Main TTS Composer (Left 2 columns) ────────────────── */}
       <div className="lg:col-span-2 space-y-4">
         <div className="glass-panel p-5 sm:p-6 border border-black/5 dark:border-white/10">
