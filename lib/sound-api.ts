@@ -112,6 +112,7 @@ export interface SoundboardTrack {
   file?: string | null;
   hasFile?: boolean;
   uploadedBy?: string | null;
+  lastPlayedAt?: number | null;
 }
 
 export interface SoundPlayResult {

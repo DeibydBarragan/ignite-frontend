@@ -58,6 +58,7 @@ export interface SoundItem {
   playsCount: number;
   hasFile?: boolean; // true si el bot tiene el .mp3 real (suena en Discord)
   uploadedBy?: string | null; // discord user id de quien lo subió (null = sonido de serie)
+  lastPlayedAt?: number | null; // timestamp de última reproducción
 }
 
 export interface PhraseTrigger {

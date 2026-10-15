@@ -52,6 +52,31 @@ export function saveStoredSoundScope(soundId: string, scope: "mine" | "all" | nu
   } catch {}
 }
 
+const RECENT_PLAYED_KEY = "ignite_sound_recent_played";
+
+export function getStoredRecentPlayed(): Record<string, number> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(RECENT_PLAYED_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveStoredRecentPlayed(soundId: string, timestamp = Date.now()) {
+  if (typeof window === "undefined") return;
+  try {
+    const current = getStoredRecentPlayed();
+    if (timestamp <= 0) {
+      delete current[soundId];
+    } else {
+      current[soundId] = timestamp;
+    }
+    localStorage.setItem(RECENT_PLAYED_KEY, JSON.stringify(current));
+  } catch {}
+}
+
 /** Sonido remoto del bot -> SoundItem local (para la sección "Todos"). */
 function mapRemoteSound(r: SoundboardTrack): SoundItem {
   return {
@@ -70,6 +95,7 @@ function mapRemoteSound(r: SoundboardTrack): SoundItem {
     playsCount: r.playsCount ?? 0,
     hasFile: r.hasFile ?? false,
     uploadedBy: r.uploadedBy ?? null,
+    lastPlayedAt: r.lastPlayedAt ?? null,
   };
 }
 
@@ -324,6 +350,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       .then((remote) => {
         if (cancelled || !remote) return;
         const storedScopes = getStoredSoundScopes();
+        const storedRecent = getStoredRecentPlayed();
         setSounds((prev) => {
           const merged = prev.map((s) => {
             const r = remote.find((x) => x.id === s.id);
@@ -334,14 +361,16 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
             } else if (overrideScope === "all") {
               effectiveUploadedBy = null;
             }
+            const lastPlayedAt = storedRecent[s.id] ?? r?.lastPlayedAt ?? s.lastPlayedAt ?? null;
             return r
               ? {
                   ...s,
                   playsCount: Math.max(s.playsCount, r.playsCount ?? 0),
                   hasFile: r.hasFile ?? s.hasFile,
                   uploadedBy: effectiveUploadedBy ?? null,
+                  lastPlayedAt,
                 }
-              : { ...s, uploadedBy: effectiveUploadedBy ?? null };
+              : { ...s, uploadedBy: effectiveUploadedBy ?? null, lastPlayedAt };
           });
           const known = new Set(merged.map((s) => s.id));
           const missing = remote
@@ -354,6 +383,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
               } else if (overrideScope === "all") {
                 mapped.uploadedBy = null;
               }
+              mapped.lastPlayedAt = storedRecent[mapped.id] ?? r.lastPlayedAt ?? null;
               return mapped;
             });
           return [...merged, ...missing];
@@ -1540,9 +1570,11 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setActiveSoundId(null);
     }, sound.duration * 1000);
 
-    // Update play count (optimista)
+    // Update play count y timestamp de uso reciente (optimista)
+    const now = Date.now();
+    saveStoredRecentPlayed(soundId, now);
     setSounds((prev) =>
-      prev.map((s) => (s.id === soundId ? { ...s, playsCount: s.playsCount + 1 } : s))
+      prev.map((s) => (s.id === soundId ? { ...s, playsCount: s.playsCount + 1, lastPlayedAt: now } : s))
     );
 
     const channelName = currentVoiceChannel?.name || "General";
@@ -1596,6 +1628,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   }) => {
     const isMine = soundData.scope !== "all";
     const uploadedBy = isMine ? (user?.id || "750899475404292126") : null;
+    const now = Date.now();
 
     // Con archivo: subida real al bot (sonará en Discord). Sin archivo: solo local (preview synth).
     if (soundData.file) {
@@ -1621,8 +1654,10 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         playsCount: s.playsCount ?? 0,
         hasFile: true,
         uploadedBy: uploadedBy,
+        lastPlayedAt: now,
       };
       saveStoredSoundScope(newSound.id, isMine ? "mine" : "all");
+      saveStoredRecentPlayed(newSound.id, now);
       setSounds((prev) => [newSound, ...prev]);
       toast(`Sonido "${newSound.name}" subido correctamente al catálogo.`, "success", {
         duration: 3500,
@@ -1640,8 +1675,10 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       playsCount: 0,
       hasFile: false,
       uploadedBy: uploadedBy,
+      lastPlayedAt: now,
     };
     saveStoredSoundScope(newSound.id, isMine ? "mine" : "all");
+    saveStoredRecentPlayed(newSound.id, now);
     setSounds((prev) => [newSound, ...prev]);
     toast(`Sonido "${newSound.name}" guardado en el catálogo local.`, "success", {
       duration: 3000,
@@ -1720,6 +1757,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     if (!target) return false;
 
     saveStoredSoundScope(soundId, null);
+    saveStoredRecentPlayed(soundId, 0);
 
     try {
       await soundApi.deleteSound(soundId);

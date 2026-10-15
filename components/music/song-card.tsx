@@ -44,9 +44,9 @@ export function SongCard({ song }: { song: Song }) {
       }`}
     >
       <div>
-        {/* Album Artwork with play overlay */}
+        {/* Album Artwork with add-to-queue overlay */}
         <div
-          onClick={() => !isPlayerBusy && playSong(song)}
+          onClick={() => !isPlayerBusy && addToQueue(song)}
           className="relative aspect-square w-full rounded-xl overflow-hidden mb-3 bg-black/10 dark:bg-white/5 cursor-pointer"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -126,35 +126,36 @@ export function SongCard({ song }: { song: Song }) {
             </div>
           )}
 
-          {/* Quick Play Hover Button (Spotify Green) */}
+          {/* Quick Add-to-Queue Hover Button (Spotify Green with Plus) */}
           <button
             onClick={(e) => {
               e.stopPropagation();
-              playSong(song);
+              addToQueue(song);
             }}
             disabled={isPlayerBusy}
-            aria-label={`Reproducir ${song.title}`}
+            aria-label={`Añadir ${song.title} a la cola`}
+            title="Añadir a la cola"
             className={`absolute bottom-2.5 right-2.5 h-9 w-9 rounded-full bg-[#1db954] text-black shadow-lg shadow-[#1db954]/25 flex items-center justify-center transition-all transform ${
-              isLoadingThisSongPlay
+              isLoadingThisSongQueue
                 ? "opacity-100 scale-105 cursor-not-allowed"
                 : isPlayerBusy
                 ? "opacity-0 pointer-events-none"
                 : "opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 hover:scale-105 hover:bg-[#1ed760] cursor-pointer"
             }`}
           >
-            {isLoadingThisSongPlay ? (
+            {isLoadingThisSongQueue ? (
               <Loader2 size={16} className="animate-spin text-black" />
             ) : (
-              <Play size={16} className="fill-current ml-0.5" />
+              <Plus size={18} strokeWidth={2.5} />
             )}
           </button>
         </div>
 
         {/* Info */}
         <h3
-          onClick={() => !isPlayerBusy && playSong(song)}
+          onClick={() => !isPlayerBusy && addToQueue(song)}
           className="font-semibold text-xs text-slate-900 dark:text-white truncate cursor-pointer hover:text-[#1ed760] transition-colors"
-          title={song.title}
+          title={`Añadir a la cola: ${song.title}`}
         >
           {song.title}
         </h3>
@@ -171,6 +172,29 @@ export function SongCard({ song }: { song: Song }) {
         </span>
 
         <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={() => playSong(song)}
+            disabled={isPlayerBusy || isLoadingThisSongPlay}
+            title={isLoadingThisSongPlay ? "Reproduciendo..." : "Reproducir ahora (inmediato)"}
+            className={`glass-btn px-2 py-0.5 text-[10px] flex items-center gap-1 transition-colors ${
+              isLoadingThisSongPlay || isPlayerBusy
+                ? "opacity-50 cursor-not-allowed"
+                : "text-slate-600 dark:text-slate-300 hover:text-[#1ed760] hover:border-[#1db954]/30 cursor-pointer"
+            }`}
+          >
+            {isLoadingThisSongPlay ? (
+              <>
+                <Loader2 size={11} className="animate-spin text-[#1db954]" />
+                <span>Play...</span>
+              </>
+            ) : (
+              <>
+                <Play size={10} className="fill-current ml-0.5" />
+                <span>Play</span>
+              </>
+            )}
+          </button>
+
           <button
             onClick={() => playNext(song)}
             disabled={isPlayerBusy || isLoadingThisSongNext}
@@ -190,29 +214,6 @@ export function SongCard({ song }: { song: Song }) {
               <>
                 <ListPlus size={11} />
                 <span>Sig.</span>
-              </>
-            )}
-          </button>
-
-          <button
-            onClick={() => addToQueue(song)}
-            disabled={isPlayerBusy || isLoadingThisSongQueue}
-            title={isLoadingThisSongQueue ? "Añadiendo a la cola..." : "Añadir a la cola"}
-            className={`glass-btn px-2 py-0.5 text-[10px] flex items-center gap-1 transition-colors ${
-              isLoadingThisSongQueue || isPlayerBusy
-                ? "opacity-50 cursor-not-allowed"
-                : "text-slate-600 dark:text-slate-300 hover:text-[#1ed760] hover:border-[#1db954]/30 cursor-pointer"
-            }`}
-          >
-            {isLoadingThisSongQueue ? (
-              <>
-                <Loader2 size={11} className="animate-spin text-purple-400" />
-                <span>Cola...</span>
-              </>
-            ) : (
-              <>
-                <Plus size={11} />
-                <span>Cola</span>
               </>
             )}
           </button>

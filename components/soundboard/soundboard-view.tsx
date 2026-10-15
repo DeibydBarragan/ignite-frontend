@@ -16,7 +16,21 @@ import {
   Upload,
   Pencil,
   Trash2,
+  Clock,
 } from "lucide-react";
+
+function formatRelativeTime(ts: number | null | undefined): string | null {
+  if (!ts) return null;
+  const now = Date.now();
+  const diffSec = Math.max(0, Math.floor((now - ts) / 1000));
+  if (diffSec < 60) return "Ahora";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours}h`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d`;
+}
 
 const CATEGORIES: { id: "all" | SoundCategory; label: string }[] = [
   { id: "all", label: "Todos" },
@@ -41,6 +55,7 @@ export function SoundboardView() {
   const [searchSound, setSearchSound] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<"all" | SoundCategory>("all");
   const [soundScope, setSoundScope] = useState<"all" | "mine" | "public">("all");
+  const [sortBy, setSortBy] = useState<"recent" | "popular" | "alpha">("recent");
   const [isAddSoundOpen, setIsAddSoundOpen] = useState(false);
   const [editingSound, setEditingSound] = useState<SoundItem | null>(null);
   const [deletingSound, setDeletingSound] = useState<SoundItem | null>(null);
@@ -99,12 +114,34 @@ export function SoundboardView() {
   }, [soundScope, mySounds, publicSounds, sounds]);
 
   const filteredSounds = useMemo(() => {
-    return scopeSounds.filter((s) => {
+    const list = scopeSounds.filter((s) => {
       const matchesSearch = s.name.toLowerCase().includes(searchSound.toLowerCase());
       const matchesCat = selectedCategory === "all" || s.category === selectedCategory;
       return matchesSearch && matchesCat;
     });
-  }, [scopeSounds, searchSound, selectedCategory]);
+
+    return [...list].sort((a, b) => {
+      if (sortBy === "recent") {
+        const timeA = a.lastPlayedAt ?? 0;
+        const timeB = b.lastPlayedAt ?? 0;
+        if (timeA !== timeB) return timeB - timeA;
+        if ((b.playsCount ?? 0) !== (a.playsCount ?? 0)) {
+          return (b.playsCount ?? 0) - (a.playsCount ?? 0);
+        }
+        return a.name.localeCompare(b.name);
+      }
+      if (sortBy === "popular") {
+        if ((b.playsCount ?? 0) !== (a.playsCount ?? 0)) {
+          return (b.playsCount ?? 0) - (a.playsCount ?? 0);
+        }
+        return (b.lastPlayedAt ?? 0) - (a.lastPlayedAt ?? 0);
+      }
+      if (sortBy === "alpha") {
+        return a.name.localeCompare(b.name);
+      }
+      return 0;
+    });
+  }, [scopeSounds, searchSound, selectedCategory, sortBy]);
 
   return (
     <div className="space-y-8 pb-28">
@@ -190,15 +227,31 @@ export function SoundboardView() {
             ))}
           </div>
 
-          <div className="relative w-full sm:w-60">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Buscar sonido..."
-              value={searchSound}
-              onChange={(e) => setSearchSound(e.target.value)}
-              className="glass-input w-full pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400"
-            />
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-56">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Buscar sonido..."
+                value={searchSound}
+                onChange={(e) => setSearchSound(e.target.value)}
+                className="glass-input w-full pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400"
+              />
+            </div>
+
+            <div className="flex items-center gap-1.5 glass-panel px-2.5 py-1 text-xs shrink-0 border border-black/10 dark:border-white/10" title="Ordenar audios">
+              <Clock size={12} className="text-purple-400" />
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as "recent" | "popular" | "alpha")}
+                className="bg-transparent text-xs text-slate-700 dark:text-slate-300 outline-none cursor-pointer pr-1"
+                title="Ordenar audios"
+              >
+                <option value="recent" className="dark:bg-slate-900">Más recientes</option>
+                <option value="popular" className="dark:bg-slate-900">Más usados</option>
+                <option value="alpha" className="dark:bg-slate-900">A - Z</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -258,16 +311,27 @@ export function SoundboardView() {
                     {snd.emoji ? snd.emoji : <Volume2 size={20} className="text-purple-400" />}
                   </div>
 
-                  {isPlayingThis && (
+                  {isPlayingThis ? (
                     <span className="relative flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#1db954] opacity-75" />
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-[#1db954]" />
                     </span>
-                  )}
+                  ) : snd.lastPlayedAt ? (
+                    <span
+                      className="text-[9px] font-sans text-slate-400 dark:text-slate-500 flex items-center gap-0.5 shrink-0 bg-black/5 dark:bg-white/5 px-1.5 py-0.5 rounded-md"
+                      title={`Último uso: ${formatRelativeTime(snd.lastPlayedAt)}`}
+                    >
+                      <Clock size={9} className="text-purple-400" />
+                      <span>{formatRelativeTime(snd.lastPlayedAt)}</span>
+                    </span>
+                  ) : null}
                 </div>
 
                 <div className="w-full min-w-0">
-                  <div className="font-medium text-xs text-slate-900 dark:text-white truncate flex items-center gap-1.5" title={snd.name}>
+                  <div
+                    className="font-medium text-xs text-slate-900 dark:text-white truncate flex items-center gap-1.5"
+                    title={`${snd.name}${snd.lastPlayedAt ? ` • Usado: ${formatRelativeTime(snd.lastPlayedAt)}` : ""}`}
+                  >
                     <span className="truncate">{snd.name}</span>
                     {isMine && soundScope === "all" && (
                       <span className="shrink-0 text-[9px] font-bold px-1.5 py-px rounded-full bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
