@@ -73,7 +73,7 @@ function SortableQueueItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex items-center justify-between gap-3 p-2 rounded-xl transition-colors border border-transparent hover:border-black/5 dark:hover:border-white/5 bg-white dark:bg-transparent ${
+      className={`group flex items-center justify-between gap-3 p-2 rounded-xl transition-colors border border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02] ${
         isDragging
           ? "opacity-40 border-purple-500/40 bg-purple-500/5 shadow-lg z-10"
           : "hover:bg-black/5 dark:hover:bg-white/5"

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useBot } from "@/context/bot-context";
 import { GlassModal } from "@/components/glass-modal";
 import { EmojiPicker } from "@/components/soundboard/emoji-picker";
+import { GlassSelect } from "@/components/glass-select";
 import { SoundCategory } from "@/lib/mock-data";
 import { Button } from "@heroui/react";
 import { Plus, User, Globe, Loader2 } from "lucide-react";
@@ -137,17 +138,18 @@ export function AddSoundModal({
                 Categoría
               </label>
             </div>
-            <select
+            <GlassSelect
               value={category}
-              onChange={(e) => setCategory(e.target.value as SoundCategory)}
-              className="glass-input w-full h-10 px-3.5 text-xs text-slate-900 dark:text-white"
-            >
-              <option value="memes" className="dark:bg-slate-900">Memes</option>
-              <option value="gaming" className="dark:bg-slate-900">Gaming</option>
-              <option value="reactions" className="dark:bg-slate-900">Reacciones</option>
-              <option value="sfx" className="dark:bg-slate-900">Efectos SFX</option>
-              <option value="anime" className="dark:bg-slate-900">Anime</option>
-            </select>
+              onChange={(val) => setCategory(val as SoundCategory)}
+              options={[
+                { value: "memes", label: "Memes" },
+                { value: "gaming", label: "Gaming" },
+                { value: "reactions", label: "Reacciones" },
+                { value: "sfx", label: "Efectos SFX" },
+                { value: "anime", label: "Anime" },
+              ]}
+              size="md"
+            />
           </div>
         </div>
 

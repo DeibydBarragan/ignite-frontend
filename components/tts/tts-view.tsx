@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useBot } from "@/context/bot-context";
 import { soundApi, VoiceItem, FALLBACK_VOICES } from "@/lib/sound-api";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@/lib/phrases-service";
 import { AddPhraseModal } from "./add-phrase-modal";
 import { DeletePhraseModal } from "./delete-phrase-modal";
+import { GlassSelect } from "@/components/glass-select";
 import { useToast } from "@/components/ui/toast";
 import {
   Mic,
@@ -44,6 +45,15 @@ export function TTSView() {
   const [playingPhraseId, setPlayingPhraseId] = useState<string | null>(null);
   const [emittingPhraseId, setEmittingPhraseId] = useState<string | null>(null);
   const [phraseToDelete, setPhraseToDelete] = useState<SavedPhrase | null>(null);
+
+  const voiceOptions = useMemo(() => {
+    return voices.map((v) => ({
+      value: v.id,
+      label: v.name,
+      flag: v.flag,
+      subtitle: v.gender,
+    }));
+  }, [voices]);
 
   const maxChars = 300;
   const charsLeft = maxChars - text.length;
@@ -202,17 +212,12 @@ export function TTSView() {
               <label className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block mb-1">
                 Voz seleccionada
               </label>
-              <select
+              <GlassSelect
                 value={selectedVoiceId}
-                onChange={(e) => setSelectedVoiceId(e.target.value)}
-                className="glass-input w-full py-1.5 px-2.5 text-xs text-slate-900 dark:text-white"
-              >
-                {voices.map((v) => (
-                  <option key={v.id} value={v.id} className="dark:bg-slate-900">
-                    {v.flag} {v.name} ({v.gender})
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedVoiceId}
+                options={voiceOptions}
+                size="sm"
+              />
             </div>
 
             {/* Pitch Slider */}

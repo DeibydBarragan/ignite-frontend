@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useBot } from "@/context/bot-context";
 import { GlassModal } from "@/components/glass-modal";
+import { GlassSelect } from "@/components/glass-select";
 import { Button } from "@heroui/react";
 import { Plus, MessageSquare, Sparkles } from "lucide-react";
 
@@ -86,17 +87,17 @@ export function AddPhraseModal({
           <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
             Sonido a Reproducir (Desde la Base de Sonidos)
           </label>
-          <select
+          <GlassSelect
             value={selectedSoundId}
-            onChange={(e) => setSelectedSoundId(e.target.value)}
-            className="glass-input w-full px-3.5 py-2.5 text-xs text-slate-900 dark:text-white"
-          >
-            {sounds.map((snd) => (
-              <option key={snd.id} value={snd.id} className="dark:bg-slate-900">
-                {snd.emoji ? `${snd.emoji} ` : ""}{snd.name} ({snd.category})
-              </option>
-            ))}
-          </select>
+            onChange={setSelectedSoundId}
+            options={sounds.map((snd) => ({
+              value: snd.id,
+              label: snd.name,
+              icon: snd.emoji ? <span className="text-sm mr-1">{snd.emoji}</span> : undefined,
+              subtitle: snd.category,
+            }))}
+            size="md"
+          />
         </div>
 
         <div className="p-3.5 rounded-xl bg-black/5 dark:bg-white/5 space-y-3">
@@ -116,15 +117,16 @@ export function AddPhraseModal({
             <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 block mb-1 uppercase tracking-wider">
               Ámbito de Detección
             </label>
-            <select
+            <GlassSelect
               value={channelTarget}
-              onChange={(e) => setChannelTarget(e.target.value)}
-              className="glass-input w-full py-1.5 px-3 text-xs text-slate-900 dark:text-white"
-            >
-              <option value="all" className="dark:bg-slate-900">Todos los canales del servidor</option>
-              <option value="voice_only" className="dark:bg-slate-900">Solo en canales de voz</option>
-              <option value="text_only" className="dark:bg-slate-900">Solo en canales de texto</option>
-            </select>
+              onChange={setChannelTarget}
+              options={[
+                { value: "all", label: "Todos los canales del servidor" },
+                { value: "voice_only", label: "Solo en canales de voz" },
+                { value: "text_only", label: "Solo en canales de texto" },
+              ]}
+              size="sm"
+            />
           </div>
         </div>
       </form>

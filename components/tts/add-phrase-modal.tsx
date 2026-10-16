@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { GlassModal } from "@/components/glass-modal";
 import { soundApi, VoiceItem } from "@/lib/sound-api";
 import { createSavedPhrase, SavedPhrase } from "@/lib/phrases-service";
+import { GlassSelect } from "@/components/glass-select";
 import { Button } from "@heroui/react";
 import { BookmarkPlus, Volume2, Loader2, Sparkles } from "lucide-react";
 
@@ -27,6 +28,15 @@ export function AddPhraseModal({
   const [rate, setRate] = useState(1.0);
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  const voiceOptions = useMemo(() => {
+    return voices.map((v) => ({
+      value: v.id,
+      label: v.name,
+      flag: v.flag,
+      subtitle: v.gender,
+    }));
+  }, [voices]);
 
   const handlePreview = async () => {
     if (!text.trim() || isPreviewing) return;
@@ -164,17 +174,12 @@ export function AddPhraseModal({
           <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
             Voz del Sintetizador
           </label>
-          <select
+          <GlassSelect
             value={selectedVoice}
-            onChange={(e) => setSelectedVoice(e.target.value)}
-            className="glass-input w-full py-2 px-3 text-xs text-slate-900 dark:text-white"
-          >
-            {voices.map((v) => (
-              <option key={v.id} value={v.id} className="dark:bg-slate-900 text-slate-900 dark:text-white">
-                {v.flag} {v.name} ({v.gender})
-              </option>
-            ))}
-          </select>
+            onChange={setSelectedVoice}
+            options={voiceOptions}
+            size="md"
+          />
         </div>
 
         {/* Pitch & Rate */}

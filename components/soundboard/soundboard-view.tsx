@@ -6,6 +6,7 @@ import { SoundItem, SoundCategory } from "@/lib/mock-data";
 import { AddSoundModal } from "@/components/soundboard/add-sound-modal";
 import { EditSoundModal } from "@/components/soundboard/edit-sound-modal";
 import { DeleteSoundModal } from "@/components/soundboard/delete-sound-modal";
+import { GlassSelect } from "@/components/glass-select";
 import {
   Volume2,
   Play,
@@ -40,6 +41,12 @@ const CATEGORIES: { id: "all" | SoundCategory; label: string }[] = [
   { id: "reactions", label: "Reacciones" },
   { id: "sfx", label: "Efectos" },
   { id: "anime", label: "Anime" },
+];
+
+const SORT_OPTIONS = [
+  { value: "recent", label: "Más recientes", icon: <Clock size={12} className="text-purple-400" /> },
+  { value: "popular", label: "Más usados", icon: <Clock size={12} className="text-purple-400" /> },
+  { value: "alpha", label: "A - Z", icon: <Clock size={12} className="text-purple-400" /> },
 ];
 
 export function SoundboardView() {
@@ -246,18 +253,14 @@ export function SoundboardView() {
               />
             </div>
 
-            <div className="flex items-center gap-1.5 glass-panel px-2.5 py-1 text-xs shrink-0 border border-black/10 dark:border-white/10" title="Ordenar audios">
-              <Clock size={12} className="text-purple-400" />
-              <select
+            <div className="w-36 shrink-0" title="Ordenar audios">
+              <GlassSelect
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as "recent" | "popular" | "alpha")}
-                className="bg-transparent text-xs text-slate-700 dark:text-slate-300 outline-none cursor-pointer pr-1"
-                title="Ordenar audios"
-              >
-                <option value="recent" className="dark:bg-slate-900">Más recientes</option>
-                <option value="popular" className="dark:bg-slate-900">Más usados</option>
-                <option value="alpha" className="dark:bg-slate-900">A - Z</option>
-              </select>
+                onChange={(val) => setSortBy(val as "recent" | "popular" | "alpha")}
+                options={SORT_OPTIONS}
+                size="sm"
+                className="h-8 py-1 px-2.5"
+              />
             </div>
           </div>
         </div>
@@ -295,13 +298,16 @@ export function SoundboardView() {
           {filteredSounds.map((snd) => {
             const isPlayingThis = activeSoundId === snd.id;
             const isMine = isSoundMine(snd);
+            const isPadBusy = isAttaching && attachingSoundId === snd.id;
 
             return (
               <button
                 key={snd.id}
                 type="button"
-                onClick={() => playSound(snd.id)}
-                className={`group text-left relative glass-panel p-3.5 flex flex-col justify-between transition-all duration-150 cursor-pointer active:scale-95 ${
+                onClick={() => !isPadBusy && playSound(snd.id)}
+                className={`group text-left relative glass-panel p-3.5 flex flex-col justify-between transition-all duration-150 ${
+                  isPadBusy ? "cursor-not-allowed opacity-80" : "cursor-pointer active:scale-95"
+                } ${
                   isPlayingThis
                     ? "border-[#1db954] bg-[#1db954]/10 ring-1 ring-[#1db954]/50 shadow-sm"
                     : "hover:border-purple-500/30 dark:hover:border-purple-500/30"
@@ -362,15 +368,21 @@ export function SoundboardView() {
                         title="Editar nombre, emoji, categoría y ámbito"
                         onClick={(ev) => {
                           ev.stopPropagation();
+                          if (isPadBusy) return;
                           setEditingSound(snd);
                         }}
                         onKeyDown={(ev) => {
                           if (ev.key === "Enter" || ev.key === " ") {
                             ev.stopPropagation();
+                            if (isPadBusy) return;
                             setEditingSound(snd);
                           }
                         }}
-                        className="p-0.5 rounded transition-colors cursor-pointer text-slate-300 dark:text-slate-600 hover:text-purple-400"
+                        className={`p-0.5 rounded transition-colors ${
+                          isPadBusy
+                            ? "opacity-30 cursor-not-allowed pointer-events-none"
+                            : "cursor-pointer text-slate-300 dark:text-slate-600 hover:text-purple-400"
+                        }`}
                       >
                         <Pencil size={11} />
                       </span>
@@ -416,15 +428,21 @@ export function SoundboardView() {
                         title="Eliminar sonido"
                         onClick={(ev) => {
                           ev.stopPropagation();
+                          if (isPadBusy) return;
                           setDeletingSound(snd);
                         }}
                         onKeyDown={(ev) => {
                           if (ev.key === "Enter" || ev.key === " ") {
                             ev.stopPropagation();
+                            if (isPadBusy) return;
                             setDeletingSound(snd);
                           }
                         }}
-                        className="p-0.5 rounded transition-colors cursor-pointer text-slate-300 dark:text-slate-600 hover:text-rose-500"
+                        className={`p-0.5 rounded transition-colors ${
+                          isPadBusy
+                            ? "opacity-30 cursor-not-allowed pointer-events-none"
+                            : "cursor-pointer text-slate-300 dark:text-slate-600 hover:text-rose-500"
+                        }`}
                       >
                         <Trash2 size={11} />
                       </span>

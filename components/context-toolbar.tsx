@@ -237,7 +237,7 @@ export function ContextToolbar({ activeTab, onTabChange }: ContextToolbarProps) 
               onClick={() => onTabChange(tab.id)}
               className={`relative flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs transition-all duration-150 cursor-pointer ${
                 isSelected
-                  ? "bg-white dark:bg-[#141624] text-slate-900 dark:text-white shadow-xs border border-black/[0.06] dark:border-white/[0.09] font-medium"
+                  ? "bg-white/80 dark:bg-white/10 backdrop-blur-md text-slate-900 dark:text-white shadow-xs border border-black/[0.06] dark:border-white/[0.09] font-medium"
                   : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 font-normal"
               }`}
             >

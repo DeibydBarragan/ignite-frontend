@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useBot } from "@/context/bot-context";
 import { igniteApi } from "@/lib/ignite-api";
 import type { Song } from "@/lib/mock-data";
@@ -144,8 +144,10 @@ export function PlaylistsView() {
     addToQueue,
     importUrlSong,
     importPlaylistToFavorites,
+    removePlaylistFromFavorites,
     isFavorite,
     toggleFavorite,
+    favorites,
     isPlayerBusy,
   } = useBot();
 
@@ -165,6 +167,41 @@ export function PlaylistsView() {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [queueingId, setQueueingId] = useState<string | null>(null);
   const liveForRef = useRef<string | null>(null);
+
+  // Set de IDs de playlists que el usuario tiene guardadas en favoritos
+  const [favPlaylistIds, setFavPlaylistIds] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const stored = localStorage.getItem(`ignite_fav_playlists_${user?.id || "guest"}`);
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  const saveFavPlaylistIds = useCallback((newSet: Set<string>) => {
+    setFavPlaylistIds(newSet);
+    try {
+      localStorage.setItem(
+        `ignite_fav_playlists_${user?.id || "guest"}`,
+        JSON.stringify(Array.from(newSet))
+      );
+    } catch (e) {
+      console.error("Error saving favorite playlists to localStorage", e);
+    }
+  }, [user?.id]);
+
+  // Helper para saber si una playlist está en favoritos
+  const isPlFav = useCallback(
+    (pl: UserPlaylist) => {
+      if (favPlaylistIds.has(pl.id)) return true;
+      if (pl.tracks && pl.tracks.length > 0) {
+        return pl.tracks.every((t) => isFavorite(t.id) || isFavorite(t.url));
+      }
+      return false;
+    },
+    [favPlaylistIds, isFavorite]
+  );
 
   useEffect(() => {
     let mounted = true;
@@ -307,12 +344,39 @@ export function PlaylistsView() {
       const res = await importPlaylistToFavorites({ name: pl.name, url: pl.url });
       if (res.error) {
         showFeedback("error", res.error);
-      } else if (res.added === 0) {
-        showFeedback("success", "Esos temas ya estaban en tus favoritos.");
       } else {
+        const next = new Set(favPlaylistIds);
+        next.add(pl.id);
+        saveFavPlaylistIds(next);
+
+        if (res.added === 0) {
+          showFeedback("success", `Playlist "${pl.name}" marcada en tus favoritos.`);
+        } else {
+          showFeedback(
+            "success",
+            `${res.added} tema(s) de "${pl.name}" guardados en favoritos${res.skipped > 0 ? ` (${res.skipped} ya estaban)` : ""}.`
+          );
+        }
+      }
+    } finally {
+      setImportingFavId(null);
+    }
+  };
+
+  const handleRemoveFavorites = async (pl: UserPlaylist) => {
+    if (importingFavId) return;
+    setImportingFavId(pl.id);
+    try {
+      const res = await removePlaylistFromFavorites({ url: pl.url, tracks: pl.tracks });
+      if (res.error) {
+        showFeedback("error", res.error);
+      } else {
+        const next = new Set(favPlaylistIds);
+        next.delete(pl.id);
+        saveFavPlaylistIds(next);
         showFeedback(
           "success",
-          `${res.added} tema(s) de "${pl.name}" guardados en favoritos${res.skipped > 0 ? ` (${res.skipped} ya estaban)` : ""}.`
+          `Playlist "${pl.name}" quitada de tus favoritos (${res.removed} tema(s) removidos).`
         );
       }
     } finally {
@@ -589,48 +653,55 @@ export function PlaylistsView() {
                     <span className="truncate">Ver temas</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => handlePlayPlaylist(pl)}
-                    disabled={isCardBusy}
-                    title={isPlayingThis ? "Sonando ahora" : "Reproducir playlist ahora"}
-                    aria-label={`Reproducir ${pl.name}`}
-                    className="h-8.5 w-8.5 rounded-xl text-xs font-semibold bg-[#1db954] hover:bg-[#1ed760] disabled:opacity-50 text-black flex items-center justify-center transition-all cursor-pointer disabled:cursor-not-allowed shadow-xs shrink-0"
-                  >
-                    {isPlayingThis ? (
-                      <Loader2 size={14} className="animate-spin" />
-                    ) : (
-                      <Play size={14} className="fill-current ml-0.5" />
-                    )}
-                  </button>
-
+                  {/* Botón principal coloreado: Añadir a la cola (+) PRIMERO */}
                   <button
                     type="button"
                     onClick={() => handleQueuePlaylist(pl)}
                     disabled={isCardBusy}
                     title="Añadir toda la playlist a la cola"
                     aria-label={`Añadir ${pl.name} a la cola`}
-                    className="h-8.5 w-8.5 rounded-xl glass-btn text-slate-500 dark:text-slate-300 hover:text-emerald-400 hover:border-emerald-500/30 flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                    className="h-8.5 w-8.5 rounded-xl text-xs font-bold bg-[#1db954] hover:bg-[#1ed760] disabled:opacity-50 text-black flex items-center justify-center transition-all cursor-pointer disabled:cursor-not-allowed shadow-xs shrink-0"
                   >
                     {isQueueingThis ? (
-                      <Loader2 size={14} className="animate-spin text-emerald-400" />
+                      <Loader2 size={14} className="animate-spin text-black" />
                     ) : (
-                      <Plus size={15} strokeWidth={2.2} />
+                      <Plus size={16} strokeWidth={2.5} />
                     )}
                   </button>
 
+                  {/* Botón secundario: Reproducir (Play) SEGUNDO */}
+                  <button
+                    type="button"
+                    onClick={() => handlePlayPlaylist(pl)}
+                    disabled={isCardBusy}
+                    title={isPlayingThis ? "Sonando ahora" : "Reproducir playlist ahora"}
+                    aria-label={`Reproducir ${pl.name}`}
+                    className="h-8.5 w-8.5 rounded-xl text-xs font-semibold glass-btn text-slate-600 dark:text-slate-300 hover:text-purple-400 hover:border-purple-500/30 disabled:opacity-50 flex items-center justify-center transition-all cursor-pointer disabled:cursor-not-allowed shrink-0"
+                  >
+                    {isPlayingThis ? (
+                      <Loader2 size={14} className="animate-spin text-purple-400" />
+                    ) : (
+                      <Play size={14} className="fill-current text-slate-700 dark:text-slate-200 ml-0.5" />
+                    )}
+                  </button>
+
+                  {/* Botón Favoritos (coloreado en ámbar si está en favoritos) TERCERO */}
                   <button
                     type="button"
                     onClick={() => setFavConfirmPlaylist(pl)}
                     disabled={isCardBusy || !!importingFavId}
-                    title="Guardar todos los temas en favoritos"
-                    aria-label={`Guardar temas de ${pl.name} en favoritos`}
-                    className="h-8.5 w-8.5 rounded-xl glass-btn text-slate-500 dark:text-slate-300 hover:text-amber-400 hover:border-amber-400/30 flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                    title={isPlFav(pl) ? "Quitar playlist de favoritos" : "Guardar todos los temas en favoritos"}
+                    aria-label={isPlFav(pl) ? `Quitar temas de ${pl.name} de favoritos` : `Guardar temas de ${pl.name} en favoritos`}
+                    className={`h-8.5 w-8.5 rounded-xl flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 ${
+                      isPlFav(pl)
+                        ? "bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30 shadow-xs"
+                        : "glass-btn text-slate-500 dark:text-slate-300 hover:text-amber-400 hover:border-amber-400/30"
+                    }`}
                   >
                     {importingFavId === pl.id ? (
                       <Loader2 size={14} className="animate-spin text-amber-400" />
                     ) : (
-                      <Star size={14} />
+                      <Star size={14} className={isPlFav(pl) ? "fill-amber-400 text-amber-400" : ""} />
                     )}
                   </button>
                 </div>
@@ -644,7 +715,7 @@ export function PlaylistsView() {
       <GlassModal
         isOpen={!!selected}
         onClose={closeModal}
-        maxWidth="lg"
+        maxWidth="3xl"
         icon={<ListMusic size={20} />}
         title={selected?.name || "Playlist"}
         subtitle={
@@ -657,7 +728,7 @@ export function PlaylistsView() {
         footer={
           selected && !isSyncing && modalTracks.length > 0 ? (
             <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-2.5 w-full">
-              {/* Botones secundarios (favs, cola, link) */}
+              {/* Botones secundarios (favs, link externo) */}
               <div className="flex items-center gap-2 justify-between sm:justify-start w-full sm:w-auto">
                 <a
                   href={selected.url}
@@ -670,44 +741,59 @@ export function PlaylistsView() {
                   <span className="hidden md:inline">Abrir en {selected.source}</span>
                 </a>
 
+                {/* Botón Favoritos con estado coloreado */}
                 <button
                   onClick={() => selected && setFavConfirmPlaylist(selected)}
                   disabled={!!importingFavId}
-                  title="Guardar todos los temas en favoritos"
-                  className="flex-1 sm:flex-none px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-xl text-xs font-medium glass-btn text-slate-700 dark:text-slate-200 hover:text-amber-400 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors whitespace-nowrap"
+                  title={isPlFav(selected) ? "Quitar playlist de favoritos" : "Guardar todos los temas en favoritos"}
+                  className={`flex-1 sm:flex-none px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors whitespace-nowrap ${
+                    isPlFav(selected)
+                      ? "bg-amber-400/20 text-amber-400 border border-amber-400/40 hover:bg-amber-400/30"
+                      : "glass-btn text-slate-700 dark:text-slate-200 hover:text-amber-400"
+                  }`}
                 >
-                  {importingFavId ? (
+                  {importingFavId === selected.id ? (
                     <Loader2 size={13} className="animate-spin text-amber-400" />
                   ) : (
-                    <Star size={13} className="text-amber-400" />
+                    <Star size={13} className={isPlFav(selected) ? "fill-amber-400 text-amber-400" : ""} />
                   )}
-                  <span>Favoritos</span>
-                </button>
-
-                <button
-                  onClick={() => handleQueuePlaylist(selected)}
-                  disabled={isPlayerBusy}
-                  title="Añadir todos los temas a la cola"
-                  className="flex-1 sm:flex-none px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-xl text-xs font-medium glass-btn text-slate-700 dark:text-slate-200 hover:text-purple-400 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors whitespace-nowrap"
-                >
-                  <Plus size={13} className="text-purple-400" />
-                  <span className="inline sm:hidden">A la cola</span>
-                  <span className="hidden sm:inline">Añadir a la cola</span>
+                  <span>{isPlFav(selected) ? "En favoritos" : "Favoritos"}</span>
                 </button>
               </div>
 
-              {/* Botón primario: Reproducir todo */}
-              <button
-                onClick={() => {
-                  handlePlayPlaylist(selected);
-                  closeModal();
-                }}
-                disabled={isPlayerBusy}
-                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-xl text-xs font-bold bg-[#1db954] hover:bg-[#1ed760] text-black shadow-lg shadow-[#1db954]/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 transition-all shrink-0 active:scale-[0.98]"
-              >
-                <Play size={14} className="fill-current" />
-                <span>Reproducir todo</span>
-              </button>
+              {/* Botones de acción: + Añadir a la cola (principal coloreado) PRIMERO, luego Reproducir todo */}
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                {/* Botón principal coloreado: Añadir a la cola */}
+                <button
+                  onClick={() => handleQueuePlaylist(selected)}
+                  disabled={isPlayerBusy || queueingId === selected.id}
+                  className="flex-1 sm:flex-none px-4 py-2 sm:py-1.5 rounded-xl text-xs font-bold bg-[#1db954] hover:bg-[#1ed760] text-black shadow-md shadow-[#1db954]/25 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all whitespace-nowrap active:scale-[0.98]"
+                >
+                  {queueingId === selected.id ? (
+                    <Loader2 size={14} className="animate-spin text-black" />
+                  ) : (
+                    <Plus size={15} strokeWidth={2.5} />
+                  )}
+                  <span>Añadir a la cola</span>
+                </button>
+
+                {/* Botón secundario: Reproducir todo */}
+                <button
+                  onClick={() => {
+                    handlePlayPlaylist(selected);
+                    closeModal();
+                  }}
+                  disabled={isPlayerBusy || playingId === selected.id}
+                  className="flex-1 sm:flex-none px-3.5 py-2 sm:py-1.5 rounded-xl text-xs font-semibold glass-btn text-slate-900 dark:text-white hover:text-purple-400 hover:border-purple-500/40 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all whitespace-nowrap active:scale-[0.98]"
+                >
+                  {playingId === selected.id ? (
+                    <Loader2 size={14} className="animate-spin text-purple-400" />
+                  ) : (
+                    <Play size={14} className="fill-current text-purple-400" />
+                  )}
+                  <span>Reproducir todo</span>
+                </button>
+              </div>
             </div>
           ) : undefined
         }
@@ -802,16 +888,28 @@ export function PlaylistsView() {
         )}
       </GlassModal>
 
-      {/* Modal de confirmación para guardar temas en favoritos */}
+      {/* Modal de confirmación para guardar/quitar temas en favoritos */}
       <GlassModal
         isOpen={!!favConfirmPlaylist}
         onClose={() => !importingFavId && setFavConfirmPlaylist(null)}
         maxWidth="md"
-        icon={<Star size={20} className="text-amber-400 fill-amber-400" />}
-        title="Guardar en favoritos"
+        icon={
+          favConfirmPlaylist && isPlFav(favConfirmPlaylist) ? (
+            <Star size={20} className="text-rose-500 fill-rose-500" />
+          ) : (
+            <Star size={20} className="text-amber-400 fill-amber-400" />
+          )
+        }
+        title={
+          favConfirmPlaylist && isPlFav(favConfirmPlaylist)
+            ? "Quitar de favoritos"
+            : "Guardar en favoritos"
+        }
         subtitle={
           favConfirmPlaylist
-            ? `¿Deseas guardar los temas de «${favConfirmPlaylist.name}»?`
+            ? isPlFav(favConfirmPlaylist)
+              ? `¿Deseas quitar «${favConfirmPlaylist.name}» de tus favoritos?`
+              : `¿Deseas guardar los temas de «${favConfirmPlaylist.name}»?`
             : undefined
         }
         footer={
@@ -831,17 +929,39 @@ export function PlaylistsView() {
               onPress={async () => {
                 if (!favConfirmPlaylist) return;
                 const target = favConfirmPlaylist;
+                const removing = isPlFav(target);
                 setFavConfirmPlaylist(null);
-                await handleImportFavorites(target);
+                if (removing) {
+                  await handleRemoveFavorites(target);
+                } else {
+                  await handleImportFavorites(target);
+                }
               }}
-              className="bg-amber-500 hover:bg-amber-400 text-black font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer"
+              className={
+                favConfirmPlaylist && isPlFav(favConfirmPlaylist)
+                  ? "bg-rose-600 hover:bg-rose-500 text-white font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  : "bg-amber-500 hover:bg-amber-400 text-black font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer"
+              }
             >
               {importingFavId ? (
-                <Loader2 size={14} className="animate-spin text-black" />
+                <Loader2 size={14} className="animate-spin" />
               ) : (
-                <Star size={14} className="fill-black text-black" />
+                <Star
+                  size={14}
+                  className={
+                    favConfirmPlaylist && isPlFav(favConfirmPlaylist)
+                      ? "fill-white text-white"
+                      : "fill-black text-black"
+                  }
+                />
               )}
-              <span>{importingFavId ? "Guardando" : "Confirmar y guardar"}</span>
+              <span>
+                {importingFavId
+                  ? "Procesando"
+                  : favConfirmPlaylist && isPlFav(favConfirmPlaylist)
+                  ? "Quitar de favoritos"
+                  : "Confirmar y guardar"}
+              </span>
             </Button>
           </div>
         }
@@ -874,7 +994,9 @@ export function PlaylistsView() {
             </div>
 
             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              Esta acción añadirá las canciones de esta playlist a tu lista de favoritos de Discord para que puedas escucharlas en cualquier momento sin tener que buscar la playlist completa.
+              {isPlFav(favConfirmPlaylist)
+                ? "Se eliminarán las canciones de esta playlist de tu lista personal de favoritos de Discord."
+                : "Esta acción añadirá las canciones de esta playlist a tu lista de favoritos de Discord para que puedas escucharlas en cualquier momento sin tener que buscar la playlist completa."}
             </p>
           </div>
         )}

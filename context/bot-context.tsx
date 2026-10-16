@@ -159,6 +159,10 @@ interface BotContextType {
     name: string;
     url: string;
   }) => Promise<{ added: number; skipped: number; total: number; error: string | null }>;
+  removePlaylistFromFavorites: (input: {
+    url: string;
+    tracks?: Song[];
+  }) => Promise<{ removed: number; error: string | null }>;
   playFavorites: () => Promise<void>;
 
   // Loading & Action Locking States
@@ -1136,6 +1140,53 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     return { added: fresh.length, skipped: tracks.length - fresh.length, total: tracks.length, error: null };
   }, [isLoggedIn, user, favorites, selectedGuildId]);
 
+  // Remover los temas de una playlist de favoritos
+  const removePlaylistFromFavorites = useCallback(async (input: { url: string; tracks?: Song[] }) => {
+    if (!isLoggedIn || !user) {
+      return { removed: 0, error: "Debes iniciar sesión con Discord." };
+    }
+    const uid = user.id;
+    let targetTracks = input.tracks && input.tracks.length > 0 ? input.tracks : [];
+    if (targetTracks.length === 0) {
+      const res = await igniteApi.resolvePlaylist(selectedGuildId, input.url);
+      if (res.success && res.tracks) {
+        targetTracks = res.tracks;
+      }
+    }
+
+    if (targetTracks.length === 0) {
+      return { removed: 0, error: "No se encontraron temas en esa playlist." };
+    }
+
+    const targetUrls = new Set(targetTracks.map((t) => t.url).filter(Boolean));
+    const targetIds = new Set(targetTracks.map((t) => t.id).filter(Boolean));
+
+    const toRemove = favorites.filter((f) => targetUrls.has(f.url) || targetIds.has(f.id));
+    if (toRemove.length === 0) {
+      return { removed: 0, error: null };
+    }
+
+    setFavorites((prev) => prev.filter((f) => !targetUrls.has(f.url) && !targetIds.has(f.id)));
+
+    try {
+      const urlsArray = Array.from(targetUrls);
+      const idsArray = Array.from(targetIds);
+
+      if (urlsArray.length > 0) {
+        await supabase.from("user_favorites").delete().eq("user_id", uid).in("url", urlsArray);
+      }
+      if (idsArray.length > 0) {
+        await supabase.from("user_favorites").delete().eq("user_id", uid).in("song_id", idsArray);
+      }
+    } catch (err) {
+      console.error("Error removing playlist favorites from Supabase:", err);
+      setFavorites((prev) => [...toRemove, ...prev]);
+      return { removed: 0, error: "Error al eliminar de favoritos. Inténtalo de nuevo." };
+    }
+
+    return { removed: toRemove.length, error: null };
+  }, [isLoggedIn, user, favorites, selectedGuildId]);
+
   const removeFromQueue = useCallback(async (songId: string) => {
     if (!isLoggedIn || removingSongId === songId) return;
     setRemovingSongId(songId);
@@ -1984,6 +2035,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         isFavorite,
         toggleFavorite,
         importPlaylistToFavorites,
+        removePlaylistFromFavorites,
         playFavorites,
 
         isPlayerBusy,
