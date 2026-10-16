@@ -97,16 +97,6 @@ export function MusicView() {
   const [isLoadingRecs, setIsLoadingRecs] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const { toast } = useToast();
-  const [searchMode, setSearchMode] = useState<"suggestions" | "videos">(() => {
-    if (typeof window === "undefined") return "suggestions";
-    try {
-      const stored = localStorage.getItem("ignite_search_mode");
-      return stored === "videos" ? "videos" : "suggestions";
-    } catch {
-      return "suggestions";
-    }
-  });
-  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [searchResults, setSearchResults] = useState<Song[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -227,7 +217,6 @@ export function MusicView() {
     if (!query) return;
 
     setShowSuggestions(false);
-    setSuggestions([]);
     setSearchResults([]);
 
     try {
@@ -243,12 +232,11 @@ export function MusicView() {
     }
   };
 
-  // Búsqueda en vivo: Sugerencias ultrarrápidas o Videos exactos de YouTube
+  // Búsqueda en vivo: Videos exactos de YouTube
   useEffect(() => {
     if (searchTimer.current) clearTimeout(searchTimer.current);
     const q = searchInput.trim();
     if (isUrl || q.length < 2) {
-      setSuggestions([]);
       setSearchResults([]);
       setShowSuggestions(false);
       setIsSearching(false);
@@ -256,105 +244,38 @@ export function MusicView() {
     }
 
     setIsSearching(true);
-    if (searchMode === "suggestions") {
-      searchTimer.current = setTimeout(async () => {
-        try {
-          const items = await igniteApi.getSuggestions(q);
-          setSuggestions(items);
-          setShowSuggestions(items.length > 0);
-        } catch {
-          setSuggestions([]);
-        } finally {
-          setIsSearching(false);
-        }
-      }, 200);
-    } else {
-      searchTimer.current = setTimeout(async () => {
-        try {
-          const items = await igniteApi.searchVideos(q, 6);
-          setSearchResults(items);
-          setShowSuggestions(items.length > 0);
-        } catch {
-          setSearchResults([]);
-        } finally {
-          setIsSearching(false);
-        }
-      }, 450);
-    }
+    searchTimer.current = setTimeout(async () => {
+      try {
+        const items = await igniteApi.searchVideos(q, 6);
+        setSearchResults(items);
+        setShowSuggestions(items.length > 0);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 350);
 
     return () => {
       if (searchTimer.current) clearTimeout(searchTimer.current);
     };
-  }, [searchInput, isUrl, searchMode]);
+  }, [searchInput, isUrl]);
 
   return (
     <div className="space-y-4">
       {/* ══════════ COMANDO: BÚSQUEDA Y DETECCIÓN DE ENLACES ══════════ */}
       <div className="space-y-2.5">
-        {/* Selector de Modo: Sugerencias vs Videos exactos */}
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
             <Search size={13} className="text-purple-400" />
             <span className="font-semibold">Reproducir o buscar canción</span>
           </div>
-
-          <div className="flex items-center gap-2 select-none">
-            <span
-              onClick={() => {
-                setSearchMode("suggestions");
-                try {
-                  localStorage.setItem("ignite_search_mode", "suggestions");
-                } catch {}
-              }}
-              className={`text-[11px] cursor-pointer transition-colors ${
-                searchMode === "suggestions"
-                  ? "text-slate-900 dark:text-white font-semibold"
-                  : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-              }`}
-            >
-              Sugerencias
-            </span>
-
-            <button
-              type="button"
-              role="switch"
-              aria-checked={searchMode === "videos"}
-              aria-label="Alternar entre sugerencias rápidas y videos exactos"
-              onClick={() => {
-                const next = searchMode === "suggestions" ? "videos" : "suggestions";
-                setSearchMode(next);
-                try {
-                  localStorage.setItem("ignite_search_mode", next);
-                } catch {}
-              }}
-              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                searchMode === "videos" ? "bg-purple-600" : "bg-black/20 dark:bg-white/20"
-              }`}
-            >
-              <span
-                aria-hidden="true"
-                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                  searchMode === "videos" ? "translate-x-4" : "translate-x-0"
-                }`}
-              />
-            </button>
-
-            <span
-              onClick={() => {
-                setSearchMode("videos");
-                try {
-                  localStorage.setItem("ignite_search_mode", "videos");
-                } catch {}
-              }}
-              className={`text-[11px] cursor-pointer transition-colors ${
-                searchMode === "videos"
-                  ? "text-purple-600 dark:text-purple-400 font-semibold"
-                  : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-              }`}
-            >
-              Videos exactos
-            </span>
-          </div>
+          {isSearching && (
+            <div className="flex items-center gap-1.5 text-[11px] text-purple-400">
+              <Loader2 size={12} className="animate-spin" />
+              <span className="hidden sm:inline">Buscando videos...</span>
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleImport} className="relative w-full">
@@ -367,17 +288,12 @@ export function MusicView() {
 
             <input
               type="text"
-              placeholder={
-                searchMode === "videos"
-                  ? "Buscar videos exactos de YouTube o pegar enlace..."
-                  : "Buscar por canción o pegar enlace de Spotify o YouTube..."
-              }
+              placeholder="Buscar canción, artista o pegar enlace de YouTube / Spotify..."
               value={searchInput}
               disabled={isImporting}
               onChange={(e) => setSearchInput(e.target.value)}
               onFocus={() => {
-                if (searchMode === "suggestions" && suggestions.length > 0) setShowSuggestions(true);
-                if (searchMode === "videos" && searchResults.length > 0) setShowSuggestions(true);
+                if (searchResults.length > 0) setShowSuggestions(true);
               }}
               onBlur={() => {
                 setTimeout(() => setShowSuggestions(false), 200);
@@ -447,71 +363,8 @@ export function MusicView() {
             )}
           </div>
 
-          {/* Dropdown 1: Sugerencias rápidas */}
-          {showSuggestions && searchMode === "suggestions" && (suggestions.length > 0 || isSearching) && (
-            <div className="absolute top-full left-0 right-0 mt-2 z-40 glass-dropdown bg-white/80 dark:bg-[#12151f]/85 backdrop-blur-xl p-1.5 rounded-2xl border border-black/10 dark:border-white/10 shadow-2xl space-y-0.5 max-h-64 overflow-y-auto custom-scrollbar">
-              <div className="flex items-center justify-between px-2 py-1 text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                <span className="flex items-center gap-1.5">
-                  <Sparkles size={12} className="text-purple-400" />
-                  Sugerencias rápidas
-                </span>
-                {isSearching && <Loader2 size={11} className="animate-spin text-purple-400" />}
-              </div>
-              {suggestions.map((s) => (
-                <div
-                  key={s}
-                  className="w-full px-2.5 py-1.5 rounded-xl text-xs text-slate-700 dark:text-slate-300 hover:bg-black/5 dark:hover:bg-white/[0.06] hover:text-slate-900 dark:hover:text-white flex items-center justify-between gap-2 transition-colors group/item"
-                >
-                  <button
-                    type="button"
-                    onPointerDown={(e) => {
-                      e.preventDefault();
-                      setSearchInput(s);
-                      setShowSuggestions(false);
-                      submitQuery(s);
-                    }}
-                    className="flex-1 flex items-center gap-2 text-left cursor-pointer truncate"
-                  >
-                    <Search size={12} className="text-slate-400 group-hover/item:text-purple-400 transition-colors shrink-0" />
-                    <span className="truncate">{s}</span>
-                  </button>
-                  <div className="flex items-center gap-1 shrink-0 opacity-80 sm:opacity-0 group-hover/item:opacity-100 transition-opacity">
-                    <button
-                      type="button"
-                      onPointerDown={(e) => {
-                        e.preventDefault();
-                        setSearchInput(s);
-                        setShowSuggestions(false);
-                        submitQuery(s, { next: true });
-                      }}
-                      title="Reproducir a continuación (salta la cola)"
-                      className="px-2 py-0.5 rounded-lg bg-purple-500/20 text-purple-400 dark:text-purple-300 hover:bg-purple-500/30 text-[10px] font-medium flex items-center gap-1 transition-all cursor-pointer"
-                    >
-                      <ListPlus size={11} />
-                      <span className="hidden sm:inline">Sig</span>
-                    </button>
-                    <button
-                      type="button"
-                      onPointerDown={(e) => {
-                        e.preventDefault();
-                        setSearchInput(s);
-                        setShowSuggestions(false);
-                        submitQuery(s);
-                      }}
-                      title="Añadir a la cola"
-                      className="px-2 py-0.5 rounded-lg bg-[#1db954] hover:bg-[#1ed760] text-black text-[10px] font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
-                    >
-                      <Plus size={11} />
-                      <span className="hidden sm:inline">Encolar</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Dropdown 2: Videos exactos de YouTube */}
-          {showSuggestions && searchMode === "videos" && (searchResults.length > 0 || isSearching) && (
+          {/* Dropdown: Videos exactos de YouTube */}
+          {showSuggestions && (searchResults.length > 0 || isSearching) && (
             <div className="absolute top-full left-0 right-0 mt-2 z-40 glass-dropdown bg-white/80 dark:bg-[#12151f]/85 backdrop-blur-xl p-2 rounded-2xl border border-black/10 dark:border-white/10 shadow-2xl space-y-1 overflow-hidden">
               {isSearching && searchResults.length === 0 ? (
                 <div className="flex items-center justify-center gap-2 py-4 text-xs text-slate-400">
