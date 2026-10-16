@@ -62,6 +62,8 @@ function SortableQueueItem({
     isDragging,
   } = useSortable({ id, disabled });
 
+  const isItemBusy = disabled || removing;
+
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
@@ -83,7 +85,7 @@ function SortableQueueItem({
           {...listeners}
           title="Arrastra para reordenar"
           className={`p-1 -ml-1 rounded shrink-0 ${
-            disabled
+            isItemBusy
               ? "opacity-30 cursor-not-allowed touch-auto"
               : "cursor-grab active:cursor-grabbing touch-none text-slate-300 dark:text-slate-600 hover:text-purple-400"
           }`}
@@ -137,21 +139,24 @@ function SortableQueueItem({
         <button
           type="button"
           onClick={() => onToggleFavorite(song)}
+          disabled={isItemBusy}
           title={isFav ? "Quitar de favoritos" : "Guardar en favoritos"}
-          className={`p-1 rounded-lg transition-colors cursor-pointer ${
-            isFav
-              ? "text-amber-400 hover:bg-amber-400/10"
-              : "text-slate-400 hover:text-amber-400 hover:bg-amber-400/10"
+          className={`p-1 rounded-lg transition-colors ${
+            isItemBusy
+              ? "opacity-30 cursor-not-allowed"
+              : isFav
+              ? "text-amber-400 hover:bg-amber-400/10 cursor-pointer"
+              : "text-slate-400 hover:text-amber-400 hover:bg-amber-400/10 cursor-pointer"
           }`}
         >
           <Star size={13} className={isFav ? "fill-amber-400" : ""} />
         </button>
         <button
           onClick={() => onMove(index, index - 1)}
-          disabled={disabled || index === 0}
+          disabled={isItemBusy || index === 0}
           title="Subir en la cola"
           className={`p-1 rounded-lg transition-colors ${
-            disabled || index === 0
+            isItemBusy || index === 0
               ? "opacity-30 cursor-not-allowed"
               : "hover:bg-purple-500/10 text-slate-400 hover:text-purple-500 cursor-pointer"
           }`}
@@ -160,10 +165,10 @@ function SortableQueueItem({
         </button>
         <button
           onClick={() => onMove(index, index + 1)}
-          disabled={disabled || isLast}
+          disabled={isItemBusy || isLast}
           title="Bajar en la cola"
           className={`p-1 rounded-lg transition-colors ${
-            disabled || isLast
+            isItemBusy || isLast
               ? "opacity-30 cursor-not-allowed"
               : "hover:bg-purple-500/10 text-slate-400 hover:text-purple-500 cursor-pointer"
           }`}
@@ -172,10 +177,10 @@ function SortableQueueItem({
         </button>
         <button
           onClick={() => onJump(index)}
-          disabled={disabled}
+          disabled={isItemBusy}
           title="Saltar a este tema ahora"
           className={`p-1 rounded-lg transition-colors ${
-            disabled
+            isItemBusy
               ? "opacity-40 cursor-not-allowed"
               : "hover:bg-indigo-500/10 text-slate-400 hover:text-indigo-500 cursor-pointer"
           }`}
@@ -184,10 +189,10 @@ function SortableQueueItem({
         </button>
         <button
           onClick={() => onRemove(song.id)}
-          disabled={disabled || removing}
+          disabled={isItemBusy}
           title="Eliminar de la cola"
           className={`p-1 rounded-lg transition-colors ${
-            removing || disabled
+            isItemBusy
               ? "opacity-40 cursor-not-allowed"
               : "hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 cursor-pointer"
           }`}
@@ -263,7 +268,7 @@ export function QueueDrawer({
             variant="danger-soft"
             size="sm"
             onPress={() => setIsConfirmClearOpen(true)}
-            isDisabled={queue.length === 0 || isPlayerBusy}
+            isDisabled={queue.length === 0 || isPlayerBusy || !!removingSongId}
             className="flex items-center gap-1.5"
           >
             {pendingAction === "clear" ? (
@@ -393,7 +398,7 @@ export function QueueDrawer({
               </p>
             </div>
           ) : (
-            <div className={`relative transition-opacity duration-200 ${isReordering ? "pointer-events-none opacity-60 select-none" : ""}`}>
+            <div className={`relative transition-opacity duration-200 ${isReordering || !!removingSongId || isPlayerBusy ? "pointer-events-none opacity-60 select-none" : ""}`}>
               <DndContext
                 sensors={sensors}
                 onDragEnd={handleDragEnd}

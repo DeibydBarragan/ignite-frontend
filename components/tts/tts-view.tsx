@@ -263,8 +263,8 @@ export function TTSView() {
             <button
               type="button"
               onClick={handlePreview}
-              disabled={!text.trim() || isPreviewing}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 flex items-center gap-1.5 transition-colors disabled:opacity-40 cursor-pointer"
+              disabled={!text.trim() || isPreviewing || isSending || !!emittingPhraseId}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 flex items-center gap-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               {isPreviewing ? <Loader2 size={13} className="animate-spin" /> : <Volume2 size={13} />}
               <span>Probar en navegador</span>
@@ -272,7 +272,7 @@ export function TTSView() {
 
             <button
               onClick={() => handleSend()}
-              disabled={!text.trim() || isSending}
+              disabled={!text.trim() || isSending || !!emittingPhraseId || isPreviewing}
               className={`px-4 py-2 rounded-xl font-medium text-xs shadow-xs flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
                 isSending
                   ? "bg-[#1db954] text-black"
@@ -334,6 +334,7 @@ export function TTSView() {
                 const voiceInfo = voices.find((v) => v.id === phrase.voice);
                 const isPlaying = playingPhraseId === phrase.id;
                 const isEmitting = emittingPhraseId === phrase.id;
+                const isPhraseBusy = isPlaying || isEmitting || isSending || !!playingPhraseId || !!emittingPhraseId;
 
                 return (
                   <div
@@ -352,8 +353,13 @@ export function TTSView() {
 
                       <button
                         onClick={() => setPhraseToDelete(phrase)}
+                        disabled={isPhraseBusy}
                         title="Eliminar frase"
-                        className="text-slate-400 hover:text-red-400 transition-colors p-1 cursor-pointer"
+                        className={`p-1 transition-colors ${
+                          isPhraseBusy
+                            ? "text-slate-300 dark:text-slate-700 cursor-not-allowed opacity-30 pointer-events-none"
+                            : "text-slate-400 hover:text-red-400 cursor-pointer"
+                        }`}
                       >
                         <Trash2 size={12} />
                       </button>
@@ -370,8 +376,13 @@ export function TTSView() {
                         {/* Copy/Load to composer */}
                         <button
                           onClick={() => handleLoadToComposer(phrase)}
+                          disabled={isPhraseBusy}
                           title="Cargar al editor"
-                          className="p-1 rounded text-slate-400 hover:text-white transition-colors cursor-pointer"
+                          className={`p-1 rounded transition-colors ${
+                            isPhraseBusy
+                              ? "text-slate-300 dark:text-slate-700 cursor-not-allowed opacity-30 pointer-events-none"
+                              : "text-slate-400 hover:text-white cursor-pointer"
+                          }`}
                         >
                           <ArrowUpLeft size={13} />
                         </button>
@@ -379,9 +390,9 @@ export function TTSView() {
                         {/* Preview Audio */}
                         <button
                           onClick={() => handlePreviewPhrase(phrase)}
-                          disabled={isPlaying}
+                          disabled={isPhraseBusy}
                           title="Probar en navegador"
-                          className="px-2 py-0.5 rounded bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                          className="px-2 py-0.5 rounded bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-slate-600 dark:text-slate-300 flex items-center gap-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           {isPlaying ? (
                             <Loader2 size={10} className="animate-spin" />
@@ -394,9 +405,9 @@ export function TTSView() {
                         {/* Speak in Discord */}
                         <button
                           onClick={() => handleSpeakPhrase(phrase)}
-                          disabled={isEmitting}
+                          disabled={isPhraseBusy}
                           title="Emitir en Discord"
-                          className="px-2.5 py-0.5 rounded bg-purple-600 hover:bg-purple-500 text-white font-medium flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-40"
+                          className="px-2.5 py-0.5 rounded bg-purple-600 hover:bg-purple-500 text-white font-medium flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                           {isEmitting ? (
                             <Loader2 size={10} className="animate-spin" />

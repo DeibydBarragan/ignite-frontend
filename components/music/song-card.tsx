@@ -34,6 +34,8 @@ export function SongCard({ song }: { song: Song }) {
   const isLoadingThisSongPlay = loadingSongId === song.id && pendingAction === "play";
   const isLoadingThisSongNext = loadingSongId === song.id && pendingAction === "playNext";
   const isLoadingThisSongQueue = loadingSongId === song.id && pendingAction === "queue";
+  const isThisSongBusy = loadingSongId === song.id;
+  const isActionDisabled = isPlayerBusy || isThisSongBusy;
 
   return (
     <div
@@ -46,8 +48,10 @@ export function SongCard({ song }: { song: Song }) {
       <div>
         {/* Album Artwork with add-to-queue overlay */}
         <div
-          onClick={() => !isPlayerBusy && addToQueue(song)}
-          className="relative aspect-square w-full rounded-xl overflow-hidden mb-3 bg-black/10 dark:bg-white/5 cursor-pointer"
+          onClick={() => !isActionDisabled && addToQueue(song)}
+          className={`relative aspect-square w-full rounded-xl overflow-hidden mb-3 bg-black/10 dark:bg-white/5 ${
+            isActionDisabled ? "cursor-not-allowed" : "cursor-pointer"
+          }`}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -132,13 +136,13 @@ export function SongCard({ song }: { song: Song }) {
               e.stopPropagation();
               addToQueue(song);
             }}
-            disabled={isPlayerBusy}
+            disabled={isActionDisabled}
             aria-label={`Añadir ${song.title} a la cola`}
             title="Añadir a la cola"
             className={`absolute bottom-2.5 right-2.5 h-9 w-9 rounded-full bg-[#1db954] text-black shadow-lg shadow-[#1db954]/25 flex items-center justify-center transition-all transform ${
               isLoadingThisSongQueue
                 ? "opacity-100 scale-105 cursor-not-allowed"
-                : isPlayerBusy
+                : isActionDisabled
                 ? "opacity-0 pointer-events-none"
                 : "opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 hover:scale-105 hover:bg-[#1ed760] cursor-pointer"
             }`}
@@ -153,8 +157,12 @@ export function SongCard({ song }: { song: Song }) {
 
         {/* Info */}
         <h3
-          onClick={() => !isPlayerBusy && addToQueue(song)}
-          className="font-semibold text-xs text-slate-900 dark:text-white truncate cursor-pointer hover:text-[#1ed760] transition-colors"
+          onClick={() => !isActionDisabled && addToQueue(song)}
+          className={`font-semibold text-xs text-slate-900 dark:text-white truncate transition-colors ${
+            isActionDisabled
+              ? "cursor-not-allowed opacity-80"
+              : "cursor-pointer hover:text-[#1ed760]"
+          }`}
           title={`Añadir a la cola: ${song.title}`}
         >
           {song.title}
@@ -174,10 +182,10 @@ export function SongCard({ song }: { song: Song }) {
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={() => playSong(song)}
-            disabled={isPlayerBusy || isLoadingThisSongPlay}
-            title={isLoadingThisSongPlay ? "Reproduciendo..." : "Reproducir ahora (inmediato)"}
+            disabled={isActionDisabled}
+            title={isLoadingThisSongPlay ? "Reproduciendo" : "Reproducir ahora (inmediato)"}
             className={`glass-btn px-2 py-0.5 text-[10px] flex items-center gap-1 transition-colors ${
-              isLoadingThisSongPlay || isPlayerBusy
+              isActionDisabled
                 ? "opacity-50 cursor-not-allowed"
                 : "text-slate-600 dark:text-slate-300 hover:text-[#1ed760] hover:border-[#1db954]/30 cursor-pointer"
             }`}
@@ -197,10 +205,10 @@ export function SongCard({ song }: { song: Song }) {
 
           <button
             onClick={() => playNext(song)}
-            disabled={isPlayerBusy || isLoadingThisSongNext}
+            disabled={isActionDisabled}
             title={isLoadingThisSongNext ? "Poniendo siguiente" : "Reproducir siguiente (salta la cola)"}
             className={`glass-btn px-2 py-0.5 text-[10px] flex items-center gap-1 transition-colors ${
-              isLoadingThisSongNext || isPlayerBusy
+              isActionDisabled
                 ? "opacity-50 cursor-not-allowed"
                 : "text-slate-600 dark:text-slate-300 hover:text-purple-400 hover:border-purple-500/30 cursor-pointer"
             }`}

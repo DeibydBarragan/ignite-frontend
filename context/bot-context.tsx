@@ -948,11 +948,12 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   }, [isLoggedIn, isPlayerBusy, checkVoiceRequirement, currentSong, isPlaying, currentTime, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
 
   const addToQueue = useCallback(async (song: Song) => {
-    if (!isLoggedIn || loadingSongId === song.id) return;
+    if (!isLoggedIn || loadingSongId === song.id || isPlayerBusy) return;
 
     const voiceCheck = await checkVoiceRequirement();
     if (!voiceCheck.canPlay) return;
 
+    setIsPlayerBusy(true);
     setPendingAction("queue");
     setLoadingSongId(song.id);
     const songWithRequester: Song = {
@@ -994,17 +995,19 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setIsBotOnline(false);
       toast("Error al conectar con el servicio del bot.", "error");
     } finally {
+      setIsPlayerBusy(false);
       setPendingAction(null);
       setLoadingSongId(null);
     }
-  }, [isLoggedIn, loadingSongId, checkVoiceRequirement, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
+  }, [isLoggedIn, isPlayerBusy, loadingSongId, checkVoiceRequirement, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
 
   const playNext = useCallback(async (song: Song) => {
-    if (!isLoggedIn || loadingSongId === song.id) return;
+    if (!isLoggedIn || loadingSongId === song.id || isPlayerBusy) return;
 
     const voiceCheck = await checkVoiceRequirement();
     if (!voiceCheck.canPlay) return;
 
+    setIsPlayerBusy(true);
     setPendingAction("playNext");
     setLoadingSongId(song.id);
     const songWithRequester: Song = {
@@ -1047,10 +1050,11 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setIsBotOnline(false);
       toast("Error al conectar con el servicio del bot.", "error");
     } finally {
+      setIsPlayerBusy(false);
       setPendingAction(null);
       setLoadingSongId(null);
     }
-  }, [isLoggedIn, loadingSongId, checkVoiceRequirement, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
+  }, [isLoggedIn, isPlayerBusy, loadingSongId, checkVoiceRequirement, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
 
   const playFavorites = useCallback(async () => {
     if (!isLoggedIn || !favorites.length || isPlayerBusy) return;
