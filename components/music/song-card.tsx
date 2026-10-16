@@ -147,14 +147,14 @@ export function SongCard({ song }: { song: Song }) {
 
           {/* 1. Loading Overlay when Play is clicked (con tinte esmeralda/verde, spinner grande directo sin texto) */}
           {isLoadingThisSongPlay && (
-            <div className="absolute inset-0 bg-emerald-950/75 backdrop-blur-xs flex items-center justify-center z-20 animate-in fade-in duration-150">
+            <div className="absolute inset-0 bg-emerald-950/75 backdrop-blur-xs flex items-center justify-center z-30 animate-in fade-in duration-150">
               <Loader2 size={38} className="animate-spin text-[#1ed760] drop-shadow-[0_0_14px_rgba(30,215,96,0.7)]" />
             </div>
           )}
 
           {/* 2. Visual feedback animation when "Sig" is clicked (mismo estilo de icono que cargando) */}
           {showNextFeedback && !isLoadingThisSongPlay && (
-            <div className="absolute inset-0 bg-purple-950/70 backdrop-blur-xs flex flex-col items-center justify-center gap-2 z-20 animate-in zoom-in-95 fade-in duration-150 pointer-events-none">
+            <div className="absolute inset-0 bg-purple-950/70 backdrop-blur-xs flex flex-col items-center justify-center gap-2 z-30 animate-in zoom-in-95 fade-in duration-150 pointer-events-none">
               <ListPlus size={38} className="text-purple-300 drop-shadow-[0_0_14px_rgba(192,132,252,0.8)] animate-bounce" />
               <span className="px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-purple-200 border border-purple-400/30 text-[10px] font-bold tracking-wide shadow-md">
                 ¡Siguiente en cola!
@@ -164,7 +164,7 @@ export function SongCard({ song }: { song: Song }) {
 
           {/* 3. Visual feedback animation when "Añadir a la cola" completes (Point 4) */}
           {showQueueFeedback && !isLoadingThisSongPlay && !showNextFeedback && (
-            <div className="absolute inset-0 bg-emerald-950/70 backdrop-blur-xs flex flex-col items-center justify-center gap-2 z-20 animate-in zoom-in-95 fade-in duration-150 pointer-events-none">
+            <div className="absolute inset-0 bg-emerald-950/70 backdrop-blur-xs flex flex-col items-center justify-center gap-2 z-30 animate-in zoom-in-95 fade-in duration-150 pointer-events-none">
               <Plus size={38} strokeWidth={3} className="text-[#1ed760] drop-shadow-[0_0_14px_rgba(30,215,96,0.8)] animate-bounce" />
               <span className="px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-emerald-200 border border-emerald-400/30 text-[10px] font-bold tracking-wide shadow-md">
                 ¡Añadido a la cola!
@@ -193,10 +193,10 @@ export function SongCard({ song }: { song: Song }) {
             }}
             aria-label={`Añadir ${song.title} a la cola`}
             title="Añadir a la cola"
-            className={`absolute bottom-2.5 right-2.5 h-9 w-9 rounded-full bg-[#1db954] text-black shadow-lg shadow-[#1db954]/25 flex items-center justify-center transition-all transform cursor-pointer ${
+            className={`absolute bottom-2.5 right-2.5 h-9 w-9 rounded-full bg-[#1db954] text-black shadow-lg shadow-[#1db954]/25 flex items-center justify-center transition-all transform cursor-pointer z-20 ${
               isLoadingThisSongQueue || showQueueFeedback
                 ? "opacity-100 scale-105"
-                : isActionDisabled || isLoadingThisSongPlay || showNextFeedback || (isCurrent && isPlaying)
+                : isActionDisabled || isLoadingThisSongPlay || showNextFeedback
                 ? "opacity-0 pointer-events-none"
                 : "opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 hover:scale-105 hover:bg-[#1ed760]"
             }`}
