@@ -126,7 +126,7 @@ export function SongCard({ song }: { song: Song }) {
               toggleFavorite(song);
             }}
             title={isFav ? "Quitar de favoritos" : "Guardar en favoritos"}
-            className={`absolute top-2 right-2 p-1.5 rounded-full backdrop-blur-md transition-all cursor-pointer z-10 ${
+            className={`absolute top-2 right-2 p-1.5 rounded-full backdrop-blur-md transition-all cursor-pointer z-20 ${
               isFav
                 ? "bg-amber-400/20 text-amber-400 border border-amber-400/30 opacity-100 scale-105"
                 : "bg-black/40 text-white/70 hover:text-amber-400 hover:bg-black/60 opacity-0 group-hover:opacity-100"
@@ -196,7 +196,7 @@ export function SongCard({ song }: { song: Song }) {
             className={`absolute bottom-2.5 right-2.5 h-9 w-9 rounded-full bg-[#1db954] text-black shadow-lg shadow-[#1db954]/25 flex items-center justify-center transition-all transform cursor-pointer ${
               isLoadingThisSongQueue || showQueueFeedback
                 ? "opacity-100 scale-105"
-                : isActionDisabled || isLoadingThisSongPlay || showNextFeedback
+                : isActionDisabled || isLoadingThisSongPlay || showNextFeedback || (isCurrent && isPlaying)
                 ? "opacity-0 pointer-events-none"
                 : "opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 hover:scale-105 hover:bg-[#1ed760]"
             }`}
