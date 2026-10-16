@@ -6,12 +6,11 @@ import { igniteApi } from "@/lib/ignite-api";
 import { Song, MOCK_SONGS } from "@/lib/mock-data";
 import { SongCard } from "@/components/music/song-card";
 import { PlaylistsView } from "@/components/music/playlists-view";
+import { useToast } from "@/components/ui/toast";
 import {
   Search,
   Link2,
   Music2,
-  CheckCircle2,
-  AlertCircle,
   Plus,
   ListPlus,
   Loader2,
@@ -97,7 +96,7 @@ export function MusicView() {
   const [basedOnSong, setBasedOnSong] = useState<Song | null>(null);
   const [isLoadingRecs, setIsLoadingRecs] = useState(false);
   const [searchInput, setSearchInput] = useState("");
-  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const { toast } = useToast();
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -222,18 +221,14 @@ export function MusicView() {
     try {
       const res = await importUrlSong(query, { next: opts?.next });
       if (res.success) {
-        setFeedback({ type: "success", message: res.message });
+        toast(res.message, "success");
         setSearchInput("");
       } else {
-        setFeedback({ type: "error", message: res.message });
+        toast(res.message, "error");
       }
     } catch {
-      setFeedback({ type: "error", message: "Ocurrió un error al procesar la canción." });
+      toast("Ocurrió un error al procesar la canción.", "error");
     }
-
-    setTimeout(() => {
-      setFeedback(null);
-    }, 3500);
   };
 
   // Sugerencias de YouTube (igual que el autocompletado de /play en Discord).
@@ -382,20 +377,6 @@ export function MusicView() {
             </div>
           )}
         </form>
-
-        {/* Feedback alert */}
-        {feedback && (
-          <div
-            className={`px-3 py-1.5 rounded-lg text-xs flex items-center gap-2 transition-all ${
-              feedback.type === "success"
-                ? "bg-[#1db954]/10 text-[#1ed760] border border-[#1db954]/25"
-                : "bg-rose-500/10 text-rose-500 border border-rose-500/25"
-            }`}
-          >
-            {feedback.type === "success" ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-            <span>{feedback.message}</span>
-          </div>
-        )}
 
         {/* ══════════ TABS DE NAVEGACIÓN DEL CATÁLOGO ══════════ */}
         <div ref={catalogScrollRef} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 min-w-0 scroll-mt-20">

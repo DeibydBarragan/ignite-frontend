@@ -16,6 +16,7 @@ import {
 import { GlassModal } from "@/components/glass-modal";
 import { DeletePlaylistModal } from "./delete-playlist-modal";
 import { Button } from "@heroui/react";
+import { useToast } from "@/components/ui/toast";
 import {
   Search,
   Link2,
@@ -27,7 +28,6 @@ import {
   Clock,
   Loader2,
   Eye,
-  CheckCircle2,
   AlertCircle,
   Music2,
   Disc3,
@@ -158,7 +158,7 @@ export function PlaylistsView() {
   const [importName, setImportName] = useState("");
   const [isImporting, setIsImporting] = useState(false);
   const [importingFavId, setImportingFavId] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const { toast } = useToast();
 
   const [selected, setSelected] = useState<UserPlaylist | null>(null);
   const [live, setLive] = useState<LiveState | null>(null);
@@ -232,8 +232,7 @@ export function PlaylistsView() {
   }, [playlists, search]);
 
   const showFeedback = (type: "success" | "error", message: string) => {
-    setFeedback({ type, message });
-    setTimeout(() => setFeedback(null), 3500);
+    toast(message, type);
   };
 
   // Importar = guardar SOLO el link (instantáneo, sin resolver)
@@ -455,19 +454,6 @@ export function PlaylistsView() {
           <span className="font-mono font-semibold text-purple-400">playlists</span> en el bot para verlas en Discord.
         </p>
       </form>
-
-      {feedback && (
-        <div
-          className={`px-3 py-1.5 rounded-lg text-xs flex items-center gap-2 ${
-            feedback.type === "success"
-              ? "bg-[#1db954]/10 text-[#1ed760] border border-[#1db954]/25"
-              : "bg-rose-500/10 text-rose-500 border border-rose-500/25"
-          }`}
-        >
-          {feedback.type === "success" ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-          <span>{feedback.message}</span>
-        </div>
-      )}
 
       {/* Lista (pinta desde el snapshot, instantáneo) */}
       {isLoading ? (

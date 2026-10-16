@@ -124,9 +124,9 @@ interface BotContextType {
   isMuted: boolean;
   repeatMode: "off" | "track" | "queue";
   shuffle: boolean;
-  playSong: (song: Song) => void;
-  playNext: (song: Song) => void;
-  addToQueue: (song: Song) => void;
+  playSong: (song: Song) => Promise<void>;
+  playNext: (song: Song) => Promise<void>;
+  addToQueue: (song: Song) => Promise<void>;
   removeFromQueue: (songId: string) => void;
   moveQueueSong: (fromIndex: number, toIndex: number) => Promise<void>;
   jumpToQueueSong: (index: number) => Promise<void>;
@@ -169,6 +169,7 @@ interface BotContextType {
   isPlayerBusy: boolean;
   pendingAction: "skip" | "previous" | "toggle" | "play" | "playNext" | "queue" | "clear" | "reorder" | "stop" | null;
   loadingSongId: string | null;
+  pendingSongActions: Record<string, "queue" | "play" | "playNext">;
   removingSongId: string | null;
   isSkipping: boolean;
   isTogglingPlay: boolean;
@@ -442,12 +443,21 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   // Loading & Action locking state
   const [isPlayerBusy, setIsPlayerBusy] = useState<boolean>(false);
   const [pendingAction, setPendingAction] = useState<"skip" | "previous" | "toggle" | "play" | "playNext" | "queue" | "clear" | "reorder" | "stop" | null>(null);
-  const [loadingSongId, setLoadingSongId] = useState<string | null>(null);
+  const [pendingSongActions, setPendingSongActions] = useState<Record<string, "queue" | "play" | "playNext">>({});
   const [removingSongId, setRemovingSongId] = useState<string | null>(null);
+  const pendingSongIdsRef = useRef<Set<string>>(new Set());
+  const taskQueueRef = useRef<{
+    song: Song;
+    mode: "queue" | "playNext";
+    resolve: () => void;
+    reject: (err: any) => void;
+  }[]>([]);
+  const isProcessingQueueRef = useRef<boolean>(false);
 
+  const loadingSongId = Object.keys(pendingSongActions)[0] || null;
   const isSkipping = pendingAction === "skip";
   const isTogglingPlay = pendingAction === "toggle";
-  const isAddingToQueue = pendingAction === "queue";
+  const isAddingToQueue = Object.values(pendingSongActions).includes("queue") || pendingAction === "queue";
   const isReordering = pendingAction === "reorder";
 
   // Favorites State (Supabase sync)
@@ -883,15 +893,90 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     }) : null));
   };
 
+  const processNextTask = useCallback(async () => {
+    if (isProcessingQueueRef.current) return;
+    isProcessingQueueRef.current = true;
+
+    try {
+      while (taskQueueRef.current.length > 0) {
+        const task = taskQueueRef.current.shift();
+        if (!task) break;
+
+        const { song, mode, resolve, reject } = task;
+        const songWithRequester: Song = {
+          ...song,
+          requestedBy: user
+            ? { id: user.id, username: user.username, avatar: user.avatar || null }
+            : song.requestedBy || null,
+        };
+
+        try {
+          const res = await igniteApi.play(selectedGuildId, {
+            query: song.url || `${song.title} ${song.artist}`,
+            voiceChannelId: currentVoiceChannelId || undefined,
+            userId: user?.id || undefined,
+            next: mode === "playNext",
+            skip: false,
+          });
+
+          if (!res.success) {
+            if (!res.error?.includes("canal de voz")) {
+              setIsBotOnline(false);
+            }
+            toast(res.error || `No se pudo añadir "${song.title}". El bot no está disponible.`, "error");
+            reject(new Error(res.error || "Error al añadir canción"));
+          } else {
+            setIsBotOnline(true);
+            if (mode === "playNext") {
+              setQueue((prev) => [songWithRequester, ...prev]);
+            } else {
+              setQueue((prev) => [...prev, songWithRequester]);
+            }
+            setLiveEvents((prev) => [
+              {
+                id: "evt-" + Date.now(),
+                type: "music_play",
+                title: mode === "playNext" ? "Siguiente en cola" : "Añadido a la cola",
+                description:
+                  mode === "playNext"
+                    ? `'${song.title}' se reproducirá a continuación`
+                    : `'${song.title}' añadida a la lista de espera`,
+                timestamp: "Ahora mismo",
+              },
+              ...prev.slice(0, 19),
+            ]);
+            resolve();
+          }
+        } catch (err) {
+          setIsBotOnline(false);
+          toast("Error al conectar con el servicio del bot.", "error");
+          reject(err);
+        } finally {
+          pendingSongIdsRef.current.delete(song.id);
+          setPendingSongActions((prev) => {
+            const next = { ...prev };
+            delete next[song.id];
+            return next;
+          });
+        }
+      }
+      await syncPlayerState();
+    } finally {
+      isProcessingQueueRef.current = false;
+      if (taskQueueRef.current.length > 0) {
+        processNextTask();
+      }
+    }
+  }, [selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
+
   const playSong = useCallback(async (song: Song) => {
-    if (!isLoggedIn || isPlayerBusy) return;
+    if (!isLoggedIn) return;
 
     const voiceCheck = await checkVoiceRequirement();
     if (!voiceCheck.canPlay) return;
 
-    setIsPlayerBusy(true);
-    setPendingAction("play");
-    setLoadingSongId(song.id);
+    pendingSongIdsRef.current.add(song.id);
+    setPendingSongActions((prev) => ({ ...prev, [song.id]: "play" }));
 
     const prevSong = currentSong;
     const prevPlaying = isPlaying;
@@ -945,120 +1030,54 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       setIsBotOnline(false);
       toast("Error al conectar con el servicio del bot.", "error");
     } finally {
-      setIsPlayerBusy(false);
-      setPendingAction(null);
-      setLoadingSongId(null);
+      pendingSongIdsRef.current.delete(song.id);
+      setPendingSongActions((prev) => {
+        const next = { ...prev };
+        delete next[song.id];
+        return next;
+      });
     }
-  }, [isLoggedIn, isPlayerBusy, checkVoiceRequirement, currentSong, isPlaying, currentTime, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
+  }, [isLoggedIn, checkVoiceRequirement, currentSong, isPlaying, currentTime, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
 
   const addToQueue = useCallback(async (song: Song) => {
-    if (!isLoggedIn || loadingSongId === song.id || isPlayerBusy) return;
+    if (!isLoggedIn || pendingSongIdsRef.current.has(song.id)) return;
 
     const voiceCheck = await checkVoiceRequirement();
     if (!voiceCheck.canPlay) return;
 
-    setIsPlayerBusy(true);
-    setPendingAction("queue");
-    setLoadingSongId(song.id);
-    const songWithRequester: Song = {
-      ...song,
-      requestedBy: user
-        ? { id: user.id, username: user.username, avatar: user.avatar || null }
-        : song.requestedBy || null,
-    };
-    try {
-      const res = await igniteApi.play(selectedGuildId, {
-        query: song.url || `${song.title} ${song.artist}`,
-        voiceChannelId: currentVoiceChannelId || undefined,
-        userId: user?.id || undefined,
-        skip: false,
+    pendingSongIdsRef.current.add(song.id);
+    setPendingSongActions((prev) => ({ ...prev, [song.id]: "queue" }));
+
+    return new Promise<void>((resolve, reject) => {
+      taskQueueRef.current.push({
+        song,
+        mode: "queue",
+        resolve,
+        reject,
       });
-
-      if (!res.success) {
-        if (!res.error?.includes("canal de voz")) {
-          setIsBotOnline(false);
-        }
-        toast(res.error || "No se pudo añadir a la cola. El bot no está disponible.", "error");
-        return;
-      }
-
-      setIsBotOnline(true);
-      setQueue((prev) => [...prev, songWithRequester]);
-      setLiveEvents((prev) => [
-        {
-          id: "evt-" + Date.now(),
-          type: "music_play",
-          title: "Añadido a la cola",
-          description: `'${song.title}' añadida a la lista de espera`,
-          timestamp: "Ahora mismo",
-        },
-        ...prev.slice(0, 19),
-      ]);
-      await syncPlayerState();
-    } catch {
-      setIsBotOnline(false);
-      toast("Error al conectar con el servicio del bot.", "error");
-    } finally {
-      setIsPlayerBusy(false);
-      setPendingAction(null);
-      setLoadingSongId(null);
-    }
-  }, [isLoggedIn, isPlayerBusy, loadingSongId, checkVoiceRequirement, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
+      processNextTask();
+    });
+  }, [isLoggedIn, checkVoiceRequirement, processNextTask]);
 
   const playNext = useCallback(async (song: Song) => {
-    if (!isLoggedIn || loadingSongId === song.id || isPlayerBusy) return;
+    if (!isLoggedIn || pendingSongIdsRef.current.has(song.id)) return;
 
     const voiceCheck = await checkVoiceRequirement();
     if (!voiceCheck.canPlay) return;
 
-    setIsPlayerBusy(true);
-    setPendingAction("playNext");
-    setLoadingSongId(song.id);
-    const songWithRequester: Song = {
-      ...song,
-      requestedBy: user
-        ? { id: user.id, username: user.username, avatar: user.avatar || null }
-        : song.requestedBy || null,
-    };
-    try {
-      const res = await igniteApi.play(selectedGuildId, {
-        query: song.url || `${song.title} ${song.artist}`,
-        voiceChannelId: currentVoiceChannelId || undefined,
-        userId: user?.id || undefined,
-        next: true,
-        skip: false,
+    pendingSongIdsRef.current.add(song.id);
+    setPendingSongActions((prev) => ({ ...prev, [song.id]: "playNext" }));
+
+    return new Promise<void>((resolve, reject) => {
+      taskQueueRef.current.unshift({
+        song,
+        mode: "playNext",
+        resolve,
+        reject,
       });
-
-      if (!res.success) {
-        if (!res.error?.includes("canal de voz")) {
-          setIsBotOnline(false);
-        }
-        toast(res.error || "No se pudo añadir la canción. El bot no está disponible.", "error");
-        return;
-      }
-
-      setIsBotOnline(true);
-      setQueue((prev) => [songWithRequester, ...prev]);
-      setLiveEvents((prev) => [
-        {
-          id: "evt-" + Date.now(),
-          type: "music_play",
-          title: "Siguiente en cola",
-          description: `'${song.title}' se reproducirá a continuación`,
-          timestamp: "Ahora mismo",
-        },
-        ...prev.slice(0, 19),
-      ]);
-      await syncPlayerState();
-    } catch {
-      setIsBotOnline(false);
-      toast("Error al conectar con el servicio del bot.", "error");
-    } finally {
-      setIsPlayerBusy(false);
-      setPendingAction(null);
-      setLoadingSongId(null);
-    }
-  }, [isLoggedIn, isPlayerBusy, loadingSongId, checkVoiceRequirement, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
+      processNextTask();
+    });
+  }, [isLoggedIn, checkVoiceRequirement, processNextTask]);
 
   const playFavorites = useCallback(async () => {
     if (!isLoggedIn || !favorites.length || isPlayerBusy) return;
@@ -2041,6 +2060,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         isPlayerBusy,
         pendingAction,
         loadingSongId,
+        pendingSongActions,
         removingSongId,
         isSkipping,
         isTogglingPlay,

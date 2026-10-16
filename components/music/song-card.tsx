@@ -22,20 +22,19 @@ export function SongCard({ song }: { song: Song }) {
     playSong,
     playNext,
     addToQueue,
-    isPlayerBusy,
-    pendingAction,
-    loadingSongId,
+    pendingSongActions,
     isFavorite,
     toggleFavorite,
   } = useBot();
 
   const isCurrent = currentSong?.id === song.id;
   const isFav = isFavorite(song.id) || isFavorite(song.url);
-  const isLoadingThisSongPlay = loadingSongId === song.id && pendingAction === "play";
-  const isLoadingThisSongNext = loadingSongId === song.id && pendingAction === "playNext";
-  const isLoadingThisSongQueue = loadingSongId === song.id && pendingAction === "queue";
-  const isThisSongBusy = loadingSongId === song.id;
-  const isActionDisabled = isPlayerBusy || isThisSongBusy;
+  const songPendingAction = pendingSongActions?.[song.id];
+  const isLoadingThisSongPlay = songPendingAction === "play";
+  const isLoadingThisSongNext = songPendingAction === "playNext";
+  const isLoadingThisSongQueue = songPendingAction === "queue";
+  const isThisSongBusy = !!songPendingAction;
+  const isActionDisabled = isThisSongBusy;
 
   return (
     <div
