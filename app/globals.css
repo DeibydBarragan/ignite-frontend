@@ -82,25 +82,25 @@ body {
   background: rgba(18, 21, 31, 0.65);
 }
 
-/* Modal con fondo traslúcido y acabado frosted glass (30% más profundo/menos claro) */
+/* Modal con fondo traslúcido y acabado frosted glass (15% más oscuro/profundo) */
 .glass-modal-panel {
   position: relative;
   border-radius: 1.5rem;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.12),
-              inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.16),
+              inset 0 1px 0 rgba(255, 255, 255, 0.4);
   backdrop-filter: blur(16px) saturate(1.6);
   -webkit-backdrop-filter: blur(16px) saturate(1.6);
-  background: rgba(255, 255, 255, 0.45) !important;
+  background: rgba(238, 241, 246, 0.60) !important;
 }
 
 .dark .glass-modal-panel {
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.65),
-              inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.72),
+              inset 0 1px 0 rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(16px) saturate(1.6);
   -webkit-backdrop-filter: blur(16px) saturate(1.6);
-  background: rgba(16, 20, 32, 0.50) !important;
+  background: rgba(12, 15, 24, 0.68) !important;
 }
 
 /* Menús desplegables y popovers con alta transparencia (55%) y blur notable sobre los elementos */

@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { useBot } from "@/context/bot-context";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LogoutModal } from "@/components/logout-modal";
 import {
   Flame,
-  ChevronDown,
   LogOut,
   LogIn,
 } from "lucide-react";
@@ -18,7 +18,7 @@ export function AppNav() {
     logoutDiscord,
   } = useBot();
 
-  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-40 border-b border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#0b0d14]/75 backdrop-blur-xl">
@@ -35,17 +35,15 @@ export function AppNav() {
           </div>
         </div>
 
-        {/* Right side: Discord User Login */}
-        <div className="flex items-center gap-2.5">
+        {/* Right side: Discord User Login & Theme */}
+        <div className="flex items-center gap-2 sm:gap-2.5">
           <ThemeToggle />
 
           {/* User profile / Login */}
           {isLoggedIn && user ? (
-            <div className="relative">
-              <button
-                onClick={() => setIsUserDropdownOpen((prev) => !prev)}
-                className="glass-btn flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-xl border border-black/10 dark:border-white/10"
-              >
+            <div className="flex items-center gap-2">
+              {/* User badge (avatar + username, sin dropdown) */}
+              <div className="glass-panel flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-xl border border-black/10 dark:border-white/10 select-none">
                 <div className="relative">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -60,37 +58,19 @@ export function AppNav() {
                     @{user.username}
                   </div>
                 </div>
-                <ChevronDown size={14} className="text-slate-400 hidden sm:block" />
-              </button>
+              </div>
 
-              {/* User Dropdown */}
-              {isUserDropdownOpen && (
-                <>
-                  <div
-                    className="fixed inset-0 z-30"
-                    onClick={() => setIsUserDropdownOpen(false)}
-                  />
-                  <div className="glass-dropdown absolute right-0 mt-2 w-56 p-2 z-40 bg-white/55 dark:bg-[#12151f]/55 backdrop-blur-xl border border-black/10 dark:border-white/10 glass-modal-enter shadow-2xl">
-                    <div className="px-3 py-2 border-b border-black/5 dark:border-white/10">
-                      <p className="text-xs font-bold text-slate-900 dark:text-white">
-                        @{user.username}
-                      </p>
-                    </div>
-                    <div className="pt-2">
-                      <button
-                        onClick={() => {
-                          logoutDiscord();
-                          setIsUserDropdownOpen(false);
-                        }}
-                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                      >
-                        <LogOut size={14} />
-                        <span>Cerrar sesión</span>
-                      </button>
-                    </div>
-                  </div>
-                </>
-              )}
+              {/* Botón de cerrar sesión ubicado afuera */}
+              <button
+                type="button"
+                onClick={() => setIsLogoutModalOpen(true)}
+                aria-label="Cerrar sesión"
+                title="Cerrar sesión"
+                className="h-9 px-2.5 sm:px-3 rounded-xl font-medium text-xs flex items-center gap-1.5 cursor-pointer bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 transition-all shrink-0"
+              >
+                <LogOut size={15} />
+                <span className="hidden sm:inline">Cerrar sesión</span>
+              </button>
             </div>
           ) : (
             <button
@@ -103,6 +83,14 @@ export function AppNav() {
           )}
         </div>
       </div>
+
+      {/* Modal de confirmación para cerrar sesión */}
+      <LogoutModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={logoutDiscord}
+        user={user}
+      />
     </header>
   );
 }

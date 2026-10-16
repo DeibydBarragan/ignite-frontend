@@ -74,9 +74,9 @@ export function GlassModal({
 
   return createPortal(
     <div className="fixed inset-0 z-[9999]" role="dialog" aria-modal="true">
-      {/* Backdrop con atenuación del 25-35% para contraste de cristal */}
+      {/* Backdrop con atenuación para contraste de cristal */}
       <div
-        className="fixed inset-0 bg-black/20 dark:bg-black/35 transition-opacity duration-200"
+        className="fixed inset-0 bg-black/30 dark:bg-black/45 transition-opacity duration-200"
         onClick={handleClose}
         aria-hidden="true"
       />
