@@ -5,7 +5,7 @@ import { useBot } from "@/context/bot-context";
 import { GlassModal } from "@/components/glass-modal";
 import { SoundItem } from "@/lib/mock-data";
 import { Button } from "@heroui/react";
-import { Trash2, AlertTriangle, Volume2 } from "lucide-react";
+import { Trash2, Volume2 } from "lucide-react";
 
 export function DeleteSoundModal({
   sound,
@@ -96,13 +96,7 @@ export function DeleteSoundModal({
           </div>
         </div>
 
-        {/* Warning text */}
-        <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-2.5 text-xs text-rose-600 dark:text-rose-400">
-          <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-          <p className="leading-relaxed">
-            Esta acción eliminará el sonido del catálogo del Soundboard de forma permanente. Si estaba vinculado a un disparador Phrase-to-Sound, se desvinculará automáticamente.
-          </p>
-        </div>
+
 
         {error && (
           <p className="text-[11px] text-rose-500 bg-rose-500/10 border border-rose-500/20 rounded-lg px-3 py-2">
