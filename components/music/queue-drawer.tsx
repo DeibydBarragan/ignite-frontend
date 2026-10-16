@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useBot } from "@/context/bot-context";
 import { GlassModal } from "@/components/glass-modal";
+import { ClearQueueModal } from "./clear-queue-modal";
 import { Button } from "@heroui/react";
 import {
   DndContext,
@@ -225,6 +227,8 @@ export function QueueDrawer({
     toggleFavorite,
   } = useBot();
 
+  const [isConfirmClearOpen, setIsConfirmClearOpen] = useState(false);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
@@ -245,6 +249,7 @@ export function QueueDrawer({
     queue.reduce((acc, curr) => acc + curr.duration, 0);
 
   return (
+    <>
     <GlassModal
       isOpen={isOpen}
       onClose={onClose}
@@ -257,7 +262,7 @@ export function QueueDrawer({
           <Button
             variant="danger-soft"
             size="sm"
-            onPress={clearQueue}
+            onPress={() => setIsConfirmClearOpen(true)}
             isDisabled={queue.length === 0 || isPlayerBusy}
             className="flex items-center gap-1.5"
           >
@@ -422,5 +427,19 @@ export function QueueDrawer({
         </div>
       </div>
     </GlassModal>
+
+    {/* Modal para Confirmar Vaciado de la Cola */}
+    <ClearQueueModal
+      isOpen={isConfirmClearOpen}
+      onClose={() => setIsConfirmClearOpen(false)}
+      onConfirm={() => {
+        setIsConfirmClearOpen(false);
+        clearQueue();
+      }}
+      queueLength={queue.length}
+      totalDurationSeconds={totalSeconds}
+      isClearing={pendingAction === "clear"}
+    />
+    </>
   );
 }

@@ -14,6 +14,7 @@ import {
   type UserPlaylist,
 } from "@/lib/playlists-service";
 import { GlassModal } from "@/components/glass-modal";
+import { DeletePlaylistModal } from "./delete-playlist-modal";
 import {
   Search,
   Link2,
@@ -157,6 +158,7 @@ export function PlaylistsView() {
 
   const [selected, setSelected] = useState<UserPlaylist | null>(null);
   const [live, setLive] = useState<LiveState | null>(null);
+  const [playlistToDelete, setPlaylistToDelete] = useState<UserPlaylist | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [queueingId, setQueueingId] = useState<string | null>(null);
   const liveForRef = useRef<string | null>(null);
@@ -230,9 +232,6 @@ export function PlaylistsView() {
   };
 
   const handleDelete = async (id: string, name?: string) => {
-    if (name && !window.confirm(`¿Seguro que deseas eliminar la playlist "${name}" de tu colección?`)) {
-      return;
-    }
     setPlaylists((prev) => prev.filter((p) => p.id !== id));
     if (selected?.id === id) {
       setSelected(null);
@@ -475,7 +474,7 @@ export function PlaylistsView() {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDelete(pl.id, pl.name);
+                        setPlaylistToDelete(pl);
                       }}
                       title="Eliminar playlist"
                       className="absolute top-2.5 right-2.5 p-1.5 rounded-full bg-black/60 hover:bg-rose-500/80 text-white/70 hover:text-white backdrop-blur-md border border-white/10 hover:border-rose-400/50 opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer z-10 shadow-xs"
@@ -787,6 +786,13 @@ export function PlaylistsView() {
           </div>
         )}
       </GlassModal>
+
+      {/* Modal para Confirmar Eliminación de Playlist */}
+      <DeletePlaylistModal
+        playlist={playlistToDelete}
+        onClose={() => setPlaylistToDelete(null)}
+        onDeleted={handleDelete}
+      />
     </div>
   );
 }

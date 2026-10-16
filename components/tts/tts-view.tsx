@@ -9,6 +9,7 @@ import {
   SavedPhrase,
 } from "@/lib/phrases-service";
 import { AddPhraseModal } from "./add-phrase-modal";
+import { DeletePhraseModal } from "./delete-phrase-modal";
 import { useToast } from "@/components/ui/toast";
 import {
   Mic,
@@ -42,6 +43,7 @@ export function TTSView() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [playingPhraseId, setPlayingPhraseId] = useState<string | null>(null);
   const [emittingPhraseId, setEmittingPhraseId] = useState<string | null>(null);
+  const [phraseToDelete, setPhraseToDelete] = useState<SavedPhrase | null>(null);
 
   const maxChars = 300;
   const charsLeft = maxChars - text.length;
@@ -151,13 +153,6 @@ export function TTSView() {
     if (phrase.pitch) setPitch(phrase.pitch);
     if (phrase.rate) setRate(phrase.rate);
     toast(`Frase cargada al editor.`, "info");
-  };
-
-  // Delete saved phrase
-  const handleDeletePhrase = async (id: string) => {
-    await deleteSavedPhrase(id);
-    setSavedPhrases((prev) => prev.filter((p) => p.id !== id));
-    toast("Frase eliminada.", "info");
   };
 
   return (
@@ -356,7 +351,7 @@ export function TTSView() {
                       </div>
 
                       <button
-                        onClick={() => handleDeletePhrase(phrase.id)}
+                        onClick={() => setPhraseToDelete(phrase)}
                         title="Eliminar frase"
                         className="text-slate-400 hover:text-red-400 transition-colors p-1 cursor-pointer"
                       >
@@ -429,6 +424,17 @@ export function TTSView() {
         onPhraseAdded={(newPhrase) => {
           setSavedPhrases((prev) => [newPhrase, ...prev]);
           toast(`Frase "${newPhrase.title}" guardada exitosamente.`, "success");
+        }}
+      />
+
+      {/* Modal para Confirmar Eliminación de Frase */}
+      <DeletePhraseModal
+        phrase={phraseToDelete}
+        voices={voices}
+        onClose={() => setPhraseToDelete(null)}
+        onDeleted={(id) => {
+          setSavedPhrases((prev) => prev.filter((p) => p.id !== id));
+          toast("Frase eliminada.", "info");
         }}
       />
     </div>
