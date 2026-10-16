@@ -48,7 +48,7 @@ export function SongCard({ song }: { song: Song }) {
     } finally {
       setTimeout(() => {
         setShowNextFeedback(false);
-      }, 900);
+      }, 2600);
     }
   };
 
@@ -59,7 +59,7 @@ export function SongCard({ song }: { song: Song }) {
       setShowQueueFeedback(true);
       setTimeout(() => {
         setShowQueueFeedback(false);
-      }, 900);
+      }, 2600);
     } catch {}
   };
 
@@ -172,30 +172,15 @@ export function SongCard({ song }: { song: Song }) {
             </div>
           )}
 
-          {/* 4. Improved Equalizer overlay when playing (5 barras dinámicas con resplandor y badge Sonando) */}
+          {/* 4. Equalizer overlay when playing (5 barras dinámicas centradas, sin texto de sonando) */}
           {isCurrent && isPlaying && !isLoadingThisSongPlay && !showQueueFeedback && !showNextFeedback && (
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex flex-col items-center justify-center gap-2.5 z-10 animate-in fade-in duration-200 pointer-events-none">
-              {/* Soft radial glow */}
-              <div className="absolute w-20 h-20 rounded-full bg-[#1db954]/25 blur-xl pointer-events-none" />
-
-              {/* 5-bar dynamic equalizer */}
-              <div className="flex items-end justify-center gap-1.5 h-8 z-10">
-                <span className="w-1.5 h-5 bg-[#1ed760] rounded-full cover-eq-1 shadow-[0_0_8px_rgba(30,215,96,0.7)]" />
-                <span className="w-1.5 h-7 bg-[#1ed760] rounded-full cover-eq-2 shadow-[0_0_8px_rgba(30,215,96,0.7)]" />
-                <span className="w-1.5 h-8 bg-purple-400 rounded-full cover-eq-3 shadow-[0_0_8px_rgba(192,132,252,0.8)]" />
-                <span className="w-1.5 h-6 bg-[#1ed760] rounded-full cover-eq-4 shadow-[0_0_8px_rgba(30,215,96,0.7)]" />
-                <span className="w-1.5 h-5 bg-purple-400 rounded-full cover-eq-5 shadow-[0_0_8px_rgba(192,132,252,0.8)]" />
-              </div>
-
-              {/* Sonando Live badge */}
-              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/75 backdrop-blur-md border border-[#1db954]/40 shadow-lg z-10">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#1ed760] opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-[#1db954]" />
-                </span>
-                <span className="text-[10px] font-black text-white tracking-widest uppercase">
-                  Sonando
-                </span>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-10 animate-in fade-in duration-200 pointer-events-none">
+              <div className="flex items-end justify-center gap-1.5 h-8">
+                <span className="w-1.5 bg-[#1ed760] rounded-full cover-eq-1 shadow-[0_0_8px_rgba(30,215,96,0.7)]" />
+                <span className="w-1.5 bg-[#1ed760] rounded-full cover-eq-2 shadow-[0_0_8px_rgba(30,215,96,0.7)]" />
+                <span className="w-1.5 bg-purple-400 rounded-full cover-eq-3 shadow-[0_0_8px_rgba(192,132,252,0.8)]" />
+                <span className="w-1.5 bg-[#1ed760] rounded-full cover-eq-4 shadow-[0_0_8px_rgba(30,215,96,0.7)]" />
+                <span className="w-1.5 bg-purple-400 rounded-full cover-eq-5 shadow-[0_0_8px_rgba(192,132,252,0.8)]" />
               </div>
             </div>
           )}
