@@ -15,6 +15,7 @@ import {
 } from "@/lib/playlists-service";
 import { GlassModal } from "@/components/glass-modal";
 import { DeletePlaylistModal } from "./delete-playlist-modal";
+import { Button } from "@heroui/react";
 import {
   Search,
   Link2,
@@ -29,6 +30,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Music2,
+  Disc3,
   Star,
   ExternalLink,
 } from "lucide-react";
@@ -63,7 +65,7 @@ interface LiveState {
   truncated: boolean;
 }
 
-/** Portada con placeholder shimmer mientras carga la imagen. */
+/** Portada con placeholder elegante de vinilo mientras carga la imagen. */
 function CoverImage({
   src,
   alt,
@@ -90,9 +92,9 @@ function CoverImage({
   return (
     <div className={`relative overflow-hidden bg-black/5 dark:bg-white/5 ${className}`}>
       {showPlaceholder && (
-        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-600/80 via-indigo-600/70 to-slate-900/90 z-0">
-          <Music2 size={iconSize} className="text-white/90 drop-shadow-xs shrink-0" />
-          <div className="absolute inset-0 ignite-shimmer opacity-25 pointer-events-none" />
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200 dark:from-[#1b2030] dark:via-[#141724] dark:to-[#0d0f18] z-0">
+          <Disc3 size={iconSize} className="text-slate-400 dark:text-purple-400/70 shrink-0" />
+          <div className="absolute inset-0 ignite-shimmer opacity-15 pointer-events-none" />
         </div>
       )}
       {src && !failed && (
@@ -159,6 +161,7 @@ export function PlaylistsView() {
   const [selected, setSelected] = useState<UserPlaylist | null>(null);
   const [live, setLive] = useState<LiveState | null>(null);
   const [playlistToDelete, setPlaylistToDelete] = useState<UserPlaylist | null>(null);
+  const [favConfirmPlaylist, setFavConfirmPlaylist] = useState<UserPlaylist | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [queueingId, setQueueingId] = useState<string | null>(null);
   const liveForRef = useRef<string | null>(null);
@@ -425,6 +428,8 @@ export function PlaylistsView() {
           {filtered.map((pl) => {
             const isPlayingThis = playingId === pl.id;
             const isQueueingThis = queueingId === pl.id;
+            const isImportingThisFav = importingFavId === pl.id;
+            const isCardBusy = isPlayingThis || isQueueingThis || isImportingThisFav || isPlayerBusy;
             const neverSynced = pl.tracks.length === 0;
             const sourceKey = (pl.source || "").toLowerCase();
             const sourceTheme = SOURCE_THEMES[sourceKey] || {
@@ -476,8 +481,11 @@ export function PlaylistsView() {
                         e.stopPropagation();
                         setPlaylistToDelete(pl);
                       }}
+                      disabled={isCardBusy}
                       title="Eliminar playlist"
-                      className="absolute top-2.5 right-2.5 p-1.5 rounded-full bg-black/60 hover:bg-rose-500/80 text-white/70 hover:text-white backdrop-blur-md border border-white/10 hover:border-rose-400/50 opacity-0 group-hover:opacity-100 transition-all duration-200 cursor-pointer z-10 shadow-xs"
+                      className={`absolute top-2.5 right-2.5 p-1.5 rounded-full bg-black/60 hover:bg-rose-500/80 text-white/70 hover:text-white backdrop-blur-md border border-white/10 hover:border-rose-400/50 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 shadow-xs ${
+                        isCardBusy ? "cursor-not-allowed opacity-30 pointer-events-none" : "cursor-pointer"
+                      }`}
                     >
                       <Trash2 size={13} />
                     </button>
@@ -499,25 +507,28 @@ export function PlaylistsView() {
                       </div>
                     )}
 
-                    {/* Quick Play Floating Button (Spotify style) */}
+                    {/* Quick Add-to-Queue Floating Button (como en la tarjeta de canción) */}
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handlePlayPlaylist(pl);
+                        handleQueuePlaylist(pl);
                       }}
-                      disabled={isPlayerBusy || isPlayingThis}
-                      aria-label={`Reproducir ${pl.name}`}
+                      disabled={isCardBusy}
+                      aria-label={`Añadir ${pl.name} a la cola`}
+                      title="Añadir toda la playlist a la cola"
                       className={`absolute bottom-2.5 right-2.5 w-11 h-11 rounded-full bg-[#1db954] text-black shadow-lg shadow-[#1db954]/30 flex items-center justify-center transition-all duration-300 transform z-10 ${
-                        isPlayingThis
+                        isQueueingThis
                           ? "opacity-100 scale-100 cursor-not-allowed"
+                          : isCardBusy
+                          ? "opacity-0 pointer-events-none"
                           : "opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 hover:scale-110 active:scale-95 hover:bg-[#1ed760] cursor-pointer"
                       }`}
                     >
-                      {isPlayingThis ? (
+                      {isQueueingThis ? (
                         <Loader2 size={18} className="animate-spin text-black" />
                       ) : (
-                        <Play size={18} className="fill-current ml-0.5" />
+                        <Plus size={20} strokeWidth={2.5} />
                       )}
                     </button>
                   </div>
@@ -567,50 +578,54 @@ export function PlaylistsView() {
                 </div>
 
                 {/* Streamlined Action Buttons */}
-                <div className="flex items-center gap-2 pt-2.5 border-t border-black/5 dark:border-white/5 mt-auto">
+                <div className="flex items-center gap-1.5 sm:gap-2 pt-2.5 border-t border-black/5 dark:border-white/5 mt-auto">
                   <button
                     type="button"
                     onClick={() => openPlaylist(pl)}
-                    className="flex-1 py-2 px-2.5 rounded-xl text-xs font-medium bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                    className="flex-1 py-2 px-2.5 sm:px-3 rounded-xl text-xs font-medium bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200 flex items-center justify-center gap-1.5 transition-colors cursor-pointer whitespace-nowrap min-w-0"
+                    title="Ver temas de la playlist"
                   >
-                    <Eye size={13} />
-                    <span>Ver temas</span>
+                    <Eye size={13} className="shrink-0" />
+                    <span className="truncate">Ver temas</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handlePlayPlaylist(pl)}
-                    disabled={isPlayerBusy || isPlayingThis}
-                    className="flex-1 py-2 px-2.5 rounded-xl text-xs font-semibold bg-[#1db954] hover:bg-[#1ed760] disabled:opacity-50 text-black flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:cursor-not-allowed shadow-xs"
+                    disabled={isCardBusy}
+                    title={isPlayingThis ? "Sonando ahora" : "Reproducir playlist ahora"}
+                    aria-label={`Reproducir ${pl.name}`}
+                    className="h-8.5 w-8.5 rounded-xl text-xs font-semibold bg-[#1db954] hover:bg-[#1ed760] disabled:opacity-50 text-black flex items-center justify-center transition-all cursor-pointer disabled:cursor-not-allowed shadow-xs shrink-0"
                   >
                     {isPlayingThis ? (
-                      <Loader2 size={13} className="animate-spin" />
+                      <Loader2 size={14} className="animate-spin" />
                     ) : (
-                      <Play size={13} className="fill-current" />
+                      <Play size={14} className="fill-current ml-0.5" />
                     )}
-                    <span>{isPlayingThis ? "Sonando" : "Reproducir"}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleQueuePlaylist(pl)}
-                    disabled={isPlayerBusy || isQueueingThis}
+                    disabled={isCardBusy}
                     title="Añadir toda la playlist a la cola"
-                    className="p-2 rounded-xl glass-btn text-slate-500 dark:text-slate-300 hover:text-emerald-400 hover:border-emerald-500/30 flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+                    aria-label={`Añadir ${pl.name} a la cola`}
+                    className="h-8.5 w-8.5 rounded-xl glass-btn text-slate-500 dark:text-slate-300 hover:text-emerald-400 hover:border-emerald-500/30 flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                   >
                     {isQueueingThis ? (
                       <Loader2 size={14} className="animate-spin text-emerald-400" />
                     ) : (
-                      <Plus size={14} />
+                      <Plus size={15} strokeWidth={2.2} />
                     )}
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => handleImportFavorites(pl)}
-                    disabled={!!importingFavId}
+                    onClick={() => setFavConfirmPlaylist(pl)}
+                    disabled={isCardBusy || !!importingFavId}
                     title="Guardar todos los temas en favoritos"
-                    className="p-2 rounded-xl glass-btn text-slate-500 dark:text-slate-300 hover:text-amber-400 hover:border-amber-400/30 flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50 shrink-0"
+                    aria-label={`Guardar temas de ${pl.name} en favoritos`}
+                    className="h-8.5 w-8.5 rounded-xl glass-btn text-slate-500 dark:text-slate-300 hover:text-amber-400 hover:border-amber-400/30 flex items-center justify-center transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                   >
                     {importingFavId === pl.id ? (
                       <Loader2 size={14} className="animate-spin text-amber-400" />
@@ -656,7 +671,7 @@ export function PlaylistsView() {
                 </a>
 
                 <button
-                  onClick={() => selected && handleImportFavorites(selected)}
+                  onClick={() => selected && setFavConfirmPlaylist(selected)}
                   disabled={!!importingFavId}
                   title="Guardar todos los temas en favoritos"
                   className="flex-1 sm:flex-none px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-xl text-xs font-medium glass-btn text-slate-700 dark:text-slate-200 hover:text-amber-400 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors whitespace-nowrap"
@@ -783,6 +798,84 @@ export function PlaylistsView() {
                 )}
               </>
             )}
+          </div>
+        )}
+      </GlassModal>
+
+      {/* Modal de confirmación para guardar temas en favoritos */}
+      <GlassModal
+        isOpen={!!favConfirmPlaylist}
+        onClose={() => !importingFavId && setFavConfirmPlaylist(null)}
+        maxWidth="md"
+        icon={<Star size={20} className="text-amber-400 fill-amber-400" />}
+        title="Guardar en favoritos"
+        subtitle={
+          favConfirmPlaylist
+            ? `¿Deseas guardar los temas de «${favConfirmPlaylist.name}»?`
+            : undefined
+        }
+        footer={
+          <div className="flex items-center justify-end gap-2.5 w-full">
+            <Button
+              variant="ghost"
+              size="sm"
+              onPress={() => setFavConfirmPlaylist(null)}
+              isDisabled={!!importingFavId}
+              className="text-slate-600 dark:text-slate-300 cursor-pointer"
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              isDisabled={!!importingFavId}
+              onPress={async () => {
+                if (!favConfirmPlaylist) return;
+                const target = favConfirmPlaylist;
+                setFavConfirmPlaylist(null);
+                await handleImportFavorites(target);
+              }}
+              className="bg-amber-500 hover:bg-amber-400 text-black font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer"
+            >
+              {importingFavId ? (
+                <Loader2 size={14} className="animate-spin text-black" />
+              ) : (
+                <Star size={14} className="fill-black text-black" />
+              )}
+              <span>{importingFavId ? "Guardando" : "Confirmar y guardar"}</span>
+            </Button>
+          </div>
+        }
+      >
+        {favConfirmPlaylist && (
+          <div className="space-y-4">
+            <div className="p-3.5 rounded-2xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 flex items-center gap-3">
+              <div className="h-14 w-14 rounded-xl overflow-hidden shrink-0">
+                <CoverImage
+                  src={favConfirmPlaylist.cover}
+                  alt={favConfirmPlaylist.name}
+                  className="w-full h-full"
+                  iconSize={24}
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+                  {favConfirmPlaylist.name}
+                </h4>
+                <div className="flex items-center gap-2 mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  <span className="capitalize">{favConfirmPlaylist.source}</span>
+                  <span>•</span>
+                  <span>
+                    {favConfirmPlaylist.tracks.length > 0
+                      ? `${favConfirmPlaylist.tracks.length} temas`
+                      : "Todos los temas de la playlist"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+              Esta acción añadirá las canciones de esta playlist a tu lista de favoritos de Discord para que puedas escucharlas en cualquier momento sin tener que buscar la playlist completa.
+            </p>
           </div>
         )}
       </GlassModal>
