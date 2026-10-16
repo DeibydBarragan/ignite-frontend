@@ -303,33 +303,4 @@ export const MOCK_PHRASE_TRIGGERS: PhraseTrigger[] = [
   },
 ];
 
-export const MOCK_INITIAL_EVENTS: LiveEvent[] = [
-  {
-    id: "evt-1",
-    type: "voice_trigger",
-    title: "Phrase Trigger Activado",
-    description: "Usuario 'AlexGamer' dijo 'GG' en 🔊 General → Sonido 📢 Airhorn",
-    timestamp: "Hace 2 min",
-  },
-  {
-    id: "evt-2",
-    type: "music_play",
-    title: "Nueva Canción en Cola",
-    description: "Añadida 'Resonance - HOME' por @AlexGamer",
-    timestamp: "Hace 8 min",
-  },
-  {
-    id: "evt-3",
-    type: "tts",
-    title: "TTS Transmitido",
-    description: "'¡Partida iniciada, buena suerte a todos!' en 🔊 General",
-    timestamp: "Hace 15 min",
-  },
-  {
-    id: "evt-4",
-    type: "soundboard",
-    title: "Soundboard Reproducido",
-    description: "Efecto 'Ta-Da Fanfare' 🎺 disparado desde la web",
-    timestamp: "Hace 22 min",
-  },
-];
+export const MOCK_INITIAL_EVENTS: LiveEvent[] = [];

@@ -13,7 +13,6 @@ import {
   LiveEvent,
   MOCK_SOUNDS,
   MOCK_PHRASE_TRIGGERS,
-  MOCK_INITIAL_EVENTS,
 } from "@/lib/mock-data";
 import { audioSynth } from "@/lib/audio-synth";
 import { igniteApi } from "@/lib/ignite-api";
@@ -358,7 +357,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
   // Soundboard & Phrases State
   const [sounds, setSounds] = useState<SoundItem[]>(MOCK_SOUNDS);
   const [phraseTriggers, setPhraseTriggers] = useState<PhraseTrigger[]>(MOCK_PHRASE_TRIGGERS);
-  const [liveEvents, setLiveEvents] = useState<LiveEvent[]>(MOCK_INITIAL_EVENTS);
+  const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([]);
   const [activeSoundId, setActiveSoundId] = useState<string | null>(null);
 
   // Sincroniza con el catálogo real del bot: actualiza los conocidos y
