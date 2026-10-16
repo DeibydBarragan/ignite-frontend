@@ -69,7 +69,6 @@ export function DeleteSoundModal({
         </div>
       }
     >
-      <div className="space-y-4">
         {/* Sound info preview badge */}
         <div className="p-3.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/10 dark:border-white/10 flex items-center gap-3">
           <div className="h-12 w-12 rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 flex items-center justify-center text-2xl shrink-0">
@@ -96,14 +95,11 @@ export function DeleteSoundModal({
           </div>
         </div>
 
-
-
         {error && (
-          <p className="text-[11px] text-rose-500 bg-rose-500/10 border border-rose-500/20 rounded-lg px-3 py-2">
+          <p className="text-[11px] text-rose-500 bg-rose-500/10 border border-rose-500/20 rounded-lg px-3 py-2 mt-3">
             {error}
           </p>
         )}
-      </div>
     </GlassModal>
   );
 }
