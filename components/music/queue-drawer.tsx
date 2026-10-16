@@ -269,7 +269,7 @@ export function QueueDrawer({
             {pendingAction === "clear" ? (
               <>
                 <Loader2 size={13} className="animate-spin text-rose-400" />
-                <span>Vaciando...</span>
+                <span>Vaciando</span>
               </>
             ) : (
               <>
@@ -372,7 +372,7 @@ export function QueueDrawer({
             {isReordering ? (
               <span className="text-[11px] font-medium text-purple-600 dark:text-purple-400 flex items-center gap-1.5 animate-pulse">
                 <Loader2 size={12} className="animate-spin" />
-                Actualizando orden...
+                Actualizando orden
               </span>
             ) : queue.length > 1 && !isPlayerBusy ? (
               <span className="text-[10px] font-normal text-slate-400 flex items-center gap-1">

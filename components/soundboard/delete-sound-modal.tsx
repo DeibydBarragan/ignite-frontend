@@ -5,7 +5,7 @@ import { useBot } from "@/context/bot-context";
 import { GlassModal } from "@/components/glass-modal";
 import { SoundItem } from "@/lib/mock-data";
 import { Button } from "@heroui/react";
-import { Trash2, Volume2 } from "lucide-react";
+import { Trash2, Volume2, Loader2 } from "lucide-react";
 
 export function DeleteSoundModal({
   sound,
@@ -63,8 +63,8 @@ export function DeleteSoundModal({
             onPress={handleDelete}
             className="bg-rose-600 hover:bg-rose-500 text-white font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer"
           >
-            <Trash2 size={14} />
-            <span>{isDeleting ? "Eliminando..." : "Eliminar definitivamente"}</span>
+            {isDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            <span>{isDeleting ? "Eliminando" : "Eliminar definitivamente"}</span>
           </Button>
         </div>
       }

@@ -74,9 +74,9 @@ export function GlassModal({
 
   return createPortal(
     <div className="fixed inset-0 z-[9999]" role="dialog" aria-modal="true">
-      {/* Backdrop */}
+      {/* Backdrop con atenuación del 25-35% para contraste de cristal */}
       <div
-        className="fixed inset-0 transition-opacity duration-200"
+        className="fixed inset-0 bg-black/20 dark:bg-black/35 transition-opacity duration-200"
         onClick={handleClose}
         aria-hidden="true"
       />
@@ -123,7 +123,7 @@ export function GlassModal({
           )}
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar pr-1 -mr-1 text-sm">
+          <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar pr-1 -mr-1 text-sm py-[1px]">
             {children}
           </div>
 

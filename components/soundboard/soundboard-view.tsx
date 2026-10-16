@@ -17,6 +17,7 @@ import {
   Pencil,
   Trash2,
   Clock,
+  Loader2,
 } from "lucide-react";
 
 function formatRelativeTime(ts: number | null | undefined): string | null {
@@ -60,6 +61,7 @@ export function SoundboardView() {
   const [editingSound, setEditingSound] = useState<SoundItem | null>(null);
   const [deletingSound, setDeletingSound] = useState<SoundItem | null>(null);
   const [isAttaching, setIsAttaching] = useState(false);
+  const [attachingSoundId, setAttachingSoundId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const attachTargetRef = useRef<string | null>(null);
 
@@ -83,8 +85,13 @@ export function SoundboardView() {
     if (file.size > ATTACH_MAX_BYTES) return;
 
     setIsAttaching(true);
-    await attachSoundAudio(targetId, file);
-    setIsAttaching(false);
+    setAttachingSoundId(targetId);
+    try {
+      await attachSoundAudio(targetId, file);
+    } finally {
+      setIsAttaching(false);
+      setAttachingSoundId(null);
+    }
   };
 
   const isSoundMine = useCallback(
@@ -370,20 +377,38 @@ export function SoundboardView() {
                       <span
                         role="button"
                         tabIndex={0}
-                        title={snd.hasFile ? "Reemplazar audio MP3" : "Subir audio MP3 para que suene en Discord"}
+                        title={
+                          attachingSoundId === snd.id
+                            ? "Subiendo audio"
+                            : snd.hasFile
+                            ? "Reemplazar audio MP3"
+                            : "Subir audio MP3 para que suene en Discord"
+                        }
                         onClick={(ev) => {
                           ev.stopPropagation();
+                          if (isAttaching) return;
                           triggerAttach(snd.id);
                         }}
                         onKeyDown={(ev) => {
                           if (ev.key === "Enter" || ev.key === " ") {
                             ev.stopPropagation();
+                            if (isAttaching) return;
                             triggerAttach(snd.id);
                           }
                         }}
-                        className={`p-0.5 rounded transition-colors cursor-pointer ${snd.hasFile ? "text-[#1db954] hover:text-[#1ed760]" : "text-slate-300 dark:text-slate-600 hover:text-purple-400"}`}
+                        className={`p-0.5 rounded transition-colors cursor-pointer ${
+                          attachingSoundId === snd.id
+                            ? "text-purple-400 cursor-not-allowed"
+                            : snd.hasFile
+                            ? "text-[#1db954] hover:text-[#1ed760]"
+                            : "text-slate-300 dark:text-slate-600 hover:text-purple-400"
+                        }`}
                       >
-                        <Upload size={11} />
+                        {attachingSoundId === snd.id ? (
+                          <Loader2 size={11} className="animate-spin text-purple-400" />
+                        ) : (
+                          <Upload size={11} />
+                        )}
                       </span>
                       <span
                         role="button"

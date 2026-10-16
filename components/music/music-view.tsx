@@ -309,7 +309,7 @@ export function MusicView() {
                   {isImporting && pendingAction === "playNext" ? (
                     <>
                       <Loader2 size={13} className="animate-spin" />
-                      <span>Sig...</span>
+                      <span>Sig</span>
                     </>
                   ) : (
                     <>
@@ -331,7 +331,7 @@ export function MusicView() {
                   {isImporting && pendingAction === "queue" ? (
                     <>
                       <Loader2 size={13} className="animate-spin" />
-                      <span>Encolando...</span>
+                      <span>Encolando</span>
                     </>
                   ) : (
                     <>

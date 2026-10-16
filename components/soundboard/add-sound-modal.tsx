@@ -6,7 +6,7 @@ import { GlassModal } from "@/components/glass-modal";
 import { EmojiPicker } from "@/components/soundboard/emoji-picker";
 import { SoundCategory } from "@/lib/mock-data";
 import { Button } from "@heroui/react";
-import { Plus, User, Globe } from "lucide-react";
+import { Plus, User, Globe, Loader2 } from "lucide-react";
 
 export function AddSoundModal({
   isOpen,
@@ -97,9 +97,10 @@ export function AddSoundModal({
             form="add-sound-form"
             size="sm"
             isDisabled={isUploading}
-            className="bg-[#1db954] hover:bg-[#1ed760] text-black font-semibold shadow-xs flex items-center gap-1.5"
+            className="bg-[#1db954] hover:bg-[#1ed760] text-black font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
           >
-            <span>{isUploading ? "Subiendo..." : "Guardar sonido"}</span>
+            {isUploading && <Loader2 size={14} className="animate-spin text-black" />}
+            <span>{isUploading ? "Subiendo" : "Guardar sonido"}</span>
           </Button>
         </div>
       }

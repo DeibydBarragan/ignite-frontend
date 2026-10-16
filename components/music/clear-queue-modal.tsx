@@ -2,7 +2,7 @@
 
 import { GlassModal } from "@/components/glass-modal";
 import { Button } from "@heroui/react";
-import { Trash2, AlertTriangle, ListMusic, Clock } from "lucide-react";
+import { Trash2, AlertTriangle, ListMusic, Clock, Loader2 } from "lucide-react";
 
 function formatDuration(sec: number) {
   const m = Math.floor(sec / 60);
@@ -50,8 +50,8 @@ export function ClearQueueModal({
             onPress={onConfirm}
             className="bg-rose-600 hover:bg-rose-500 text-white font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer"
           >
-            <Trash2 size={14} />
-            <span>{isClearing ? "Vaciando..." : "Vaciar cola ahora"}</span>
+            {isClearing ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            <span>{isClearing ? "Vaciando" : "Vaciar cola ahora"}</span>
           </Button>
         </div>
       }

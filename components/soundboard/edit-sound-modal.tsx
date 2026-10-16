@@ -6,7 +6,7 @@ import { GlassModal } from "@/components/glass-modal";
 import { EmojiPicker } from "@/components/soundboard/emoji-picker";
 import { SoundCategory, SoundItem } from "@/lib/mock-data";
 import { Button } from "@heroui/react";
-import { Pencil, Trash2, User, Globe } from "lucide-react";
+import { Pencil, Trash2, User, Globe, Loader2 } from "lucide-react";
 
 export function EditSoundModal({
   sound,
@@ -98,8 +98,8 @@ export function EditSoundModal({
                   onPress={handleDelete}
                   className="bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs h-8 px-2.5 cursor-pointer flex items-center gap-1"
                 >
-                  <Trash2 size={13} />
-                  <span>{isDeleting ? "Borrando..." : "¿Confirmar borrar?"}</span>
+                  {isDeleting ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                  <span>{isDeleting ? "Eliminando" : "¿Confirmar borrar?"}</span>
                 </Button>
                 <Button
                   size="sm"
@@ -141,7 +141,8 @@ export function EditSoundModal({
               isDisabled={isSaving || isDeleting}
               className="bg-purple-600 hover:bg-purple-500 text-white font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer text-xs h-8"
             >
-              <span>{isSaving ? "Guardando..." : "Guardar cambios"}</span>
+              {isSaving && <Loader2 size={13} className="animate-spin" />}
+              <span>{isSaving ? "Guardando" : "Guardar cambios"}</span>
             </Button>
           </div>
         </div>

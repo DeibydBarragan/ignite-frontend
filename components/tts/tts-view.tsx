@@ -282,7 +282,7 @@ export function TTSView() {
               {isSending ? (
                 <>
                   <Loader2 size={14} className="animate-spin" />
-                  <span>Emitiendo...</span>
+                  <span>Emitiendo</span>
                 </>
               ) : (
                 <>

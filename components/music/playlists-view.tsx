@@ -373,7 +373,7 @@ export function PlaylistsView() {
             {isImporting ? (
               <>
                 <Loader2 size={13} className="animate-spin" />
-                <span>Guardando...</span>
+                <span>Guardando</span>
               </>
             ) : (
               <>

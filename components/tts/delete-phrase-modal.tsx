@@ -5,7 +5,7 @@ import { GlassModal } from "@/components/glass-modal";
 import { SavedPhrase, deleteSavedPhrase } from "@/lib/phrases-service";
 import { VoiceItem } from "@/lib/sound-api";
 import { Button } from "@heroui/react";
-import { Trash2, AlertTriangle, Mic } from "lucide-react";
+import { Trash2, AlertTriangle, Mic, Loader2 } from "lucide-react";
 
 export function DeletePhraseModal({
   phrase,
@@ -64,8 +64,8 @@ export function DeletePhraseModal({
             onPress={handleDelete}
             className="bg-rose-600 hover:bg-rose-500 text-white font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer"
           >
-            <Trash2 size={14} />
-            <span>{isDeleting ? "Eliminando..." : "Eliminar definitivamente"}</span>
+            {isDeleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+            <span>{isDeleting ? "Eliminando" : "Eliminar definitivamente"}</span>
           </Button>
         </div>
       }

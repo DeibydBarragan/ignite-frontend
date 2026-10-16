@@ -185,7 +185,7 @@ export function SongCard({ song }: { song: Song }) {
             {isLoadingThisSongPlay ? (
               <>
                 <Loader2 size={11} className="animate-spin text-[#1db954]" />
-                <span>Play...</span>
+                <span>Play</span>
               </>
             ) : (
               <>
@@ -198,7 +198,7 @@ export function SongCard({ song }: { song: Song }) {
           <button
             onClick={() => playNext(song)}
             disabled={isPlayerBusy || isLoadingThisSongNext}
-            title={isLoadingThisSongNext ? "Poniendo siguiente..." : "Reproducir siguiente (salta la cola)"}
+            title={isLoadingThisSongNext ? "Poniendo siguiente" : "Reproducir siguiente (salta la cola)"}
             className={`glass-btn px-2 py-0.5 text-[10px] flex items-center gap-1 transition-colors ${
               isLoadingThisSongNext || isPlayerBusy
                 ? "opacity-50 cursor-not-allowed"
@@ -208,12 +208,12 @@ export function SongCard({ song }: { song: Song }) {
             {isLoadingThisSongNext ? (
               <>
                 <Loader2 size={11} className="animate-spin text-purple-400" />
-                <span>Sig...</span>
+                <span>Sig</span>
               </>
             ) : (
               <>
                 <ListPlus size={11} />
-                <span>Sig.</span>
+                <span>Sig</span>
               </>
             )}
           </button>
