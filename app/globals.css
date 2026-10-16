@@ -319,48 +319,87 @@ body {
   animation: ignite-eq-bar 0.65s ease-in-out infinite 0.45s;
 }
 
-/* Animación de barras de ecualizador dinámico para carátula de canción */
-@keyframes eq-scale-1 {
+/* Animación de barras de ecualizador dinámico para carátula de canción (5 barras con escala Y garantizada) */
+@keyframes cover-eq-scale-1 {
   0%, 100% {
-    transform: scaleY(0.35);
+    transform: scaleY(0.28);
   }
   50% {
     transform: scaleY(1.15);
   }
 }
-
-@keyframes eq-scale-2 {
+@keyframes cover-eq-scale-2 {
   0%, 100% {
     transform: scaleY(1.1);
   }
   50% {
-    transform: scaleY(0.3);
+    transform: scaleY(0.32);
   }
 }
-
-@keyframes eq-scale-3 {
+@keyframes cover-eq-scale-3 {
   0%, 100% {
-    transform: scaleY(0.45);
+    transform: scaleY(0.38);
   }
   50% {
     transform: scaleY(1.2);
   }
 }
+@keyframes cover-eq-scale-4 {
+  0%, 100% {
+    transform: scaleY(1.05);
+  }
+  50% {
+    transform: scaleY(0.3);
+  }
+}
+@keyframes cover-eq-scale-5 {
+  0%, 100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1.1);
+  }
+}
 
+.cover-eq-1 {
+  display: inline-block;
+  transform-origin: bottom;
+  animation: cover-eq-scale-1 0.75s ease-in-out infinite;
+}
+.cover-eq-2 {
+  display: inline-block;
+  transform-origin: bottom;
+  animation: cover-eq-scale-2 0.6s ease-in-out infinite 0.12s;
+}
+.cover-eq-3 {
+  display: inline-block;
+  transform-origin: bottom;
+  animation: cover-eq-scale-3 0.85s ease-in-out infinite 0.24s;
+}
+.cover-eq-4 {
+  display: inline-block;
+  transform-origin: bottom;
+  animation: cover-eq-scale-4 0.65s ease-in-out infinite 0.16s;
+}
+.cover-eq-5 {
+  display: inline-block;
+  transform-origin: bottom;
+  animation: cover-eq-scale-5 0.8s ease-in-out infinite 0.28s;
+}
+
+/* 3-bar alias for fallback */
 .eq-bar-1 {
   display: inline-block;
-  transform-origin: center;
-  animation: eq-scale-1 0.7s ease-in-out infinite;
+  transform-origin: bottom;
+  animation: cover-eq-scale-1 0.7s ease-in-out infinite;
 }
-
 .eq-bar-2 {
   display: inline-block;
-  transform-origin: center;
-  animation: eq-scale-2 0.6s ease-in-out infinite 0.12s;
+  transform-origin: bottom;
+  animation: cover-eq-scale-3 0.6s ease-in-out infinite 0.12s;
 }
-
 .eq-bar-3 {
   display: inline-block;
-  transform-origin: center;
-  animation: eq-scale-3 0.8s ease-in-out infinite 0.25s;
+  transform-origin: bottom;
+  animation: cover-eq-scale-5 0.8s ease-in-out infinite 0.25s;
 }
