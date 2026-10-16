@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { Song } from "@/lib/mock-data";
 import { useBot } from "@/context/bot-context";
-import { Play, Plus, ListPlus, Clock, Disc3, Loader2, Star } from "lucide-react";
+import { Play, Plus, ListPlus, Clock, Disc3, Loader2, Star, Check } from "lucide-react";
 
 function formatDuration(sec: number) {
   const m = Math.floor(sec / 60);
@@ -27,6 +28,9 @@ export function SongCard({ song }: { song: Song }) {
     toggleFavorite,
   } = useBot();
 
+  const [showNextFeedback, setShowNextFeedback] = useState(false);
+  const [showQueueFeedback, setShowQueueFeedback] = useState(false);
+
   const isCurrent = currentSong?.id === song.id;
   const isFav = isFavorite(song.id) || isFavorite(song.url);
   const songPendingAction = pendingSongActions?.[song.id];
@@ -35,6 +39,29 @@ export function SongCard({ song }: { song: Song }) {
   const isLoadingThisSongQueue = songPendingAction === "queue";
   const isThisSongBusy = !!songPendingAction;
   const isActionDisabled = isThisSongBusy;
+
+  const handlePlayNext = async () => {
+    if (isActionDisabled) return;
+    setShowNextFeedback(true);
+    try {
+      await playNext(song);
+    } finally {
+      setTimeout(() => {
+        setShowNextFeedback(false);
+      }, 900);
+    }
+  };
+
+  const handleAddToQueue = async () => {
+    if (isActionDisabled) return;
+    try {
+      await addToQueue(song);
+      setShowQueueFeedback(true);
+      setTimeout(() => {
+        setShowQueueFeedback(false);
+      }, 900);
+    } catch {}
+  };
 
   return (
     <div
@@ -47,10 +74,8 @@ export function SongCard({ song }: { song: Song }) {
       <div>
         {/* Album Artwork with add-to-queue overlay */}
         <div
-          onClick={() => !isActionDisabled && addToQueue(song)}
-          className={`relative aspect-square w-full rounded-xl overflow-hidden mb-3 bg-black/10 dark:bg-white/5 ${
-            isActionDisabled ? "cursor-not-allowed" : "cursor-pointer"
-          }`}
+          onClick={() => !isActionDisabled && handleAddToQueue()}
+          className="relative aspect-square w-full rounded-xl overflow-hidden mb-3 bg-black/10 dark:bg-white/5 cursor-pointer"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -120,12 +145,39 @@ export function SongCard({ song }: { song: Song }) {
             </span>
           )}
 
-          {/* Equalizer overlay when playing */}
-          {isCurrent && isPlaying && (
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center gap-1">
-              <span className="w-1 h-5 bg-[#1ed760] rounded-full animate-pulse" />
-              <span className="w-1 h-7 bg-purple-400 rounded-full animate-pulse [animation-delay:150ms]" />
-              <span className="w-1 h-4 bg-[#1ed760] rounded-full animate-pulse [animation-delay:300ms]" />
+          {/* 1. Loading Overlay when Play is clicked (con tinte esmeralda/verde, spinner grande directo sin texto) */}
+          {isLoadingThisSongPlay && (
+            <div className="absolute inset-0 bg-emerald-950/75 backdrop-blur-xs flex items-center justify-center z-20 animate-in fade-in duration-150">
+              <Loader2 size={38} className="animate-spin text-[#1ed760] drop-shadow-[0_0_14px_rgba(30,215,96,0.7)]" />
+            </div>
+          )}
+
+          {/* 2. Visual feedback animation when "Sig" is clicked (mismo estilo de icono que cargando) */}
+          {showNextFeedback && !isLoadingThisSongPlay && (
+            <div className="absolute inset-0 bg-purple-950/70 backdrop-blur-xs flex flex-col items-center justify-center gap-2 z-20 animate-in zoom-in-95 fade-in duration-150 pointer-events-none">
+              <ListPlus size={38} className="text-purple-300 drop-shadow-[0_0_14px_rgba(192,132,252,0.8)] animate-bounce" />
+              <span className="px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-purple-200 border border-purple-400/30 text-[10px] font-bold tracking-wide shadow-md">
+                ¡Siguiente en cola!
+              </span>
+            </div>
+          )}
+
+          {/* 3. Visual feedback animation when "Añadir a la cola" completes (Point 4) */}
+          {showQueueFeedback && !isLoadingThisSongPlay && !showNextFeedback && (
+            <div className="absolute inset-0 bg-emerald-950/70 backdrop-blur-xs flex flex-col items-center justify-center gap-2 z-20 animate-in zoom-in-95 fade-in duration-150 pointer-events-none">
+              <Plus size={38} strokeWidth={3} className="text-[#1ed760] drop-shadow-[0_0_14px_rgba(30,215,96,0.8)] animate-bounce" />
+              <span className="px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-emerald-200 border border-emerald-400/30 text-[10px] font-bold tracking-wide shadow-md">
+                ¡Añadido a la cola!
+              </span>
+            </div>
+          )}
+
+          {/* 4. Equalizer overlay when playing (3 barras como antes pero con rebote dinámico garantizado) */}
+          {isCurrent && isPlaying && !isLoadingThisSongPlay && !showQueueFeedback && !showNextFeedback && (
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center gap-1.5 z-10 animate-in fade-in duration-200">
+              <span className="w-1.5 h-6 bg-[#1ed760] rounded-full eq-bar-1 shadow-[0_0_8px_rgba(30,215,96,0.8)]" />
+              <span className="w-1.5 h-8 bg-purple-400 rounded-full eq-bar-2 shadow-[0_0_8px_rgba(192,132,252,0.8)]" />
+              <span className="w-1.5 h-5 bg-[#1ed760] rounded-full eq-bar-3 shadow-[0_0_8px_rgba(30,215,96,0.8)]" />
             </div>
           )}
 
@@ -133,21 +185,22 @@ export function SongCard({ song }: { song: Song }) {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              addToQueue(song);
+              handleAddToQueue();
             }}
-            disabled={isActionDisabled}
             aria-label={`Añadir ${song.title} a la cola`}
             title="Añadir a la cola"
-            className={`absolute bottom-2.5 right-2.5 h-9 w-9 rounded-full bg-[#1db954] text-black shadow-lg shadow-[#1db954]/25 flex items-center justify-center transition-all transform ${
-              isLoadingThisSongQueue
-                ? "opacity-100 scale-105 cursor-not-allowed"
-                : isActionDisabled
+            className={`absolute bottom-2.5 right-2.5 h-9 w-9 rounded-full bg-[#1db954] text-black shadow-lg shadow-[#1db954]/25 flex items-center justify-center transition-all transform cursor-pointer ${
+              isLoadingThisSongQueue || showQueueFeedback
+                ? "opacity-100 scale-105"
+                : isActionDisabled || isLoadingThisSongPlay || showNextFeedback
                 ? "opacity-0 pointer-events-none"
-                : "opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 hover:scale-105 hover:bg-[#1ed760] cursor-pointer"
+                : "opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 hover:scale-105 hover:bg-[#1ed760]"
             }`}
           >
             {isLoadingThisSongQueue ? (
               <Loader2 size={16} className="animate-spin text-black" />
+            ) : showQueueFeedback ? (
+              <Check size={18} strokeWidth={3} className="text-black animate-in zoom-in" />
             ) : (
               <Plus size={18} strokeWidth={2.5} />
             )}
@@ -156,12 +209,8 @@ export function SongCard({ song }: { song: Song }) {
 
         {/* Info */}
         <h3
-          onClick={() => !isActionDisabled && addToQueue(song)}
-          className={`font-semibold text-xs text-slate-900 dark:text-white truncate transition-colors ${
-            isActionDisabled
-              ? "cursor-not-allowed opacity-80"
-              : "cursor-pointer hover:text-[#1ed760]"
-          }`}
+          onClick={() => !isActionDisabled && handleAddToQueue()}
+          className="font-semibold text-xs text-slate-900 dark:text-white truncate transition-colors cursor-pointer hover:text-[#1ed760]"
           title={`Añadir a la cola: ${song.title}`}
         >
           {song.title}
@@ -179,40 +228,46 @@ export function SongCard({ song }: { song: Song }) {
         </span>
 
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Play Button: Bloqueado mientras carga pero sin spinner (ya está en la carátula) */}
           <button
-            onClick={() => playSong(song)}
-            disabled={isActionDisabled}
-            title={isLoadingThisSongPlay ? "Reproduciendo" : "Reproducir ahora (inmediato)"}
-            className={`glass-btn px-2 py-0.5 text-[10px] flex items-center gap-1 transition-colors ${
+            onClick={() => !isActionDisabled && playSong(song)}
+            title={isLoadingThisSongPlay ? "Cargando audio..." : "Reproducir ahora (inmediato)"}
+            className={`glass-btn px-2 py-0.5 text-[10px] flex items-center gap-1 transition-all ${
               isActionDisabled
                 ? "opacity-50 cursor-not-allowed"
                 : "text-slate-600 dark:text-slate-300 hover:text-[#1ed760] hover:border-[#1db954]/30 cursor-pointer"
             }`}
           >
-            {isLoadingThisSongPlay ? (
-              <>
-                <Loader2 size={11} className="animate-spin text-[#1db954]" />
-                <span>Play</span>
-              </>
-            ) : (
-              <>
-                <Play size={10} className="fill-current ml-0.5" />
-                <span>Play</span>
-              </>
-            )}
+            <Play size={10} className="fill-current ml-0.5" />
+            <span>Play</span>
           </button>
 
+          {/* Sig Button with instant feedback & persistent pointer */}
           <button
-            onClick={() => playNext(song)}
-            disabled={isActionDisabled}
-            title={isLoadingThisSongNext ? "Poniendo siguiente" : "Reproducir siguiente (salta la cola)"}
-            className={`glass-btn px-2 py-0.5 text-[10px] flex items-center gap-1 transition-colors ${
-              isActionDisabled
-                ? "opacity-50 cursor-not-allowed"
-                : "text-slate-600 dark:text-slate-300 hover:text-purple-400 hover:border-purple-500/30 cursor-pointer"
+            onClick={handlePlayNext}
+            title={
+              showNextFeedback
+                ? "¡Añadido como siguiente!"
+                : isLoadingThisSongNext
+                ? "Poniendo siguiente"
+                : "Reproducir siguiente (salta la cola)"
+            }
+            className={`glass-btn px-2 py-0.5 text-[10px] flex items-center gap-1 transition-all cursor-pointer ${
+              showNextFeedback
+                ? "bg-purple-600/30 text-purple-300 border-purple-500/50 ring-1 ring-purple-500/40 scale-105"
+                : isLoadingThisSongNext
+                ? "text-purple-400 border-purple-500/30"
+                : isActionDisabled
+                ? "opacity-50"
+                : "text-slate-600 dark:text-slate-300 hover:text-purple-400 hover:border-purple-500/30"
             }`}
           >
-            {isLoadingThisSongNext ? (
+            {showNextFeedback ? (
+              <>
+                <Check size={11} className="text-purple-300 animate-in zoom-in" />
+                <span className="font-semibold text-purple-300">¡Listo!</span>
+              </>
+            ) : isLoadingThisSongNext ? (
               <>
                 <Loader2 size={11} className="animate-spin text-purple-400" />
                 <span>Sig</span>

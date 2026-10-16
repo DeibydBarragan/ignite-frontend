@@ -243,6 +243,23 @@ class IgniteApiClient {
     }
   }
 
+  async searchVideos(query: string, limit: number = 6): Promise<Song[]> {
+    const q = query.trim();
+    if (q.length < 2 || q.length > 100 || /^https?:\/\//i.test(q)) return [];
+    try {
+      const base = await discoverBaseUrl();
+      const res = await fetch(
+        `${base}/api/search?q=${encodeURIComponent(q)}&limit=${limit}`,
+        { headers: this.headers, cache: "no-store", signal: AbortSignal.timeout(8000) }
+      );
+      if (!res.ok) return [];
+      const data = await res.json().catch(() => ({}));
+      return Array.isArray(data.results) ? data.results : [];
+    } catch {
+      return [];
+    }
+  }
+
   async control(
     guildId: string,
     action: "pause" | "resume" | "toggle" | "skip" | "previous" | "stop" | "seek" | "volume" | "loop" | "shuffle" | "autoplay" | "filter",

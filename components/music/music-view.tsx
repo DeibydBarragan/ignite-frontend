@@ -97,9 +97,10 @@ export function MusicView() {
   const [isLoadingRecs, setIsLoadingRecs] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const { toast } = useToast();
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [searchResults, setSearchResults] = useState<Song[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchRecs = useCallback(
     async (mode: "radio" | "week" | "month" | "all") => {
@@ -216,7 +217,7 @@ export function MusicView() {
     if (!query) return;
 
     setShowSuggestions(false);
-    setSuggestions([]);
+    setSearchResults([]);
 
     try {
       const res = await importUrlSong(query, { next: opts?.next });
@@ -231,22 +232,32 @@ export function MusicView() {
     }
   };
 
-  // Sugerencias de YouTube (igual que el autocompletado de /play en Discord).
+  // Búsqueda en vivo de videos de YouTube con títulos exactos
   useEffect(() => {
-    if (suggestTimer.current) clearTimeout(suggestTimer.current);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
     const q = searchInput.trim();
     if (isUrl || q.length < 2) {
-      setSuggestions([]);
+      setSearchResults([]);
       setShowSuggestions(false);
+      setIsSearching(false);
       return;
     }
-    suggestTimer.current = setTimeout(async () => {
-      const items = await igniteApi.getSuggestions(q);
-      setSuggestions(items);
-      setShowSuggestions(items.length > 0);
-    }, 300);
+
+    setIsSearching(true);
+    searchTimer.current = setTimeout(async () => {
+      try {
+        const items = await igniteApi.searchVideos(q, 6);
+        setSearchResults(items);
+        setShowSuggestions(items.length > 0);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 450);
+
     return () => {
-      if (suggestTimer.current) clearTimeout(suggestTimer.current);
+      if (searchTimer.current) clearTimeout(searchTimer.current);
     };
   }, [searchInput, isUrl]);
 
@@ -269,10 +280,10 @@ export function MusicView() {
               disabled={isImporting}
               onChange={(e) => setSearchInput(e.target.value)}
               onFocus={() => {
-                if (suggestions.length > 0) setShowSuggestions(true);
+                if (searchResults.length > 0) setShowSuggestions(true);
               }}
               onBlur={() => {
-                setTimeout(() => setShowSuggestions(false), 150);
+                setTimeout(() => setShowSuggestions(false), 200);
               }}
               onKeyDown={(e) => {
                 if (e.key === "Escape") setShowSuggestions(false);
@@ -339,41 +350,100 @@ export function MusicView() {
             )}
           </div>
 
-          {/* Sugerencias de YouTube (igual que /play en Discord) */}
-          {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1.5 z-40 glass-dropdown bg-white/55 dark:bg-[#12151f]/55 backdrop-blur-xl p-1.5 max-h-60 overflow-y-auto custom-scrollbar border border-black/10 dark:border-white/10 shadow-2xl space-y-0.5">
-              {suggestions.map((s) => (
-                <div
-                  key={s}
-                  className="w-full px-2.5 py-1.5 rounded-lg text-xs text-slate-700 dark:text-slate-300 hover:bg-purple-500/10 hover:text-slate-900 dark:hover:text-white flex items-center justify-between gap-2 transition-colors group/item"
-                >
-                  <button
-                    type="button"
-                    onPointerDown={(e) => {
-                      e.preventDefault();
-                      setSearchInput(s);
-                      submitQuery(s);
-                    }}
-                    className="flex-1 flex items-center gap-2 text-left cursor-pointer truncate"
-                  >
-                    <Search size={12} className="text-slate-400 shrink-0" />
-                    <span className="truncate">{s}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onPointerDown={(e) => {
-                      e.preventDefault();
-                      setSearchInput(s);
-                      submitQuery(s, { next: true });
-                    }}
-                    title="Reproducir siguiente (salta la cola)"
-                    className="opacity-0 group-hover/item:opacity-100 sm:group-hover/item:opacity-100 px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 dark:text-purple-300 hover:bg-purple-500/30 text-[10px] flex items-center gap-1 transition-all cursor-pointer shrink-0"
-                  >
-                    <ListPlus size={11} />
-                    <span className="hidden sm:inline">Siguiente</span>
-                  </button>
+          {/* Resultados de videos de YouTube con títulos exactos */}
+          {showSuggestions && (searchResults.length > 0 || isSearching) && (
+            <div className="absolute top-full left-0 right-0 mt-2 z-40 glass-dropdown bg-white/80 dark:bg-[#12151f]/85 backdrop-blur-xl p-2 rounded-2xl border border-black/10 dark:border-white/10 shadow-2xl space-y-1 overflow-hidden">
+              {isSearching && searchResults.length === 0 ? (
+                <div className="flex items-center justify-center gap-2 py-4 text-xs text-slate-400">
+                  <Loader2 size={14} className="animate-spin text-purple-400" />
+                  <span>Buscando videos en YouTube...</span>
                 </div>
-              ))}
+              ) : (
+                <>
+                  <div className="flex items-center justify-between px-2 py-1 text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    <span className="flex items-center gap-1.5">
+                      <Music2 size={12} className="text-purple-400" />
+                      Videos de YouTube
+                    </span>
+                    {isSearching && <Loader2 size={11} className="animate-spin text-purple-400" />}
+                  </div>
+                  <div className="max-h-80 overflow-y-auto custom-scrollbar space-y-1">
+                    {searchResults.map((video) => (
+                      <div
+                        key={video.id || video.url}
+                        className="group/item w-full p-1.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/[0.06] transition-colors flex items-center gap-3 text-left"
+                      >
+                        {/* Thumbnail con badge de duración */}
+                        <div className="relative w-14 h-10 rounded-lg overflow-hidden shrink-0 bg-black/20">
+                          <img
+                            src={video.albumArt || video.coverUrl || "/placeholder.svg"}
+                            alt={video.title}
+                            className="w-full h-full object-cover group-hover/item:scale-105 transition-transform duration-200"
+                            loading="lazy"
+                          />
+                          {video.formattedDuration && video.formattedDuration !== "00:00" && (
+                            <span className="absolute bottom-0.5 right-0.5 px-1 py-0.2 bg-black/80 backdrop-blur-xs text-[9px] font-mono text-white rounded">
+                              {video.formattedDuration}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Título exacto y canal / artista */}
+                        <div
+                          className="flex-1 min-w-0 cursor-pointer"
+                          onPointerDown={(e) => {
+                            e.preventDefault();
+                            setShowSuggestions(false);
+                            submitQuery(video.url);
+                          }}
+                        >
+                          <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate group-hover/item:text-purple-400 transition-colors">
+                            {video.title}
+                          </p>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate flex items-center gap-1">
+                            <span>{video.artist}</span>
+                            {video.isLive && (
+                              <span className="px-1 py-0.2 rounded bg-rose-500/20 text-rose-400 text-[9px] font-bold">
+                                EN VIVO
+                              </span>
+                            )}
+                          </p>
+                        </div>
+
+                        {/* Botones de acción rápida */}
+                        <div className="flex items-center gap-1 shrink-0 opacity-80 sm:opacity-0 group-hover/item:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              setShowSuggestions(false);
+                              submitQuery(video.url, { next: true });
+                            }}
+                            title="Reproducir a continuación"
+                            className="px-2 py-1 rounded-lg bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 text-[11px] font-medium flex items-center gap-1 transition-all cursor-pointer"
+                          >
+                            <ListPlus size={12} />
+                            <span className="hidden sm:inline">Sig</span>
+                          </button>
+                          <button
+                            type="button"
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              setShowSuggestions(false);
+                              submitQuery(video.url);
+                            }}
+                            title="Añadir a la cola"
+                            className="px-2.5 py-1 rounded-lg bg-[#1db954] hover:bg-[#1ed760] text-black text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+                          >
+                            <Plus size={12} />
+                            <span>Encolar</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
           )}
         </form>

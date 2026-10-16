@@ -31,12 +31,15 @@ export interface Song {
   title: string;
   artist: string;
   albumArt: string;
+  coverUrl?: string | null;
   duration: number; // in seconds
+  formattedDuration?: string;
   source: MusicSource;
   url: string;
   category: "lofi" | "gaming" | "synthwave" | "hits" | "rock";
   isLyric?: boolean;
   isAutoplay?: boolean;
+  isLive?: boolean;
   playCount?: number;
   rank?: number;
   requestedBy?: {

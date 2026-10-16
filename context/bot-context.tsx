@@ -975,22 +975,25 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
     const voiceCheck = await checkVoiceRequirement();
     if (!voiceCheck.canPlay) return;
 
+    // Si la canción pulsada ya es la actual y el reproductor está pausado: reiniciar desde el inicio y despausar
+    if (currentSong && (currentSong.id === song.id || currentSong.url === song.url) && !isPlaying) {
+      setIsPlaying(true);
+      setCurrentTime(0);
+      try {
+        await igniteApi.control(selectedGuildId, "seek", 0).catch(() => {});
+        const res = await igniteApi.control(selectedGuildId, "resume");
+        if (!res.success) {
+          await igniteApi.control(selectedGuildId, "toggle");
+        }
+        await syncPlayerState();
+      } catch {
+        toast("Error al reanudar la reproducción.", "error");
+      }
+      return;
+    }
+
     pendingSongIdsRef.current.add(song.id);
     setPendingSongActions((prev) => ({ ...prev, [song.id]: "play" }));
-
-    const prevSong = currentSong;
-    const prevPlaying = isPlaying;
-    const prevTime = currentTime;
-
-    const songWithRequester: Song = {
-      ...song,
-      requestedBy: user
-        ? { id: user.id, username: user.username, avatar: user.avatar || null }
-        : song.requestedBy || null,
-    };
-    setCurrentSong(songWithRequester);
-    setCurrentTime(0);
-    setIsPlaying(true);
 
     try {
       const res = await igniteApi.play(selectedGuildId, {
@@ -1001,9 +1004,6 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (!res.success) {
-        setCurrentSong(prevSong);
-        setIsPlaying(prevPlaying);
-        setCurrentTime(prevTime);
         if (!res.error?.includes("canal de voz")) {
           setIsBotOnline(false);
         }
@@ -1012,6 +1012,21 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       }
 
       setIsBotOnline(true);
+      const songWithRequester: Song = {
+        ...(res.song || song),
+        requestedBy: user
+          ? { id: user.id, username: user.username, avatar: user.avatar || null }
+          : song.requestedBy || null,
+      };
+      setCurrentSong(songWithRequester);
+      setCurrentTime(0);
+      setIsPlaying(true);
+
+      // Si el reproductor estaba en pausa, asegurarnos de que la API despause/reanude
+      if (!isPlaying) {
+        await igniteApi.control(selectedGuildId, "resume").catch(() => {});
+      }
+
       setLiveEvents((prev) => [
         {
           id: "evt-" + Date.now(),
@@ -1024,9 +1039,6 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       ]);
       await syncPlayerState();
     } catch {
-      setCurrentSong(prevSong);
-      setIsPlaying(prevPlaying);
-      setCurrentTime(prevTime);
       setIsBotOnline(false);
       toast("Error al conectar con el servicio del bot.", "error");
     } finally {
@@ -1037,7 +1049,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
         return next;
       });
     }
-  }, [isLoggedIn, checkVoiceRequirement, currentSong, isPlaying, currentTime, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
+  }, [isLoggedIn, checkVoiceRequirement, currentSong, isPlaying, selectedGuildId, currentVoiceChannelId, user, syncPlayerState, toast]);
 
   const addToQueue = useCallback(async (song: Song) => {
     if (!isLoggedIn || pendingSongIdsRef.current.has(song.id)) return;
