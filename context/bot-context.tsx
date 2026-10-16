@@ -1546,7 +1546,7 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
       return { success: false, message: voiceCheck.reason || "El bot de música no está disponible." };
     }
 
-    setPendingAction(opts?.next ? "playNext" : "queue");
+    setPendingAction(opts?.skip ? "play" : opts?.next ? "playNext" : "queue");
     setIsPlayerBusy(true);
 
     try {
@@ -1560,7 +1560,20 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
 
       if (res.success && res.song) {
         setIsBotOnline(true);
-        const msg = opts?.next
+        if (opts?.skip) {
+          const songWithRequester: Song = {
+            ...res.song,
+            requestedBy: user
+              ? { id: user.id, username: user.username, avatar: user.avatar || null }
+              : res.song.requestedBy || null,
+          };
+          setCurrentSong(songWithRequester);
+          setCurrentTime(0);
+          setIsPlaying(true);
+        }
+        const msg = opts?.skip
+          ? `¡Reproduciendo "${res.song.title}" ahora mismo!`
+          : opts?.next
           ? `¡"${res.song.title}" se reproducirá a continuación!`
           : res.playlist
           ? `Playlist "${res.playlist.name || 'Lista'}" (${res.playlist.count} temas) añadida a la cola.`
@@ -1569,8 +1582,8 @@ export function BotProvider({ children }: { children: React.ReactNode }) {
           {
             id: "evt-" + Date.now(),
             type: "music_play",
-            title: opts?.next ? "Siguiente en cola" : "Pista Encolada",
-            description: `'${res.song?.title}' ${opts?.next ? "se reproducirá a continuación" : "enviada al bot"}`,
+            title: opts?.skip ? "Reproduciendo" : opts?.next ? "Siguiente en cola" : "Pista Encolada",
+            description: `'${res.song?.title}' ${opts?.skip ? "reproduciéndose ahora" : opts?.next ? "se reproducirá a continuación" : "enviada al bot"}`,
             timestamp: "Ahora mismo",
           },
           ...prev.slice(0, 19),

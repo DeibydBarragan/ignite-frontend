@@ -211,7 +211,7 @@ export function MusicView() {
     await submitQuery(searchInput);
   };
 
-  const submitQuery = async (rawQuery: string, opts?: { next?: boolean }) => {
+  const submitQuery = async (rawQuery: string, opts?: { next?: boolean; skip?: boolean }) => {
     if (isPlayerBusy) return;
     const query = rawQuery.trim();
     if (!query) return;
@@ -220,7 +220,7 @@ export function MusicView() {
     setSearchResults([]);
 
     try {
-      const res = await importUrlSong(query, { next: opts?.next });
+      const res = await importUrlSong(query, { next: opts?.next, skip: opts?.skip });
       if (res.success) {
         toast(res.message, "success");
         setSearchInput("");
@@ -386,8 +386,16 @@ export function MusicView() {
                         key={video.id || video.url}
                         className="group/item w-full p-1.5 rounded-xl hover:bg-black/5 dark:hover:bg-white/[0.06] transition-colors flex items-center gap-3 text-left"
                       >
-                        {/* Thumbnail con badge de duración */}
-                        <div className="relative w-14 h-10 rounded-lg overflow-hidden shrink-0 bg-black/20">
+                        {/* Thumbnail con badge de duración (clic para encolar) */}
+                        <div
+                          title="Clic para añadir a la cola"
+                          onPointerDown={(e) => {
+                            e.preventDefault();
+                            setShowSuggestions(false);
+                            submitQuery(video.url);
+                          }}
+                          className="relative w-14 h-10 rounded-lg overflow-hidden shrink-0 bg-black/20 cursor-pointer"
+                        >
                           <img
                             src={video.albumArt || video.coverUrl || "/placeholder.svg"}
                             alt={video.title}
@@ -401,9 +409,10 @@ export function MusicView() {
                           )}
                         </div>
 
-                        {/* Título exacto y canal / artista */}
+                        {/* Título exacto y canal / artista (clic para encolar) */}
                         <div
                           className="flex-1 min-w-0 cursor-pointer"
+                          title="Clic para añadir a la cola"
                           onPointerDown={(e) => {
                             e.preventDefault();
                             setShowSuggestions(false);
@@ -423,7 +432,7 @@ export function MusicView() {
                           </p>
                         </div>
 
-                        {/* Botones de acción rápida */}
+                        {/* Botones de acción rápida: Siguiente y Play directo */}
                         <div className="flex items-center gap-1 shrink-0 opacity-80 sm:opacity-0 group-hover/item:opacity-100 transition-opacity">
                           <button
                             type="button"
@@ -432,8 +441,8 @@ export function MusicView() {
                               setShowSuggestions(false);
                               submitQuery(video.url, { next: true });
                             }}
-                            title="Reproducir a continuación"
-                            className="px-2 py-1 rounded-lg bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 text-[11px] font-medium flex items-center gap-1 transition-all cursor-pointer"
+                            title="Reproducir a continuación (salta la cola)"
+                            className="px-2 py-1 rounded-lg bg-purple-600/20 hover:bg-purple-600/40 text-purple-400 text-[11px] font-medium flex items-center gap-1 transition-all cursor-pointer active:scale-95"
                           >
                             <ListPlus size={12} />
                             <span className="hidden sm:inline">Sig</span>
@@ -443,13 +452,13 @@ export function MusicView() {
                             onPointerDown={(e) => {
                               e.preventDefault();
                               setShowSuggestions(false);
-                              submitQuery(video.url);
+                              submitQuery(video.url, { skip: true });
                             }}
-                            title="Añadir a la cola"
-                            className="px-2.5 py-1 rounded-lg bg-[#1db954] hover:bg-[#1ed760] text-black text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+                            title="Reproducir ahora mismo"
+                            className="px-2.5 py-1 rounded-lg bg-[#1db954] hover:bg-[#1ed760] text-black text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer shadow-xs active:scale-95"
                           >
-                            <Plus size={12} />
-                            <span>Encolar</span>
+                            <Play size={11} className="fill-current" />
+                            <span>Play</span>
                           </button>
                         </div>
                       </div>
