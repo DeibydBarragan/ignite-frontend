@@ -109,6 +109,7 @@ export const SongCard = memo(function SongCard({ song }: { song: Song }) {
             alt={song.title}
             className="w-full h-full"
             iconSize={32}
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 240px"
             imgClassName="group-hover:scale-105 transition-transform duration-500 ease-out"
           />
 

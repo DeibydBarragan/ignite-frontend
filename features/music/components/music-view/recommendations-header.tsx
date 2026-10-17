@@ -117,7 +117,7 @@ export function RadioHeader({
         {basedOnSong ? (
           <>
             <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-black/20 shadow-xs">
-              <CoverImage src={basedOnSong.albumArt} alt={basedOnSong.title} className="w-full h-full" />
+              <CoverImage src={basedOnSong.albumArt} alt={basedOnSong.title} sizes="40px" className="w-full h-full" />
             </div>
             <div className="min-w-0">
               <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -177,7 +177,7 @@ export function BasedOnBanner({ song }: { song: Song }) {
     <div className="p-3 rounded-2xl glass-panel border border-purple-500/25 bg-purple-500/5 flex items-center justify-between gap-3">
       <div className="flex items-center gap-3 min-w-0">
         <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-black/20 shadow-xs">
-          <CoverImage src={song.albumArt} alt={song.title} className="w-full h-full" />
+          <CoverImage src={song.albumArt} alt={song.title} sizes="40px" className="w-full h-full" />
         </div>
         <div className="min-w-0">
           <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">

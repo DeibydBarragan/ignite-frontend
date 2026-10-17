@@ -92,6 +92,7 @@ export function PlaylistFavModal({
               <CoverImage
                 src={playlist.cover}
                 alt={playlist.name}
+                sizes="56px"
                 className="w-full h-full"
                 iconSize={24}
               />

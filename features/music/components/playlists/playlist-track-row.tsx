@@ -90,6 +90,7 @@ export const PlaylistTrackRow = memo(function PlaylistTrackRow({
         <CoverImage
           src={track.albumArt}
           alt={track.title}
+          sizes="36px"
           className="w-9 h-9 rounded-lg shrink-0"
         />
         <div className="min-w-0">

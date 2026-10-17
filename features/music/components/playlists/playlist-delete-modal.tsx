@@ -38,7 +38,7 @@ export function PlaylistDeleteModal({
         <div className="space-y-4">
           <div className="p-3.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/10 dark:border-white/10 flex items-center gap-3">
             <div className="h-14 w-14 rounded-xl overflow-hidden bg-black/10 dark:bg-white/5 shrink-0">
-              <CoverImage src={playlist.cover} alt={playlist.name} className="w-full h-full" />
+              <CoverImage src={playlist.cover} alt={playlist.name} sizes="56px" className="w-full h-full" />
             </div>
             <div className="min-w-0 flex-1">
               <h4 className="text-sm font-semibold text-slate-900 dark:text-white truncate leading-tight">

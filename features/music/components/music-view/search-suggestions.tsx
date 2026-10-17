@@ -52,6 +52,7 @@ export function SearchSuggestions({ searchResults, isSearching, onPick }: Search
                       src={video.albumArt || video.coverUrl || "/placeholder.svg"}
                       alt={video.title}
                       className="w-full h-full"
+                      sizes="56px"
                       imgClassName="group-hover/item:scale-105 transition-transform duration-200"
                     />
                     {video.formattedDuration && video.formattedDuration !== "00:00" && (

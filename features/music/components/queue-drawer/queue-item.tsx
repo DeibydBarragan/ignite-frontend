@@ -80,6 +80,7 @@ export const SortableQueueItem = memo(function SortableQueueItem({
         <CoverImage
           src={song.albumArt}
           alt={song.title}
+          sizes="36px"
           className="w-9 h-9 rounded-lg"
         />
         <div className="min-w-0">
@@ -99,6 +100,7 @@ export const SortableQueueItem = memo(function SortableQueueItem({
                     <CoverImage
                       src={song.requestedBy.avatar}
                       alt={song.requestedBy.username}
+                      sizes="16px"
                       className="w-3 h-3 rounded-full inline-block shrink-0"
                     />
                   ) : (

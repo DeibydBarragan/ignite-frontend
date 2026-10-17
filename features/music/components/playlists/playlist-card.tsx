@@ -65,6 +65,7 @@ export function PlaylistCard({
             alt={pl.name}
             className="w-full h-full"
             iconSize={36}
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 380px"
             imgClassName="group-hover:scale-105 transition-transform duration-500 ease-out"
           />
 

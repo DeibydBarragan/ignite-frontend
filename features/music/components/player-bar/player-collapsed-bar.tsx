@@ -95,6 +95,7 @@ export function PlayerCollapsedBar() {
           <CoverImage
             src={currentSong.albumArt}
             alt={currentSong.title}
+            sizes="40px"
             className="w-full h-full rounded-full"
             imgClassName={isPlaying ? "animate-[spin_10s_linear_infinite]" : ""}
           />

@@ -38,6 +38,7 @@ export function QueueNowPlaying({
         <CoverImage
           src={song.albumArt}
           alt={song.title}
+          sizes="48px"
           className="w-12 h-12 rounded-lg"
         />
         <div className="min-w-0 flex-1">
@@ -57,6 +58,7 @@ export function QueueNowPlaying({
                     <CoverImage
                       src={song.requestedBy.avatar}
                       alt={song.requestedBy.username}
+                      sizes="16px"
                       className="w-3.5 h-3.5 rounded-full inline-block shrink-0"
                     />
                   ) : (

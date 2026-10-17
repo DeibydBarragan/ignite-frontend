@@ -36,6 +36,7 @@ export function UserBadge({ user, isLoggedIn, onLogin, onLogout }: UserBadgeProp
             <CoverImage
               src={user.avatar}
               alt={user.username}
+              sizes="28px"
               className="w-7 h-7 rounded-full ring-1 ring-purple-500/40"
             />
             <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#0b0d14]" />
@@ -77,6 +78,7 @@ export function UserBadge({ user, isLoggedIn, onLogin, onLogout }: UserBadgeProp
               <CoverImage
                 src={user.avatar}
                 alt={user.username}
+                sizes="40px"
                 className="w-10 h-10 rounded-full ring-2 ring-purple-500/30"
               />
               <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#0b0d14]" />

@@ -28,6 +28,7 @@ export function PlayerTrackInfo({
         <CoverImage
           src={song.albumArt}
           alt={song.title}
+          sizes="48px"
           className="w-12 h-12 rounded-xl ring-1 ring-black/10 dark:ring-white/10 shadow-md"
         />
         <a
@@ -80,6 +81,7 @@ export function PlayerTrackInfo({
                   <CoverImage
                     src={song.requestedBy.avatar}
                     alt={song.requestedBy.username}
+                    sizes="16px"
                     className="w-3 h-3 rounded-full inline-block shrink-0"
                   />
                 ) : (

@@ -45,7 +45,7 @@ function CoverImageInner({
   imgClassName = "",
   iconSize = 18,
   priority = false,
-  sizes = "(max-width: 768px) 100vw, 300px",
+  sizes = "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 280px",
 }: CoverImageProps) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);

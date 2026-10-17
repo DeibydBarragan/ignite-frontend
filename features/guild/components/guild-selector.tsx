@@ -39,6 +39,7 @@ export function GuildSelector({
           <CoverImage
             src={selectedGuild.icon}
             alt={selectedGuild.name}
+            sizes="28px"
             className="w-7 h-7 rounded-lg ring-1 ring-black/10 dark:ring-white/15"
           />
           <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 border-2 border-white dark:border-[#0b0d14]" />
@@ -86,6 +87,7 @@ export function GuildSelector({
                       <CoverImage
                         src={g.icon}
                         alt={g.name}
+                        sizes="28px"
                         className="w-7 h-7 rounded-lg"
                       />
                       <div className="truncate">
