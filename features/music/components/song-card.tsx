@@ -10,7 +10,8 @@ import { formatDuration } from "@/lib/formatters";
 import { CoverImage } from "@/components/ui/cover-image";
 import { logger } from "@/lib/logger";
 import { SongCoverOverlays } from "./song-cover-overlays";
-import { Play, Plus, ListPlus, Clock, Loader2, Star, Check } from "lucide-react";
+import { SongCardActions } from "./song-card-actions";
+import { Plus, Clock, Loader2, Star, Check } from "lucide-react";
 
 const SOURCE_COLORS: Record<Song["source"], { label: string; bg: string; text: string }> = {
   youtube: { label: "YouTube", bg: "bg-red-500/10", text: "text-red-500 border-red-500/20" },
@@ -190,54 +191,25 @@ export const SongCard = memo(function SongCard({ song }: { song: Song }) {
       </div>
 
       {/* Footer & Actions */}
-      <div className="mt-2.5 pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between gap-2 text-xs">
+      <div className="mt-2.5 pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between gap-1.5 text-xs">
         <span className="text-[10px] text-slate-400 flex items-center gap-1 font-mono tabular-nums shrink-0">
           <Clock size={10} />
           {formatDuration(song.duration)}
         </span>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          {/* Play Button: Bloqueado mientras carga pero sin spinner (ya está en la carátula) */}
-          <button
-            onClick={() => !isActionDisabled && playSong(song)}
-            title={isLoadingThisSongPlay ? "Cargando audio..." : "Reproducir ahora (inmediato)"}
-            className={`glass-btn px-2 py-0.5 text-[10px] flex items-center gap-1 transition-all ${
-              isActionDisabled
-                ? "opacity-50 cursor-not-allowed"
-                : "text-slate-600 dark:text-slate-300 hover:text-[#1ed760] hover:border-[#1db954]/30 cursor-pointer"
-            }`}
-          >
-            <Play size={10} className="fill-current ml-0.5" />
-            <span>Play</span>
-          </button>
-
-          {/* Sig Button with instant feedback & persistent pointer */}
-          <button
-            onClick={handlePlayNext}
-            title={
-              showNextFeedback
-                ? "¡Añadido como siguiente!"
-                : isLoadingThisSongNext
-                ? "Poniendo siguiente"
-                : "Reproducir siguiente (salta la cola)"
-            }
-            className={`glass-btn px-2 py-0.5 text-[10px] flex items-center gap-1 transition-all cursor-pointer ${
-              showNextFeedback
-                ? "bg-purple-600/30 text-purple-300 border-purple-500/50 ring-1 ring-purple-500/40 scale-105"
-                : isLoadingThisSongNext
-                ? "text-purple-400 border-purple-500/30"
-                : isActionDisabled ? "opacity-50" : "text-slate-600 dark:text-slate-300 hover:text-purple-400 hover:border-purple-500/30"
-            }`}
-          >
-            {showNextFeedback ? (
-              <><Check size={11} className="text-purple-300 animate-in zoom-in" /><span className="font-semibold text-purple-300">¡Listo!</span></>
-            ) : isLoadingThisSongNext ? (
-              <><Loader2 size={11} className="animate-spin text-purple-400" /><span>Sig</span></>
-            ) : (
-              <><ListPlus size={11} /><span>Sig</span></>
-            )}
-          </button>
-        </div>
+        <SongCardActions
+          song={song}
+          isPlaying={isPlaying}
+          isActionDisabled={isActionDisabled}
+          isLoadingPlay={isLoadingThisSongPlay}
+          isLoadingNext={isLoadingThisSongNext}
+          isLoadingQueue={isLoadingThisSongQueue}
+          showNextFeedback={showNextFeedback}
+          showQueueFeedback={showQueueFeedback}
+          onPlay={() => !isActionDisabled && playSong(song)}
+          onPlayNext={handlePlayNext}
+          onAddToQueue={handleAddToQueue}
+        />
       </div>
     </article>
   );
