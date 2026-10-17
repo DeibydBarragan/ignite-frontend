@@ -6,6 +6,18 @@ function formatArgs(args: unknown[]): unknown[] {
       // Incluye props extra propias (p.ej. code/details/hint de PostgrestError).
       return { name: a.name, message: a.message, ...Object.fromEntries(Object.entries(a)), stack: a.stack };
     }
+    if (a && typeof a === "object") {
+      const obj = a as Record<string, unknown>;
+      if ("message" in obj || "code" in obj || "details" in obj || "hint" in obj) {
+        return {
+          message: obj.message,
+          code: obj.code,
+          details: obj.details,
+          hint: obj.hint,
+          ...obj,
+        };
+      }
+    }
     return a;
   });
 }

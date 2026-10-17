@@ -4,13 +4,12 @@ import type { UserPlaylist } from "@/types/domain";
 import { formatDuration, timeAgo, totalDuration } from "@/lib/formatters";
 import { CoverImage } from "@/components/ui/cover-image";
 import { playlistSourceTheme } from "./playlist-source-theme";
-import { Music2, Plus, ListPlus, Loader2, Play, Eye, Clock, Trash2, Star } from "lucide-react";
+import { Music2, Plus, Loader2, Play, Eye, Clock, Trash2, Star } from "lucide-react";
 
 export interface PlaylistCardProps {
   playlist: UserPlaylist;
   isPlaying: boolean;
   isQueueing: boolean;
-  isPlayNext: boolean;
   isAnyPlayBusy: boolean;
   isFavProcessing: boolean;
   isPlayerBusy: boolean;
@@ -18,7 +17,6 @@ export interface PlaylistCardProps {
   favGlobalBusy: boolean;
   onOpen: () => void;
   onPlay: () => void;
-  onPlayNext: () => void;
   onQueue: () => void;
   onToggleFav: () => void;
   onDelete: () => void;
@@ -28,7 +26,6 @@ export function PlaylistCard({
   playlist: pl,
   isPlaying: isPlayingThis,
   isQueueing: isQueueingThis,
-  isPlayNext: isPlayNextThis,
   isAnyPlayBusy,
   isFavProcessing: isImportingThisFav,
   isPlayerBusy,
@@ -36,15 +33,13 @@ export function PlaylistCard({
   favGlobalBusy,
   onOpen,
   onPlay,
-  onPlayNext,
   onQueue,
   onToggleFav,
   onDelete,
 }: PlaylistCardProps) {
-  const isThisCardBusy = isPlayingThis || isQueueingThis || isPlayNextThis || isImportingThisFav;
+  const isThisCardBusy = isPlayingThis || isQueueingThis || isImportingThisFav;
   const isPlayDisabled = isAnyPlayBusy || isPlayerBusy || isThisCardBusy;
-  const isQueueDisabled = isAnyPlayBusy || isQueueingThis || isPlayingThis || isPlayNextThis;
-  const isPlayNextDisabled = isAnyPlayBusy || isPlayNextThis || isPlayingThis || isQueueingThis;
+  const isQueueDisabled = isAnyPlayBusy || isQueueingThis || isPlayingThis;
   const isFavDisabled = isAnyPlayBusy || isThisCardBusy || favGlobalBusy;
   const isDeleteDisabled = isAnyPlayBusy || isThisCardBusy;
 
@@ -176,7 +171,7 @@ export function PlaylistCard({
           <span className="truncate">Ver temas</span>
         </button>
 
-        {/* Botón 1: Añadir a la cola (+) PRIMERO (principal coloreado) */}
+        {/* Botón 1: Añadir a la cola (+) (principal coloreado) */}
         <button
           type="button"
           onClick={onQueue}
@@ -188,19 +183,7 @@ export function PlaylistCard({
           {isQueueingThis ? <Loader2 size={14} className="animate-spin text-black" /> : <Plus size={16} strokeWidth={2.5} />}
         </button>
 
-        {/* Botón 2: Siguiente (ListPlus) SEGUNDO */}
-        <button
-          type="button"
-          onClick={onPlayNext}
-          disabled={isPlayNextDisabled}
-          title="Reproducir playlist a continuación (saltar cola)"
-          aria-label={`Reproducir ${pl.name} a continuación`}
-          className="h-8.5 w-8.5 rounded-xl text-xs font-semibold glass-btn text-slate-600 dark:text-slate-300 hover:text-purple-400 hover:border-purple-500/30 disabled:opacity-50 flex items-center justify-center transition-all cursor-pointer disabled:cursor-not-allowed shrink-0"
-        >
-          {isPlayNextThis ? <Loader2 size={14} className="animate-spin text-purple-400" /> : <ListPlus size={15} />}
-        </button>
-
-        {/* Botón 3: Reproducir (Play) TERCERO */}
+        {/* Botón 2: Reproducir (Play) */}
         <button
           type="button"
           onClick={onPlay}

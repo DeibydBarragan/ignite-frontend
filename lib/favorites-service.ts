@@ -53,14 +53,15 @@ export async function fetchFavoriteSongs(uid: string): Promise<Song[]> {
 }
 
 function toRow(uid: string, song: Song, withLyric: boolean) {
+  const duration = Math.max(0, Math.round(Number(song.duration) || 0));
   return {
     user_id: uid,
     song_id: song.id,
     title: song.title,
     artist: song.artist,
-    album_art: song.albumArt,
+    album_art: song.albumArt || song.coverUrl || FALLBACK_ALBUM_ART,
     url: song.url,
-    duration: song.duration,
+    duration,
     source: song.source,
     ...(withLyric ? { is_lyric: song.isLyric ?? false } : {}),
   };

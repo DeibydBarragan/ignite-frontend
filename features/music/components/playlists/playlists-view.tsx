@@ -183,14 +183,12 @@ export function PlaylistsView() {
               isFav={isPlaylistFav(pl)}
               isPlaying={playingId === pl.id}
               isQueueing={queueingId === pl.id}
-              isPlayNext={playNextId === pl.id}
               isAnyPlayBusy={playingId !== null}
               isPlayerBusy={isPlayerBusy}
               isFavProcessing={importingFavId === pl.id}
               favGlobalBusy={!!importingFavId}
               onOpen={() => openPlaylist(pl)}
               onPlay={() => handlePlayPlaylist(pl)}
-              onPlayNext={() => handlePlayNextPlaylist(pl)}
               onQueue={() => handleQueuePlaylist(pl)}
               onToggleFav={() => setFavConfirmPlaylist(pl)}
               onDelete={() => setPlaylistToDelete(pl)}
