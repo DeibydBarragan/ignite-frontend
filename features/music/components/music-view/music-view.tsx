@@ -40,7 +40,7 @@ export function MusicView() {
   const [activeTab, setActiveTab] = useLocalStorage<MusicSubTab>(
     STORAGE_KEYS.musicSubtab,
     "radio",
-    z.enum(["radio", "top", "favorites", "playlists"])
+    z.enum(["radio", "favorites", "top", "playlists"])
   );
   const [topSubTab, setTopSubTab] = useLocalStorage<TopSubTab>(
     STORAGE_KEYS.musicTopSubtab,

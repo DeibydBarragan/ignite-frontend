@@ -63,6 +63,28 @@ export function MusicCatalogTabs({
           )}
         </button>
 
+        {/* Pestaña: Mis Favoritos (segunda pestaña) */}
+        <button
+          type="button"
+          onClick={() => onTabChange("favorites")}
+          className={`glass-pill px-3 py-1.5 text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+            activeTab === "favorites"
+              ? "glass-pill-active font-semibold"
+              : "text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          <Star
+            size={13}
+            className={
+              activeTab === "favorites" ? "fill-amber-400 text-amber-400" : ""
+            }
+          />
+          <span>Mis Favoritos</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-400/15 text-amber-400 font-mono font-bold">
+            {favoritesCount}
+          </span>
+        </button>
+
         {/* Pestaña: Top Canciones */}
         <button
           type="button"
@@ -83,28 +105,6 @@ export function MusicCatalogTabs({
               {topSongsCount}
             </span>
           )}
-        </button>
-
-        {/* Pestaña: Mis Favoritos */}
-        <button
-          type="button"
-          onClick={() => onTabChange("favorites")}
-          className={`glass-pill px-3 py-1.5 text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap ${
-            activeTab === "favorites"
-              ? "glass-pill-active font-semibold"
-              : "text-slate-400 hover:text-slate-200"
-          }`}
-        >
-          <Star
-            size={13}
-            className={
-              activeTab === "favorites" ? "fill-amber-400 text-amber-400" : ""
-            }
-          />
-          <span>Mis Favoritos</span>
-          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-400/15 text-amber-400 font-mono font-bold">
-            {favoritesCount}
-          </span>
         </button>
 
         {/* Pestaña: Playlists */}
