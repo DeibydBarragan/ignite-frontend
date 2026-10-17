@@ -336,16 +336,26 @@ body {
   animation: ignite-slide 1.2s ease-in-out infinite;
 }
 
-/* Animación de barras de ecualizador para reproductor contraído */
+/* Animación de barras de ecualizador para reproductor contraído (acelerado por GPU) */
 @keyframes ignite-eq-bar {
   0%, 100% {
-    height: 4px;
+    transform: scaleY(0.28);
     opacity: 0.6;
   }
   50% {
-    height: 16px;
+    transform: scaleY(1);
     opacity: 1;
   }
+}
+
+.ignite-eq-1,
+.ignite-eq-2,
+.ignite-eq-3,
+.ignite-eq-4 {
+  display: inline-block;
+  height: 14px;
+  transform-origin: bottom;
+  will-change: transform;
 }
 
 .ignite-eq-1 {
@@ -361,88 +371,86 @@ body {
   animation: ignite-eq-bar 0.65s ease-in-out infinite 0.45s;
 }
 
-/* 5-bar dynamic equalizer for song card (animación de altura directa y fluida) */
+/* 5-bar dynamic equalizer for song card (animación acelerada por GPU con transform: scaleY) */
 @keyframes cover-eq-bar-1 {
   0%, 100% {
-    height: 6px;
+    transform: scaleY(0.2);
   }
   50% {
-    height: 26px;
+    transform: scaleY(0.87);
   }
 }
 @keyframes cover-eq-bar-2 {
   0%, 100% {
-    height: 24px;
+    transform: scaleY(0.8);
   }
   50% {
-    height: 8px;
+    transform: scaleY(0.27);
   }
 }
 @keyframes cover-eq-bar-3 {
   0%, 100% {
-    height: 10px;
+    transform: scaleY(0.33);
   }
   50% {
-    height: 30px;
+    transform: scaleY(1);
   }
 }
 @keyframes cover-eq-bar-4 {
   0%, 100% {
-    height: 26px;
+    transform: scaleY(0.87);
   }
   50% {
-    height: 12px;
+    transform: scaleY(0.4);
   }
 }
 @keyframes cover-eq-bar-5 {
   0%, 100% {
-    height: 8px;
+    transform: scaleY(0.27);
   }
   50% {
-    height: 20px;
+    transform: scaleY(0.67);
   }
 }
 
-.cover-eq-1 {
+.cover-eq-1,
+.cover-eq-2,
+.cover-eq-3,
+.cover-eq-4,
+.cover-eq-5,
+.eq-bar-1,
+.eq-bar-2,
+.eq-bar-3 {
   display: inline-block;
-  height: 6px;
+  height: 30px;
+  transform-origin: bottom;
+  will-change: transform;
+}
+
+.cover-eq-1 {
   animation: cover-eq-bar-1 0.75s ease-in-out infinite;
 }
 .cover-eq-2 {
-  display: inline-block;
-  height: 24px;
   animation: cover-eq-bar-2 0.6s ease-in-out infinite 0.12s;
 }
 .cover-eq-3 {
-  display: inline-block;
-  height: 10px;
   animation: cover-eq-bar-3 0.85s ease-in-out infinite 0.24s;
 }
 .cover-eq-4 {
-  display: inline-block;
-  height: 26px;
   animation: cover-eq-bar-4 0.65s ease-in-out infinite 0.16s;
 }
 .cover-eq-5 {
-  display: inline-block;
-  height: 8px;
   animation: cover-eq-bar-5 0.8s ease-in-out infinite 0.28s;
 }
 
 /* 3-bar aliases */
 .eq-bar-1 {
-  display: inline-block;
-  height: 6px;
   animation: cover-eq-bar-1 0.75s ease-in-out infinite;
 }
 .eq-bar-2 {
-  display: inline-block;
-  height: 10px;
   animation: cover-eq-bar-3 0.85s ease-in-out infinite 0.24s;
 }
 .eq-bar-3 {
-  display: inline-block;
-  height: 8px;
   animation: cover-eq-bar-5 0.8s ease-in-out infinite 0.28s;
 }
 
