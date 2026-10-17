@@ -31,7 +31,6 @@ export function QueueDrawer({
 }) {
   const currentSong = usePlayerStore((s) => s.currentSong);
   const isPlaying = usePlayerStore((s) => s.isPlaying);
-  const currentTime = usePlayerStore((s) => s.currentTime);
   const isPlayerBusy = usePlayerStore((s) => s.isPlayerBusy);
   const pendingAction = usePlayerStore((s) => s.pendingAction);
 
@@ -59,8 +58,9 @@ export function QueueDrawer({
     moveQueueSong(from, to);
   };
 
-  const totalSeconds = (currentSong ? currentSong.duration - currentTime : 0) +
-    queue.reduce((acc, curr) => acc + curr.duration, 0);
+  const totalQueueSeconds = queue.reduce((acc, curr) => acc + curr.duration, 0);
+
+  if (!isOpen) return null;
 
   return (
     <>
@@ -70,7 +70,7 @@ export function QueueDrawer({
       maxWidth="lg"
       icon={<ListMusic size={20} />}
       title="Cola de Reproducción"
-      subtitle={`${queue.length} temas en espera — Duración aproximada: ~${formatDuration(totalSeconds)}`}
+      subtitle={`${queue.length} temas en espera — Duración aproximada: ~${formatDuration(totalQueueSeconds)}`}
       footer={
         <div className="flex items-center justify-between w-full">
           <Button
@@ -109,7 +109,6 @@ export function QueueDrawer({
           <QueueNowPlaying
             song={currentSong}
             isPlaying={isPlaying}
-            currentTime={currentTime}
             isFav={isFavorite(currentSong.id) || isFavorite(currentSong.url)}
             onToggleFavorite={toggleFavorite}
           />
@@ -207,7 +206,7 @@ export function QueueDrawer({
             </h4>
             <div className="flex items-center gap-2 mt-1 text-xs text-slate-500 dark:text-slate-400 font-mono">
               <Clock size={12} className="text-purple-400" />
-              <span>Duración total aproximada: ~{formatDuration(totalSeconds)}</span>
+              <span>Duración total aproximada: ~{formatDuration(totalQueueSeconds)}</span>
             </div>
           </div>
         </div>

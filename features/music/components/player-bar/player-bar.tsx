@@ -5,12 +5,17 @@ import { usePlayerStore } from "@/features/music/stores/player-store";
 import { useQueueStore } from "@/features/music/stores/queue-store";
 import { usePlaybackControls } from "@/hooks/use-playback-controls";
 import { useFavorites } from "@/context/favorites-context";
-import { QueueDrawer } from "../queue-drawer/queue-drawer";
+import dynamic from "next/dynamic";
 import { PlayerCollapsedBar } from "./player-collapsed-bar";
 import { PlayerTrackInfo } from "./player-track-info";
 import { PlayerTransport } from "./player-transport";
 import { PlayerFxButton } from "./player-fx-button";
 import { ListPlus, Loader2, Square, ListMusic, Minimize2 } from "lucide-react";
+
+const QueueDrawer = dynamic(
+  () => import("../queue-drawer/queue-drawer").then((m) => m.QueueDrawer),
+  { ssr: false }
+);
 
 export function PlayerBar() {
   const currentSong = usePlayerStore((s) => s.currentSong);
@@ -108,7 +113,9 @@ export function PlayerBar() {
         </div>
       )}
 
-      <QueueDrawer isOpen={isQueueOpen} onClose={() => setIsQueueOpen(false)} />
+      {isQueueOpen && (
+        <QueueDrawer isOpen={isQueueOpen} onClose={() => setIsQueueOpen(false)} />
+      )}
     </>
   );
 }
