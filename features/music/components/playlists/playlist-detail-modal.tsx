@@ -3,19 +3,19 @@
 import type { UserPlaylist } from "@/types/domain";
 import type { PlaylistLiveState } from "@/types/music";
 import { usePlayerStore } from "@/features/music/stores/player-store";
+import { useQueueStore } from "@/features/music/stores/queue-store";
 import { useFavorites } from "@/context/favorites-context";
 import { useQueueActions } from "@/hooks/use-queue-actions";
 import { formatDuration, timeAgo, totalDuration } from "@/lib/formatters";
 import { GlassModal } from "@/components/ui/glass-modal";
-import { CoverImage } from "@/components/ui/cover-image";
 import { TrackSkeletonRows } from "../music-view/track-skeleton-rows";
+import { PlaylistTrackRow } from "./playlist-track-row";
 import {
   ListMusic,
   Loader2,
   ExternalLink,
   Star,
   Play,
-  ListPlus,
   Plus,
   AlertCircle,
 } from "lucide-react";
@@ -48,8 +48,17 @@ export function PlaylistDetailModal({
   onPlayPlaylist,
 }: PlaylistDetailModalProps) {
   const isPlayerBusy = usePlayerStore((s) => s.isPlayerBusy);
+  const currentSong = usePlayerStore((s) => s.currentSong);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const pendingSongActions = useQueueStore((s) => s.pendingSongActions);
   const { isFavorite, toggleFavorite } = useFavorites();
   const { playSong, playNext, addToQueue } = useQueueActions();
+
+  const isAnySongActionPending =
+    isPlayerBusy ||
+    queueingId !== null ||
+    playingId !== null ||
+    Object.keys(pendingSongActions).length > 0;
 
   const modalTracks =
     live?.status === "ok" && selected && live.playlistId === selected.id
@@ -113,7 +122,7 @@ export function PlaylistDetailModal({
               {/* Botón principal coloreado: Añadir a la cola */}
               <button
                 onClick={() => onQueuePlaylist(selected)}
-                disabled={isPlayerBusy || queueingId === selected.id}
+                disabled={isAnySongActionPending || queueingId === selected.id}
                 className="flex-1 sm:flex-none px-4 py-2 sm:py-1.5 rounded-xl text-xs font-bold bg-[#1db954] hover:bg-[#1ed760] text-black shadow-md shadow-[#1db954]/25 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all whitespace-nowrap active:scale-[0.98]"
               >
                 {queueingId === selected.id ? (
@@ -130,7 +139,7 @@ export function PlaylistDetailModal({
                   onPlayPlaylist(selected);
                   onClose();
                 }}
-                disabled={isPlayerBusy || playingId === selected.id}
+                disabled={isAnySongActionPending || playingId === selected.id}
                 className="flex-1 sm:flex-none px-3.5 py-2 sm:py-1.5 rounded-xl text-xs font-semibold glass-btn text-slate-900 dark:text-white hover:text-purple-400 hover:border-purple-500/40 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all whitespace-nowrap active:scale-[0.98]"
               >
                 {playingId === selected.id ? (
@@ -167,66 +176,20 @@ export function PlaylistDetailModal({
                 </p>
               ) : (
                 modalTracks.map((track, idx) => (
-                  <div
+                  <PlaylistTrackRow
                     key={track.id + "-" + idx}
-                    className="flex items-center justify-between gap-3 p-2 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 border border-transparent hover:border-black/5 dark:hover:border-white/5 transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-[11px] font-mono text-slate-400 w-6 text-center shrink-0">
-                        {idx + 1}
-                      </span>
-                      <CoverImage
-                        src={track.albumArt}
-                        alt={track.title}
-                        className="w-9 h-9 rounded-lg shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
-                          {track.title}
-                        </p>
-                        <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                          {track.artist} · {formatDuration(track.duration)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => toggleFavorite(track)}
-                        title={isFavorite(track.id) ? "Quitar de favoritos" : "Guardar en favoritos"}
-                        className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                          isFavorite(track.id)
-                            ? "text-amber-400 hover:text-amber-500"
-                            : "hover:bg-amber-500/15 text-slate-400 hover:text-amber-400"
-                        }`}
-                      >
-                        <Star size={13} className={isFavorite(track.id) ? "fill-amber-400" : ""} />
-                      </button>
-                      <button
-                        onClick={() => playSong(track)}
-                        disabled={isPlayerBusy}
-                        title={`Reproducir ${track.title}`}
-                        className="p-1.5 rounded-lg hover:bg-[#1db954]/15 text-slate-400 hover:text-[#1ed760] transition-colors cursor-pointer disabled:opacity-40"
-                      >
-                        <Play size={13} />
-                      </button>
-                      <button
-                        onClick={() => playNext(track)}
-                        disabled={isPlayerBusy}
-                        title="Reproducir a continuación (saltar cola)"
-                        className="p-1.5 rounded-lg hover:bg-purple-500/15 text-slate-400 hover:text-purple-300 transition-colors cursor-pointer disabled:opacity-40"
-                      >
-                        <ListPlus size={13} />
-                      </button>
-                      <button
-                        onClick={() => addToQueue(track)}
-                        disabled={isPlayerBusy}
-                        title="Añadir a la cola"
-                        className="p-1.5 rounded-lg hover:bg-purple-500/15 text-slate-400 hover:text-purple-400 transition-colors cursor-pointer disabled:opacity-40"
-                      >
-                        <Plus size={13} />
-                      </button>
-                    </div>
-                  </div>
+                    track={track}
+                    index={idx}
+                    isFavorite={isFavorite(track.id) || isFavorite(track.url)}
+                    isCurrent={currentSong?.id === track.id || currentSong?.url === track.url}
+                    isPlaying={isPlaying}
+                    isActionBlocked={isAnySongActionPending}
+                    pendingAction={pendingSongActions[track.id] ?? null}
+                    onToggleFavorite={toggleFavorite}
+                    onPlay={playSong}
+                    onPlayNext={playNext}
+                    onAddToQueue={addToQueue}
+                  />
                 ))
               )}
             </>
