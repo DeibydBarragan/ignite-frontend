@@ -6,7 +6,7 @@ import { GuildSelector } from "./guild-selector";
 import { TabServiceBadge } from "@/components/tab-service-badge";
 import { Volume2, VolumeX, Music, Mic } from "lucide-react";
 
-export type ActiveTab = "music" | "tts" | "soundboard";
+export type ActiveTab = "music" | "soundboard" | "tts";
 
 interface ContextToolbarProps {
   activeTab: ActiveTab;
@@ -33,15 +33,15 @@ export function ContextToolbar({ activeTab, onTabChange }: ContextToolbarProps) 
       live: hasLiveSong,
     },
     {
-      id: "tts" as ActiveTab,
-      label: "Voz & TTS",
-      icon: <Mic size={14} />,
-      live: false,
-    },
-    {
       id: "soundboard" as ActiveTab,
       label: "Soundboard",
       icon: <Volume2 size={14} />,
+      live: false,
+    },
+    {
+      id: "tts" as ActiveTab,
+      label: "Voz & TTS",
+      icon: <Mic size={14} />,
       live: false,
     },
   ];

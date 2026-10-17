@@ -51,8 +51,8 @@ export function DashboardView() {
         <ContextToolbar activeTab={activeTab} onTabChange={handleTabChange} />
         <div className="flex-1">
           {activeTab === "music" && <MusicView />}
-          {activeTab === "tts" && <TTSView />}
           {activeTab === "soundboard" && <SoundboardView />}
+          {activeTab === "tts" && <TTSView />}
         </div>
       </main>
       <PlayerBar />
