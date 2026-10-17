@@ -225,9 +225,13 @@ class IgniteApiClient {
     return { success: res.data.success, restored: res.data.restored, error: res.data.error };
   }
 
-  async getRecommendations(guildId: string): Promise<{ success: boolean; source: "radio" | "top" | "empty"; basedOn: Song | null; songs: Song[] }> {
+  async getRecommendations(
+    guildId: string,
+    options?: { force?: boolean }
+  ): Promise<{ success: boolean; source: "radio" | "top" | "empty"; basedOn: Song | null; songs: Song[] }> {
+    const query = options?.force ? "?force=true" : "";
     const res = await httpRequest(
-      musicUrl(`guilds/${encodeURIComponent(guildId)}/recommendations`),
+      musicUrl(`guilds/${encodeURIComponent(guildId)}/recommendations${query}`),
       recommendationsResponseSchema,
       { method: "GET" }
     );
