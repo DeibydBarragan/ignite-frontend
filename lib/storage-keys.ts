@@ -8,6 +8,7 @@ export const STORAGE_KEYS = {
   activeTab: "ignite_v2_active_tab",
   musicSubtab: "ignite_v2_music_subtab",
   musicRecSubtab: "ignite_v2_music_rec_subtab",
+  musicTopSubtab: "ignite_v2_music_top_subtab",
   userPlaylists: "ignite_v2_user_playlists",
   savedPhrases: "ignite_v2_saved_phrases",
   theme: "theme",

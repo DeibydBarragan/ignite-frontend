@@ -4,10 +4,10 @@ test.describe("Fase 2 — 03 Catálogo de Música y Búsqueda", () => {
   test("permite buscar canciones y muestra los resultados en el catálogo", async ({ authedPage }) => {
     await authedPage.goto("/#music");
 
-    // Conmutar a la pestaña de Recomendadas para cargar el catálogo
-    const recTab = authedPage.getByRole("button", { name: /^Recomendadas/i });
-    await expect(recTab).toBeVisible();
-    await recTab.click();
+    // Verificar que Radio en vivo es la pestaña principal por defecto
+    const radioTab = authedPage.getByRole("button", { name: /^Radio en vivo/i });
+    await expect(radioTab).toBeVisible();
+    await expect(radioTab).toHaveClass(/glass-pill-active/);
 
     // Verificar campo de búsqueda
     const searchInput = authedPage.getByPlaceholder(
@@ -26,11 +26,11 @@ test.describe("Fase 2 — 03 Catálogo de Música y Búsqueda", () => {
   test("permite conmutar entre las subpestañas del catálogo", async ({ authedPage }) => {
     await authedPage.goto("/#music");
 
-    // Conmutar a Recomendadas
-    const recTab = authedPage.getByRole("button", { name: /^Recomendadas/i });
-    await expect(recTab).toBeVisible();
-    await recTab.click();
-    await expect(recTab).toHaveClass(/glass-pill-active/);
+    // Conmutar a Top Canciones
+    const topTab = authedPage.getByRole("button", { name: /^Top Canciones/i });
+    await expect(topTab).toBeVisible();
+    await topTab.click();
+    await expect(topTab).toHaveClass(/glass-pill-active/);
 
     // Conmutar a Playlists
     const playlistsTab = authedPage.getByRole("button", { name: /^Playlists/i });
@@ -43,5 +43,11 @@ test.describe("Fase 2 — 03 Catálogo de Música y Búsqueda", () => {
     await expect(favTab).toBeVisible();
     await favTab.click();
     await expect(favTab).toHaveClass(/glass-pill-active/);
+
+    // Conmutar de vuelta a Radio en vivo
+    const radioTab = authedPage.getByRole("button", { name: /^Radio en vivo/i });
+    await expect(radioTab).toBeVisible();
+    await radioTab.click();
+    await expect(radioTab).toHaveClass(/glass-pill-active/);
   });
 });

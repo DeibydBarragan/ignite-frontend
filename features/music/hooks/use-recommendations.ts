@@ -5,16 +5,16 @@ import { igniteApi } from "@/lib/ignite-api";
 import { MOCK_SONGS } from "@/lib/mock-data";
 import { logger } from "@/lib/logger";
 import type { Song } from "@/types/domain";
-import type { MusicSubTab, RecommendationsSubTab } from "@/types/music";
+import type { MusicSubTab, TopSubTab } from "@/types/music";
 
 export function useRecommendations({
   activeTab,
-  recSubTab,
+  topSubTab,
   selectedGuildId,
   radioSongKey,
 }: {
   activeTab: MusicSubTab;
-  recSubTab: RecommendationsSubTab;
+  topSubTab: TopSubTab;
   selectedGuildId?: string;
   radioSongKey?: string;
 }) {
@@ -24,13 +24,14 @@ export function useRecommendations({
   const [recsRefreshKey, setRecsRefreshKey] = useState(0);
 
   useEffect(() => {
-    if (activeTab !== "catalog" || !selectedGuildId) return;
+    if ((activeTab !== "radio" && activeTab !== "top") || !selectedGuildId) return;
     let cancelled = false;
-    const mode = recSubTab;
+    const isRadio = activeTab === "radio";
+    const mode = topSubTab;
     const load = async () => {
       setIsLoadingRecs(true);
       try {
-        if (mode === "radio") {
+        if (isRadio) {
           const res = await igniteApi.getRecommendations(selectedGuildId);
           if (cancelled) return;
           if (res.success && res.songs.length > 0) {
@@ -54,7 +55,7 @@ export function useRecommendations({
       } catch (err) {
         logger.error("Error loading recommendations:", err);
         if (!cancelled) {
-          if (mode === "radio") {
+          if (isRadio) {
             const fallback = process.env.NEXT_PUBLIC_USE_MOCKS === "true" ? MOCK_SONGS : [];
             setRecSongs(fallback);
           } else {
@@ -69,7 +70,7 @@ export function useRecommendations({
     return () => {
       cancelled = true;
     };
-  }, [activeTab, recSubTab, radioSongKey, recsRefreshKey, selectedGuildId]);
+  }, [activeTab, topSubTab, radioSongKey, recsRefreshKey, selectedGuildId]);
 
   const refresh = () => setRecsRefreshKey((k) => k + 1);
 

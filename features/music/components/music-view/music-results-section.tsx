@@ -1,7 +1,7 @@
 "use client";
 
 import type { Song } from "@/types/domain";
-import type { MusicSubTab, RecommendationsSubTab } from "@/types/music";
+import type { MusicSubTab, TopSubTab } from "@/types/music";
 import { SongCard } from "../song-card";
 import { PlaylistsView } from "../playlists/playlists-view";
 import { Pagination } from "./pagination";
@@ -9,11 +9,11 @@ import { Loader2, Star, Sparkles, Radio, Trophy, Music2 } from "lucide-react";
 
 export interface MusicResultsSectionProps {
   activeTab: MusicSubTab;
+  topSubTab: TopSubTab;
   favoritesCount: number;
   isLoadingFavorites: boolean;
   isLoadingRecs: boolean;
-  recSubTab: RecommendationsSubTab;
-  recSongsCount: number;
+  songsCount: number;
   displayedSongs: Song[];
   paginatedSongs: Song[];
   searchInput: string;
@@ -26,11 +26,11 @@ export interface MusicResultsSectionProps {
 
 export function MusicResultsSection({
   activeTab,
+  topSubTab,
   favoritesCount,
   isLoadingFavorites,
   isLoadingRecs,
-  recSubTab,
-  recSongsCount,
+  songsCount,
   displayedSongs,
   paginatedSongs,
   searchInput,
@@ -44,73 +44,87 @@ export function MusicResultsSection({
     return <PlaylistsView />;
   }
 
-  if (isLoadingFavorites && activeTab === "favorites") {
-    return (
-      <div className="p-12 text-center glass-panel">
-        <Loader2 size={28} className="mx-auto text-amber-400 animate-spin mb-2" />
-        <p className="text-xs text-slate-400">Cargando tus favoritos desde Supabase...</p>
-      </div>
-    );
+  if (activeTab === "favorites") {
+    if (isLoadingFavorites) {
+      return (
+        <div className="p-12 text-center glass-panel">
+          <Loader2 size={28} className="mx-auto text-amber-400 animate-spin mb-2" />
+          <p className="text-xs text-slate-400">Cargando tus favoritos desde Supabase...</p>
+        </div>
+      );
+    }
+
+    if (favoritesCount === 0) {
+      return (
+        <div className="p-12 text-center glass-panel border border-dashed border-black/10 dark:border-white/10">
+          <Star size={36} className="mx-auto text-amber-400/40 mb-3" />
+          <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+            Aún no tienes canciones favoritas
+          </h4>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
+            Presiona el botón <span className="font-semibold text-amber-400">⭐ Favorito</span> en Discord mientras escuchas música, o guarda canciones desde la radio o el top.
+          </p>
+          <button
+            type="button"
+            onClick={onExploreSuggestions}
+            className="mt-4 px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-md shadow-purple-600/20 inline-flex items-center gap-1.5 cursor-pointer"
+          >
+            <Sparkles size={13} />
+            <span>Sintonizar Radio en vivo</span>
+          </button>
+        </div>
+      );
+    }
   }
 
-  if (activeTab === "favorites" && favoritesCount === 0) {
-    return (
-      <div className="p-12 text-center glass-panel border border-dashed border-black/10 dark:border-white/10">
-        <Star size={36} className="mx-auto text-amber-400/40 mb-3" />
-        <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-          Aún no tienes canciones favoritas
-        </h4>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
-          Presiona el botón <span className="font-semibold text-amber-400">⭐ Favorito</span> en Discord mientras escuchas música, o guarda canciones desde las recomendaciones.
-        </p>
-        <button
-          onClick={onExploreSuggestions}
-          className="mt-4 px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-md shadow-purple-600/20 inline-flex items-center gap-1.5 cursor-pointer"
-        >
-          <Sparkles size={13} />
-          <span>Explorar sugerencias</span>
-        </button>
-      </div>
-    );
+  if (activeTab === "radio") {
+    if (isLoadingRecs) {
+      return (
+        <div className="p-12 text-center glass-panel">
+          <Loader2 size={28} className="mx-auto text-purple-400 animate-spin mb-2" />
+          <p className="text-xs text-slate-400">Sintonizando radio en vivo...</p>
+        </div>
+      );
+    }
+
+    if (songsCount === 0) {
+      return (
+        <div className="p-12 text-center glass-panel border border-dashed border-black/10 dark:border-white/10">
+          <Radio size={36} className="mx-auto text-purple-400/40 mb-3" />
+          <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+            La Radio en vivo se activa con la música
+          </h4>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
+            No hay ninguna canción sonando ahora mismo en el bot. Pon una canción en Discord o desde el buscador para generar una radio con temas afines.
+          </p>
+        </div>
+      );
+    }
   }
 
-  if (activeTab === "catalog" && isLoadingRecs) {
-    return (
-      <div className="p-12 text-center glass-panel">
-        <Loader2 size={28} className="mx-auto text-purple-400 animate-spin mb-2" />
-        <p className="text-xs text-slate-400">
-          {recSubTab === "radio" ? "Sintonizando radio contextual..." : "Cargando el ranking del servidor..."}
-        </p>
-      </div>
-    );
-  }
+  if (activeTab === "top") {
+    if (isLoadingRecs) {
+      return (
+        <div className="p-12 text-center glass-panel">
+          <Loader2 size={28} className="mx-auto text-amber-400 animate-spin mb-2" />
+          <p className="text-xs text-slate-400">Cargando el ranking del servidor...</p>
+        </div>
+      );
+    }
 
-  if (activeTab === "catalog" && recSongsCount === 0) {
-    return (
-      <div className="p-12 text-center glass-panel border border-dashed border-black/10 dark:border-white/10">
-        {recSubTab === "radio" ? (
-          <>
-            <Radio size={36} className="mx-auto text-purple-400/40 mb-3" />
-            <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-              La Radio en vivo se activa con la música
-            </h4>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
-              No hay ninguna canción sonando ahora mismo en el bot. Pon una canción en Discord o desde el buscador para generar una radio con temas afines.
-            </p>
-          </>
-        ) : (
-          <>
-            <Trophy size={36} className="mx-auto text-amber-400/40 mb-3" />
-            <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-              Aún no hay reproducciones en el {recSubTab === "week" ? "Top Semanal" : recSubTab === "month" ? "Top Mensual" : "Top Histórico"}
-            </h4>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
-              Cada canción que tú o tus amigos escuchen en Discord sumará reproducciones y aparecerá aquí automáticamente.
-            </p>
-          </>
-        )}
-      </div>
-    );
+    if (songsCount === 0) {
+      return (
+        <div className="p-12 text-center glass-panel border border-dashed border-black/10 dark:border-white/10">
+          <Trophy size={36} className="mx-auto text-amber-400/40 mb-3" />
+          <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+            Aún no hay reproducciones en el {topSubTab === "week" ? "Top Semanal" : topSubTab === "month" ? "Top Mensual" : "Top Histórico"}
+          </h4>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
+            Cada canción que tú o tus amigos escuchen en Discord sumará reproducciones y aparecerá aquí automáticamente.
+          </p>
+        </div>
+      );
+    }
   }
 
   if (displayedSongs.length === 0) {

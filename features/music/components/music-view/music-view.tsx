@@ -9,15 +9,15 @@ import { useQueueActions } from "@/hooks/use-queue-actions";
 import { useUrlImport } from "@/hooks/use-url-import";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useLiveSearch } from "@/hooks/use-live-search";
-import { useRecommendations } from "@/hooks/use-recommendations";
+import { useRecommendations } from "@/features/music/hooks/use-recommendations";
 import { detectPlatform } from "@/lib/formatters";
 import { STORAGE_KEYS } from "@/lib/storage-keys";
 import { useToast } from "@/components/ui/toast";
 import { MusicSearchBar } from "./music-search-bar";
 import { MusicCatalogTabs } from "./music-catalog-tabs";
-import { RecommendationsHeader, BasedOnBanner } from "./recommendations-header";
+import { RadioHeader, TopSongsHeader } from "./recommendations-header";
 import { MusicResultsSection } from "./music-results-section";
-import type { MusicSubTab, RecommendationsSubTab } from "@/types/music";
+import type { MusicSubTab, TopSubTab } from "@/types/music";
 
 function detectInputPlatform(text: string): "spotify" | "youtube" | null {
   const found = detectPlatform(text);
@@ -39,21 +39,21 @@ export function MusicView() {
 
   const [activeTab, setActiveTab] = useLocalStorage<MusicSubTab>(
     STORAGE_KEYS.musicSubtab,
-    "favorites",
-    z.enum(["favorites", "catalog", "playlists"])
-  );
-  const [recSubTab, setRecSubTab] = useLocalStorage<RecommendationsSubTab>(
-    STORAGE_KEYS.musicRecSubtab,
     "radio",
-    z.enum(["radio", "week", "month", "all"])
+    z.enum(["radio", "top", "favorites", "playlists"])
+  );
+  const [topSubTab, setTopSubTab] = useLocalStorage<TopSubTab>(
+    STORAGE_KEYS.musicTopSubtab,
+    "week",
+    z.enum(["week", "month", "all"])
   );
 
   const [searchInput, setSearchInput] = useState("");
 
-  const radioSongKey = recSubTab === "radio" ? currentSong?.id : undefined;
+  const radioSongKey = activeTab === "radio" ? currentSong?.id : undefined;
   const { recSongs, basedOnSong, isLoadingRecs, refresh: refreshRecs } = useRecommendations({
     activeTab,
-    recSubTab,
+    topSubTab,
     selectedGuildId,
     radioSongKey,
   });
@@ -93,7 +93,7 @@ export function MusicView() {
   const ITEMS_PER_PAGE = 12;
   const catalogScrollRef = useRef<HTMLDivElement | null>(null);
 
-  const pageResetKey = `${activeTab}|${recSubTab}|${searchInput}`;
+  const pageResetKey = `${activeTab}|${topSubTab}|${searchInput}`;
   const [pageState, setPageState] = useState({ key: "", page: 1 });
   const currentPage = pageState.key === pageResetKey ? pageState.page : 1;
   const setCurrentPage = (page: number) => setPageState({ key: pageResetKey, page });
@@ -159,40 +159,48 @@ export function MusicView() {
           activeTab={activeTab}
           onTabChange={setActiveTab}
           favoritesCount={favorites.length}
-          recSongsCount={recSongs.length}
+          radioSongsCount={activeTab === "radio" ? recSongs.length : 0}
+          topSongsCount={activeTab === "top" ? recSongs.length : 0}
+          hasActiveRadio={currentSong !== null}
           isPlayerBusy={isPlayerBusy}
           onPlayFavorites={playFavorites}
           scrollRef={catalogScrollRef}
         />
       </div>
 
-      {/* ══════════ SUB-CABECERA DE RECOMENDADAS & RANKINGS ══════════ */}
-      {activeTab === "catalog" && (
-        <>
-          <RecommendationsHeader
-            recSubTab={recSubTab}
-            onRecSubTabChange={setRecSubTab}
-            currentSong={currentSong}
-            isLoadingRecs={isLoadingRecs}
-            recSongsCount={recSongs.length}
-            isPlayerBusy={isPlayerBusy}
-            onRefresh={refreshRecs}
-            onPlayAll={playAllRecs}
-          />
+      {/* ══════════ CABECERA: RADIO EN VIVO ══════════ */}
+      {activeTab === "radio" && (
+        <RadioHeader
+          basedOnSong={basedOnSong}
+          isLoadingRadio={isLoadingRecs}
+          radioSongsCount={recSongs.length}
+          isPlayerBusy={isPlayerBusy}
+          onRefresh={refreshRecs}
+          onPlayAll={playAllRecs}
+        />
+      )}
 
-          {/* ══════════ BANNER INSPIRACIÓN RADIO EN VIVO ══════════ */}
-          {recSubTab === "radio" && basedOnSong && <BasedOnBanner song={basedOnSong} />}
-        </>
+      {/* ══════════ CABECERA: TOP CANCIONES ══════════ */}
+      {activeTab === "top" && (
+        <TopSongsHeader
+          topSubTab={topSubTab}
+          onTopSubTabChange={setTopSubTab}
+          isLoadingTop={isLoadingRecs}
+          topSongsCount={recSongs.length}
+          isPlayerBusy={isPlayerBusy}
+          onRefresh={refreshRecs}
+          onPlayAll={playAllRecs}
+        />
       )}
 
       {/* ══════════ LISTA DE CANCIONES / PLAYLISTS / ESTADOS ══════════ */}
       <MusicResultsSection
         activeTab={activeTab}
+        topSubTab={topSubTab}
         favoritesCount={favorites.length}
         isLoadingFavorites={isLoadingFavorites}
         isLoadingRecs={isLoadingRecs}
-        recSubTab={recSubTab}
-        recSongsCount={recSongs.length}
+        songsCount={recSongs.length}
         displayedSongs={displayedSongs}
         paginatedSongs={paginatedSongs}
         searchInput={searchInput}
@@ -200,7 +208,7 @@ export function MusicView() {
         totalPages={totalPages}
         itemsPerPage={ITEMS_PER_PAGE}
         onPageChange={goToPage}
-        onExploreSuggestions={() => setActiveTab("catalog")}
+        onExploreSuggestions={() => setActiveTab("radio")}
       />
     </div>
   );
