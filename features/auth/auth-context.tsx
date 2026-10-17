@@ -21,6 +21,7 @@ import { extractDiscordUser } from "@/lib/discord-profile";
 import { setApiUserId } from "@/lib/http";
 import { useDiscordGuilds } from "@/hooks/use-discord-guilds";
 import { useGuildStore } from "@/features/guild/guild-store";
+import { usePoll } from "@/hooks/use-poll";
 
 const AuthCoreContext = createContext<AuthCoreValue | null>(null);
 
@@ -57,21 +58,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     botVoiceChannelRef.current = status.bot;
   }, []);
 
-  useEffect(() => {
-    if (!isLoggedIn || !user || !selectedGuildId) return;
-    let cancelled = false;
-    const check = async () => {
+  usePoll(
+    async () => {
+      if (!isLoggedIn || !user || !selectedGuildId) return;
       const status = await igniteApi.getVoiceStatus(selectedGuildId, user.id);
-      if (cancelled || !status) return;
-      applyVoiceStatus(status);
-    };
-    check();
-    const interval = setInterval(check, 3000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [isLoggedIn, user, selectedGuildId, applyVoiceStatus]);
+      if (status) applyVoiceStatus(status);
+    },
+    {
+      enabled: isLoggedIn && Boolean(user) && Boolean(selectedGuildId),
+      intervalMs: 3000,
+      immediate: true,
+    }
+  );
 
   useDiscordGuilds(isLoggedIn, setGuilds, setSelectedGuildIdState);
 
@@ -109,23 +107,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    const ping = async () => {
+  usePoll(
+    async () => {
       try {
         const health = await igniteApi.getHealth();
-        if (!cancelled) setIsBotOnline(Boolean(health));
+        setIsBotOnline(Boolean(health));
       } catch {
-        if (!cancelled) setIsBotOnline(false);
+        setIsBotOnline(false);
       }
-    };
-    ping();
-    const interval = setInterval(ping, 15000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [setIsBotOnline]);
+    },
+    {
+      enabled: true,
+      intervalMs: 15000,
+      immediate: true,
+    }
+  );
 
   const loginDiscord = useCallback(async () => {
     try {

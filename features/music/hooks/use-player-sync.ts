@@ -157,9 +157,10 @@ export function usePlayerSync(): { sync: () => Promise<void>; isLive: boolean } 
     }
   );
 
-  // Reloj de scrubber (1 segundo) desacoplado de los componentes de renderizado
+  // Reloj de scrubber (1 segundo) desacoplado de los componentes de renderizado (se pausa en segundo plano)
   useEffect(() => {
     const timer = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
       const { isPlaying, currentSong } = usePlayerStore.getState();
       if (isPlaying && currentSong) {
         usePlayerStore.getState().tickSecond();
