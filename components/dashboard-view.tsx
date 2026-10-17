@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { useAuth } from "@/context/auth-context";
 import { usePlayerStore } from "@/features/music/stores/player-store";
+import dynamic from "next/dynamic";
 import { AuthWall } from "@/features/auth/components/auth-wall";
 import { AppNav } from "@/components/app-nav";
 import { ContextToolbar, type ActiveTab } from "@/features/guild/components/context-toolbar";
 import { MusicView } from "@/features/music/components/music-view/music-view";
-import { TTSView } from "@/features/tts/components/tts-view";
-import { SoundboardView } from "@/features/soundboard/components/soundboard-view";
+import { TabLoadingSkeleton } from "@/components/ui/tab-loading-skeleton";
 import { PlayerBar } from "@/features/music/components/player-bar/player-bar";
 import {
   getServerTabSnapshot,
@@ -18,6 +18,26 @@ import {
   subscribeTab,
 } from "@/lib/tab-store";
 
+const SoundboardView = dynamic(
+  () =>
+    import("@/features/soundboard/components/soundboard-view").then(
+      (m) => m.SoundboardView
+    ),
+  {
+    loading: () => <TabLoadingSkeleton />,
+    ssr: false,
+  }
+);
+
+const TTSView = dynamic(
+  () =>
+    import("@/features/tts/components/tts-view").then((m) => m.TTSView),
+  {
+    loading: () => <TabLoadingSkeleton />,
+    ssr: false,
+  }
+);
+
 export function DashboardView() {
   const { isLoggedIn, isLoadingAuth, loginDiscord } = useAuth();
   const hasSong = usePlayerStore((s) => s.currentSong !== null);
@@ -26,6 +46,19 @@ export function DashboardView() {
 
   useEffect(() => {
     normalizeTabUrl(getTabSnapshot());
+
+    // Precarga silenciosa en tiempo ocioso para que el cambio de pestaña sea inmediato
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      const idleId = (window as unknown as { requestIdleCallback: (cb: () => void) => number }).requestIdleCallback(() => {
+        void import("@/features/soundboard/components/soundboard-view");
+        void import("@/features/tts/components/tts-view");
+      });
+      return () => {
+        if ("cancelIdleCallback" in window) {
+          (window as unknown as { cancelIdleCallback: (id: number) => void }).cancelIdleCallback(idleId);
+        }
+      };
+    }
   }, []);
 
   const handleTabChange = useCallback((tab: ActiveTab) => {
