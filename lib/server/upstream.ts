@@ -1,11 +1,23 @@
 import { createClient } from "@supabase/supabase-js";
 
+export class BotOfflineError extends Error {
+  constructor(message = "Music bot is offline") {
+    super(message);
+    this.name = "BotOfflineError";
+  }
+}
+
 let cachedBase: string | null = null;
 let cachedAt = 0;
 let inflight: Promise<string> | null = null;
 
 const TTL_MS = 5 * 60 * 1000;
 const MAX_AGE_MS = 10 * 60 * 1000;
+
+export function invalidateMusicBaseUrlCache(): void {
+  cachedBase = null;
+  cachedAt = 0;
+}
 
 function cleanUrl(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -20,7 +32,9 @@ function fallbackBase(): string {
     "";
   const cleaned = cleanUrl(raw);
   if (!cleaned) {
-    throw new Error("Missing IGNITE_API_URL server env");
+    throw new BotOfflineError(
+      "No active music bot tunnel found and no fallback IGNITE_API_URL configured"
+    );
   }
   return cleaned;
 }

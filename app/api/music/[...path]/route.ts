@@ -1,13 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getMusicBaseUrl, getServerSecret } from "@/lib/server/upstream";
+import {
+  getMusicBaseUrl,
+  getServerSecret,
+  BotOfflineError,
+  invalidateMusicBaseUrlCache,
+} from "@/lib/server/upstream";
 
 async function proxy(req: NextRequest, path: string[]) {
-  let base: string;
   let secret: string;
   try {
-    base = await getMusicBaseUrl();
     secret = getServerSecret();
   } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Server misconfigured";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+
+  let base: string;
+  try {
+    base = await getMusicBaseUrl();
+  } catch (err: unknown) {
+    if (err instanceof BotOfflineError) {
+      if (path.length === 1 && path[0] === "health") {
+        return NextResponse.json(
+          { status: "offline", error: err.message },
+          { status: 503 }
+        );
+      }
+      return NextResponse.json({ error: err.message }, { status: 503 });
+    }
     const message = err instanceof Error ? err.message : "Server misconfigured";
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -48,6 +68,7 @@ async function proxy(req: NextRequest, path: string[]) {
   try {
     upstream = await fetch(target, init);
   } catch {
+    invalidateMusicBaseUrlCache();
     return NextResponse.json({ error: "Music bot unreachable" }, { status: 502 });
   }
 
