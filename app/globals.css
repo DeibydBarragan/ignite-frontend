@@ -1,8 +1,18 @@
 @import "tailwindcss";
-@import "@heroui/styles";
+
+/* El tema oscuro se controla con la clase `.dark` en <html> (ThemeToggle),
+   no con prefers-color-scheme. Debe coincidir con las reglas `.dark .glass-*` de abajo. */
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-brand-purple: #7c3aed;
+  --color-brand-purple-neon: #8b5cf6;
+  --color-brand-spotify: #1db954;
+  --color-brand-spotify-neon: #1ed760;
+  --color-brand-discord: #5865f2;
+  --color-surface-dark: #0b0d14;
+  --color-surface-panel: rgba(18, 21, 31, 0.68);
   --color-purple-primary: #7c3aed;
   --color-spotify: #1db954;
   --color-spotify-hover: #1ed760;
@@ -46,14 +56,20 @@ body {
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   background-image: radial-gradient(circle at 50% 0%, rgba(124, 58, 237, 0.06) 0%, transparent 60%);
-  background-attachment: fixed;
+  background-attachment: scroll;
+}
+
+@media (min-width: 768px) {
+  body {
+    background-attachment: fixed;
+  }
 }
 
 .dark body {
   background-image: radial-gradient(circle at 50% 0%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
 }
 
-/* ═══════════════════ GLASSMORPHISM SYSTEM (IDÉNTICO A TASKS) ═══════════════════ */
+/* ═══════════════════ GLASSMORPHISM SYSTEM ═══════════════════ */
 
 /* Fondo oscuro para modales (dim suave para que el contenido de la página sea visible a través del cristal) */
 .glass-backdrop {
@@ -70,8 +86,8 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.3);
   box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.08),
               inset 0 1px 0 rgba(255, 255, 255, 0.4);
-  backdrop-filter: blur(28px) saturate(1.5);
-  -webkit-backdrop-filter: blur(28px) saturate(1.5);
+  backdrop-filter: blur(12px) saturate(1.15);
+  -webkit-backdrop-filter: blur(12px) saturate(1.15);
   background: rgba(255, 255, 255, 0.65);
 }
 
@@ -402,4 +418,13 @@ body {
   display: inline-block;
   height: 8px;
   animation: cover-eq-bar-5 0.8s ease-in-out infinite 0.28s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

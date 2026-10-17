@@ -177,6 +177,13 @@ class AudioSynth {
       // Speech synthesis fallback
     }
   }
+
+  dispose(): void {
+    if (this.ctx && this.ctx.state !== "closed") {
+      void this.ctx.close().catch(() => {});
+      this.ctx = null;
+    }
+  }
 }
 
 export const audioSynth = new AudioSynth();

@@ -4,7 +4,7 @@
 
 The web dashboard for the Ignite Discord bots: control music playback, send text-to-speech, and fire the soundboard — from any browser.
 
-Built with **Next.js 16 + React 19**, glassmorphism UI, Discord OAuth login, and live state from the `ignite-music` and `ignite-sound` REST APIs.
+Built with **Next.js 16.4 + React 19**, glassmorphism UI, Discord login through Supabase Auth, and a **BFF** (server-side proxies) that talks to the `ignite-music` and `ignite-sound` REST APIs so their secrets never reach the browser.
 
 </div>
 
@@ -17,11 +17,12 @@ Built with **Next.js 16 + React 19**, glassmorphism UI, Discord OAuth login, and
 3. [Requirements](#requirements)
 4. [Setup (step by step)](#setup-step-by-step)
 5. [Settings (environment variables)](#settings-environment-variables)
-6. [Backend APIs it talks to](#backend-apis-it-talks-to)
-7. [Project structure](#project-structure)
-8. [Deployment](#deployment)
-9. [Troubleshooting](#troubleshooting)
-10. [License](#license)
+6. [Database (Supabase)](#database-supabase)
+7. [The BFF (what the browser actually calls)](#the-bff-what-the-browser-actually-calls)
+8. [Project structure](#project-structure)
+9. [Deployment](#deployment)
+10. [Troubleshooting](#troubleshooting)
+11. [License](#license)
 
 ---
 
@@ -29,30 +30,32 @@ Built with **Next.js 16 + React 19**, glassmorphism UI, Discord OAuth login, and
 
 | | |
 | --- | --- |
-| **Music controller** | Song catalog, universal search, YouTube / Spotify link support, play-next, persistent floating player bar (play, pause, skip, previous, seek scrubber, volume, loop, shuffle, autoplay), and a queue drawer (jump to track, remove, clear) |
-| **Playlists** | Import a playlist link (preview resolved tracks first), save it per user in Supabase, and play it back from the web or from Discord with `/playlists` |
-| **TTS console** | Message composer with character counter, neural voice picker (Loquendo, Edge es-MX/es-ES/es-AR/es-CO, …), rate/pitch controls, browser preview, one-click emit to the Discord voice channel, and saved phrases in Supabase |
-| **Soundboard** | Live catalog from the sound bot, category filters + search, one-click play in Discord, upload of new sounds (name, emoji, category, audio file), and delete |
-| **Discord context** | OAuth login, server (guild) selector, voice-presence banner (tells you when you are not in a voice channel), and per-guild control |
+| **Music controller** | Song catalog, universal search with suggestions, YouTube / Spotify link support, play-next, persistent floating player bar (play, pause, skip, previous, seek scrubber, volume, loop, shuffle, autoplay, audio filters), and a queue drawer (jump to track, remove, clear) |
+| **Playlists** | Import a playlist link, save it per user in Supabase, browse the live track listing (synced on open) and play it back from the web or from Discord with `/playlists` |
+| **Favorites** | Per-user favorite songs and playlists in Supabase, importable from any playlist with one click |
+| **TTS console** | Message composer with character counter, neural voice picker, rate/pitch controls, browser preview, one-click emit to the Discord voice channel, and saved phrases in Supabase |
+| **Soundboard** | Live catalog from the sound bot, scope/category filters + search, emoji picker, one-click play in Discord, upload of new sounds and edit/delete |
+| **Discord context** | Login with Discord (Supabase Auth), server (guild) selector, voice-presence banner, and per-guild control |
 | **Design** | Glassmorphism panels, dark/light mode with persistence, responsive mobile + desktop, toast notifications |
 
 ---
 
 ## Tech stack
 
-- **Next.js 16** (App Router, Turbopack) + **React 19** + **TypeScript**
-- **HeroUI** + **Tailwind CSS 4** + **lucide-react** icons
-- **Supabase** (`@supabase/supabase-js`) for saved playlists and phrases
-- REST clients in `lib/` for the music bot (`ignite-api.ts`) and the sound bot (`sound-api.ts`), with graceful fallbacks to local mock data when a backend is unreachable
+- **Next.js 16.4** (App Router, Turbopack, Cache Components) + **React 19** + **TypeScript**
+- **Tailwind CSS 4** + **lucide-react** icons, with an in-house glass UI kit (`components/ui/`)
+- **Supabase** (`@supabase/ssr` + `@supabase/supabase-js`) for auth and data
+- **BFF route handlers** in `app/api/music/[...path]` and `app/api/sound/[...path]` that inject secrets server-side
+- **Vitest** for unit tests
 
 ---
 
 ## Requirements
 
 - **Node.js 22.12+** (LTS from <https://nodejs.org>)
-- A running **ignite-music** API (see its README) and, for the TTS/soundboard tabs, a running **ignite-sound** API
-- A **Supabase** project (saved playlists + phrases)
-- A **Discord application** with OAuth2 (for web login)
+- A running **ignite-music** API and, for the TTS/soundboard tabs, a running **ignite-sound** API
+- A **Supabase** project (auth, favorites, playlists, phrases)
+- A **Discord application** with OAuth2, configured as a Supabase Auth provider
 
 ---
 
@@ -70,15 +73,25 @@ cd ignite-frontend
 npm install
 ```
 
-### 3. Create the Discord OAuth app (for login)
+### 3. Configure Discord login (via Supabase Auth)
 
-1. Open **<https://discord.com/developers/applications>** and select (or create) your application.
-2. Open the **OAuth2** page and add this redirect URL (replace with your domain in production):
+1. In the Discord developer portal (**<https://discord.com/developers/applications>**), create or pick your application and copy the **Client ID** and **Client Secret** from the OAuth2 page.
+2. Add this redirect URL in the Discord OAuth2 settings (this is the Supabase callback, not the app):
+   - `https://<your-project-ref>.supabase.co/auth/v1/callback`
+3. In the Supabase dashboard, go to **Authentication → Providers → Discord**, enable it and paste the Client ID / Secret.
+4. In **Authentication → URL Configuration**, set the Site URL and add the app redirect URLs:
    - Local: `http://localhost:3000/auth/callback`
    - Production: `https://your-domain/auth/callback`
-3. Copy the **Client ID** and **Client Secret** — they go into the env vars below.
 
-### 4. Configure the environment
+### 4. Create the database tables
+
+In the Supabase SQL editor, create (or verify) the tables listed in [Database (Supabase)](#database-supabase), then apply the RLS lockdown migration:
+
+```bash
+supabase/migrations/001_lockdown_rls.sql
+```
+
+### 5. Configure the environment
 
 Copy `.env.example` to `.env.local` and fill it in (see the [table below](#settings-environment-variables)):
 
@@ -87,23 +100,26 @@ cp .env.example .env.local
 ```
 
 ```env
-NEXT_PUBLIC_IGNITE_API_URL=https://your-music-bot-api
-NEXT_PUBLIC_IGNITE_API_SECRET=the_same_secret_as_the_music_bot
-NEXT_PUBLIC_SOUND_API_URL=https://your-sound-bot-api
-NEXT_PUBLIC_DEFAULT_GUILD_ID=your_discord_server_id
+# Public (baked into the client bundle)
 NEXT_PUBLIC_SUPABASE_URL=https://xyzcompany.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-DISCORD_CLIENT_ID=your_discord_client_id
-DISCORD_CLIENT_SECRET=your_discord_client_secret
+NEXT_PUBLIC_DEFAULT_GUILD_ID=your_discord_server_id   # optional
+
+# Server-only (never prefix with NEXT_PUBLIC_)
+IGNITE_API_SECRET=the_same_secret_as_the_music_bot
+IGNITE_API_URL=https://your-music-bot-api             # fallback if bot_status doesn't announce one
+SOUND_API_URL=https://your-sound-bot-api
 ```
 
-### 5. Run it
+### 6. Run it
 
 ```bash
-npm run dev      # local dev at http://localhost:3000
-npm run build    # production build
-npm start        # serve the production build
-npm run lint     # eslint
+npm run dev        # local dev at http://localhost:3000
+npm run build      # production build
+npm start          # serve the production build
+npm run lint       # eslint
+npm run typecheck  # tsc --noEmit
+npm test           # vitest run
 ```
 
 On first load, log in with Discord, pick a server, and join a voice channel in Discord to enable playback controls.
@@ -112,22 +128,36 @@ On first load, log in with Discord, pick a server, and join a voice channel in D
 
 ## Settings (environment variables)
 
-| Variable | Where | What it does |
+| Variable | Scope | What it does |
 | --- | --- | --- |
-| `NEXT_PUBLIC_IGNITE_API_URL` | public | Base URL of the **ignite-music** REST API (direct URL, Cloudflare Tunnel, or AWS API Gateway) |
-| `NEXT_PUBLIC_IGNITE_API_SECRET` | public | Shared secret, must match the music bot's `API_SECRET` (sent as `Authorization: Bearer …`) |
-| `NEXT_PUBLIC_SOUND_API_URL` | public | Base URL of the **ignite-sound** REST API (TTS + soundboard) |
-| `NEXT_PUBLIC_DEFAULT_GUILD_ID` | public | Server preselected on first load |
-| `NEXT_PUBLIC_SUPABASE_URL` | public | Supabase project URL (playlists, phrases) |
+| `NEXT_PUBLIC_SUPABASE_URL` | public | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | public | Supabase anon key |
-| `DISCORD_CLIENT_ID` | server-only | Discord OAuth client ID |
-| `DISCORD_CLIENT_SECRET` | server-only | Discord OAuth client secret (never prefix with `NEXT_PUBLIC_`) |
+| `NEXT_PUBLIC_DEFAULT_GUILD_ID` | public, optional | Server preselected on first load |
+| `NEXT_PUBLIC_USE_MOCKS` | public, optional | `"true"` in dev to use local fixtures instead of live data |
+| `IGNITE_API_SECRET` | **server-only** | Shared secret injected by the music BFF as `Authorization: Bearer …`; must match the bot's `API_SECRET` (min 16 chars; legacy name `API_SECRET` is also read) |
+| `IGNITE_API_URL` | **server-only** | Base URL of the music bot, used when the `bot_status` table doesn't announce a fresh one |
+| `SOUND_API_URL` | **server-only** | Base URL of the sound bot (TTS + soundboard) |
 
-> `NEXT_PUBLIC_*` vars are baked into the client bundle at build time — redeploy after changing them. Secrets without that prefix stay on the server.
+> `NEXT_PUBLIC_*` vars are inlined into the client bundle at build time — rebuild/redeploy after changing them. Everything else stays on the server: the browser only calls the local `/api/*` proxies.
+>
+> Legacy names (`NEXT_PUBLIC_IGNITE_API_URL`, `NEXT_PUBLIC_SOUND_API_URL`, `NEXT_PUBLIC_IGNITE_API_SECRET`) are still read server-side as fallbacks, but they are deprecated — use the server-only vars.
 
-### Supabase tables
+`DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET` are **not used by the app** anymore: Discord OAuth is handled entirely by Supabase Auth (see step 3).
 
-Playlists (also used by the music bot — create once and share):
+---
+
+## Database (Supabase)
+
+Tables used by this app (schema is shared with the bots — see their repos for the authoritative DDL):
+
+| Table | Used for |
+| --- | --- |
+| `user_playlists` | Saved user playlists (also read by the music bot's `/playlists` command) |
+| `user_favorites` | Favorite songs, including playlist-imports (`is_lyric` column is optional — the app retries without it when missing) |
+| `saved_phrases` | Saved TTS phrases |
+| `bot_status` | `id` + `api_url` + `updated_at`; when the music row is fresh (< 10 min), the BFF uses it to discover the music bot URL automatically |
+
+Example for `user_playlists`:
 
 ```sql
 create table if not exists user_playlists (
@@ -142,19 +172,18 @@ create table if not exists user_playlists (
 );
 ```
 
-The app also caches playlists in `localStorage` (`ignite_user_playlists`) so the UI keeps working when Supabase is unreachable.
+The app also caches playlists in `localStorage` (key `ignite_v2_user_playlists`) so the UI keeps working when Supabase is unreachable. All local storage keys are versioned and centralized in `lib/storage-keys.ts`.
 
 ---
 
-## Backend APIs it talks to
+## The BFF (what the browser actually calls)
 
-### ignite-music (`lib/ignite-api.ts`)
+The browser never talks to the bots directly. It calls two local proxies:
 
-Player state polling, guild list, remote play (`{ query, voiceChannelId?, userId?, next?, skip? }`), transport controls (`pause`, `resume`, `toggle`, `skip`, `previous`, `stop`, `shuffle`, `autoplay`, `volume`, `seek`, `loop`), playlist resolve-by-URL (import preview), and queue remove/clear. All calls send `Authorization: Bearer <secret>`; failures fall back to mock data instead of breaking the UI.
+- **`/api/music/[...path]`** — forwards to the music bot's `/api/*`, injecting `Authorization: Bearer <IGNITE_API_SECRET>` and the caller's `x-user-discord-id`. The bot base URL is auto-discovered via `bot_status` (fresh rows only) and falls back to `IGNITE_API_URL`. Returns `502` when the bot is unreachable.
+- **`/api/sound/[...path]`** — forwards to `SOUND_API_URL` `/api/*`. Injects the bearer token when configured, and passes binary responses through (TTS previews return `audio/*`).
 
-### ignite-sound (`lib/sound-api.ts`)
-
-TTS voices list, TTS browser preview (`POST /api/tts/preview`), TTS emit to voice, soundboard catalog (`GET /api/sounds`), play on Discord (`POST /api/sounds/play`), upload (`POST /api/sounds/upload`), and delete (`DELETE /api/sounds/:id`).
+All upstream calls use `cache: "no-store"`, preserve the upstream status code, and never expose secrets to the client.
 
 ---
 
@@ -162,33 +191,38 @@ TTS voices list, TTS browser preview (`POST /api/tts/preview`), TTS emit to voic
 
 ```text
 app/
-  page.tsx                 Tab shell (music / TTS / soundboard) + auth gate + floating player
-  layout.tsx               Root layout, metadata, theme provider
-  auth/callback/page.tsx   Client-side Discord OAuth callback (token persistence)
-  globals.css              Glassmorphism design tokens (glass-panel, glass-input, …)
+  page.tsx                    Tab shell (music / TTS / soundboard) + floating player
+  layout.tsx                  Root layout, metadata
+  globals.css                 Glass design tokens + Tailwind `dark` variant (class-based)
+  auth/callback/route.ts      Supabase OAuth code exchange (PKCE)
+  api/music/[...path]/route.ts   BFF proxy → ignite-music
+  api/sound/[...path]/route.ts   BFF proxy → ignite-sound
 components/
-  app-nav.tsx              Logo, bot status, Discord profile, guild selector
-  context-toolbar.tsx      Tab switcher
-  voice-banner.tsx         Voice-presence banner
-  music/music-view.tsx     Catalog + search + playlists entry
-  music/player-bar.tsx     Floating player (transport, seek scrubber, volume)
-  music/queue-drawer.tsx   Upcoming queue management
-  music/playlists-view.tsx Saved user playlists (import, preview, play)
-  music/song-card.tsx      Song card
-  tts/tts-view.tsx         TTS composer, voices, history, saved phrases
-  soundboard/              Catalog grid, upload modal
-  phrase-to-sound/         Keyword → sound triggers
-  ui/toast.tsx             Toast notifications
-context/bot-context.tsx    Central store: auth, guild, voice, player, triggers
+  app-nav.tsx                 Logo, bot status, Discord profile, theme toggle
+  context-toolbar.tsx         Tab switcher + guild/voice indicators
+  music/                      music-view, player-bar (+ transport/track-info/fx),
+                              queue-drawer (+ item/now-playing), playlists-view
+                              (+ card/detail/fav modals/toolbar), song-card, …
+  tts/                        tts-view, composer, saved phrases, recent activity
+  soundboard/                 soundboard-view, sound-pad, toolbar, activity feed,
+                              emoji picker, add/edit/delete modals
+  phrase-to-sound/            Keyword → sound triggers
+  ui/                         In-house button + toast
+context/                      Providers: bot, auth, live-events, player-state,
+                              soundboard, tts, favorites
+hooks/                        Data + behavior hooks (playback, queue, playlists,
+                              voices, live search, recommendations, storage, …)
 lib/
-  ignite-api.ts            Music bot REST client
-  sound-api.ts             Sound bot REST client (TTS + soundboard)
-  playlists-service.ts     Saved playlists (Supabase + localStorage fallback)
-  phrases-service.ts       Saved TTS phrases
-  supabase.ts              Supabase client
-  mock-data.ts             Catalog/queue fixtures used as fallback
-  audio-synth.ts           Web Audio test synth for the soundboard
-public/ignite.svg          Ignite logo
+  http.ts / logger.ts / env.ts      Cross-cutting utilities (Zod-validated requests)
+  ignite-api.ts / sound-api.ts      REST clients (call the BFF, not the bots)
+  playlists-service.ts / favorites-service.ts / phrases-service.ts
+  server/upstream.ts                Server-only: base URLs + secret resolution
+  schemas/                          Zod schemas for every upstream response
+  supabase/                         Browser + server Supabase clients
+types/                        Domain, player and auth types
+tests/                        Vitest unit tests (run with `npm test`)
+supabase/migrations/          SQL migrations (apply 001_lockdown_rls.sql)
+public/ignite.svg             Ignite logo
 ```
 
 ---
@@ -198,8 +232,8 @@ public/ignite.svg          Ignite logo
 The easiest target is **Vercel**:
 
 1. Import the repo at <https://vercel.com/new>.
-2. Set all [environment variables](#settings-environment-variables) in the project settings (production + preview).
-3. In the Discord developer portal, add `https://your-domain/auth/callback` to the OAuth2 redirects.
+2. Set the [environment variables](#settings-environment-variables) in the project settings (production + preview). Remember: `IGNITE_API_SECRET`, `IGNITE_API_URL` and `SOUND_API_URL` are server-only; `NEXT_PUBLIC_*` only the Supabase ones.
+3. Add `https://your-domain/auth/callback` to the Supabase Auth redirect URLs.
 4. Deploy. Every push to `main` redeploys automatically.
 
 Any Node host works too (`npm run build` + `npm start`), as long as the env vars above are set.
@@ -210,13 +244,15 @@ Any Node host works too (`npm run build` + `npm start`), as long as the env vars
 
 | Problem | Solution |
 | --- | --- |
-| Login loops back to the login screen | Check `DISCORD_CLIENT_ID`/`DISCORD_CLIENT_SECRET` and that the OAuth2 redirect `…/auth/callback` exactly matches your domain (including `https://`) |
+| Login loops back to the login screen | Check the Discord provider config in Supabase (step 3) and that `…/auth/callback` is in the Supabase redirect allowlist |
+| "Música OFFLINE" badge / `502` from `/api/music/*` | The music bot is unreachable: verify `IGNITE_API_URL`, that the bot is running, and that `bot_status.api_url` isn't stale |
+| Favorites fail with `42703` (column does not exist) | The `user_favorites` table lacks `is_lyric`; the app falls back automatically. Add the column if you want to persist lyric videos |
 | "Not connected to a voice channel" banner | Join a voice channel in Discord first — playback and TTS need a target channel |
-| Player shows mock/empty data | The music API is unreachable: verify `NEXT_PUBLIC_IGNITE_API_URL` is reachable from the browser and `NEXT_PUBLIC_IGNITE_API_SECRET` matches the bot's `API_SECRET` |
-| TTS/soundboard not working | Same check for `NEXT_PUBLIC_SOUND_API_URL` — the sound bot must be online |
-| Playlists don't persist | Verify `NEXT_PUBLIC_SUPABASE_URL`/`ANON_KEY` and that the `user_playlists` table exists (they still work locally via `localStorage` meanwhile) |
-| Changed an env var but nothing happened | `NEXT_PUBLIC_*` vars are inlined at build time — rebuild and redeploy |
-| Anything else | Open devtools console/network: API clients fail soft and log the failing endpoint |
+| TTS/soundboard not working | Check `SOUND_API_URL` — the sound bot must be online |
+| Playlists don't reach the database | Verify `NEXT_PUBLIC_SUPABASE_URL`/`ANON_KEY`, the tables and the RLS migration; the UI still works locally via `localStorage` meanwhile |
+| Light/dark theme suddenly looks broken | Don't remove the `@custom-variant dark` line in `app/globals.css` — it keeps Tailwind's `dark:*` tied to the `.dark` class instead of the OS preference |
+| Changed an env var but nothing happened | `NEXT_PUBLIC_*` vars are inlined at build time; server vars need a restart/redeploy |
+| Anything else | Open devtools console/network: the BFF preserves upstream status codes and logs failures via `lib/logger.ts` |
 
 ---
 

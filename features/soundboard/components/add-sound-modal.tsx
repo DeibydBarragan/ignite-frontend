@@ -1,0 +1,232 @@
+"use client";
+
+import { useState } from "react";
+import { useSoundboard } from "@/context/soundboard-context";
+import { GlassModal } from "@/components/ui/glass-modal";
+import { EmojiPicker } from "./emoji-picker";
+import { GlassSelect } from "@/components/ui/glass-select";
+import type { SoundCategory } from "@/types/domain";
+import { Button } from "@/components/ui/button";
+import { Plus, User, Globe, Loader2 } from "lucide-react";
+
+export function AddSoundModal({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const { addCustomSound } = useSoundboard();
+  const [name, setName] = useState("");
+  const [emoji, setEmoji] = useState("🔔");
+  const [category, setCategory] = useState<SoundCategory>("memes");
+  const [scope, setScope] = useState<"mine" | "all">("mine");
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const MAX_BYTES = 5 * 1024 * 1024;
+  const ACCEPTED_EXTS = [".mp3", ".ogg", ".oga", ".wav", ".webm", ".m4a"];
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setError(null);
+    const file = e.target.files?.[0] || null;
+    if (!file) {
+      setAudioFile(null);
+      return;
+    }
+    const ext = "." + (file.name.split(".").pop() || "").toLowerCase();
+    if (!ACCEPTED_EXTS.includes(ext)) {
+      setError("Formato no soportado. Usa mp3, ogg, wav, webm o m4a.");
+      setAudioFile(null);
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      setError("El archivo supera el límite de 5 MB.");
+      setAudioFile(null);
+      return;
+    }
+    setAudioFile(file);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || isUploading) return;
+
+    setIsUploading(true);
+    setError(null);
+    const ok = await addCustomSound({
+      name: name.trim(),
+      emoji: emoji.trim() || undefined,
+      category,
+      file: audioFile || undefined,
+      scope,
+    });
+    setIsUploading(false);
+
+    if (!ok) {
+      setError("No se pudo guardar el sonido. Revisa la conexión con el bot e inténtalo de nuevo.");
+      return;
+    }
+
+    setName("");
+    setEmoji("🔔");
+    setAudioFile(null);
+    onClose();
+  };
+
+  return (
+    <GlassModal
+      isOpen={isOpen}
+      onClose={onClose}
+      maxWidth="md"
+      icon={<Plus size={20} />}
+      title="Añadir Sonido al Soundboard"
+      subtitle="Registra un nuevo efecto sonoro en la base de datos de sonidos"
+      footer={
+        <div className="flex items-center justify-end gap-2.5 w-full">
+          <Button
+            variant="ghost"
+            size="sm"
+            onPress={onClose}
+            className="text-slate-600 dark:text-slate-300"
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            form="add-sound-form"
+            size="sm"
+            isDisabled={isUploading}
+            className="bg-[#1db954] hover:bg-[#1ed760] text-black font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer disabled:cursor-not-allowed"
+          >
+            {isUploading && <Loader2 size={14} className="animate-spin text-black" />}
+            <span>{isUploading ? "Subiendo" : "Guardar sonido"}</span>
+          </Button>
+        </div>
+      }
+    >
+      <form id="add-sound-form" onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+            Nombre del Sonido
+          </label>
+          <input
+            type="text"
+            required
+            placeholder="Ej. Victory Fanfare, Bruh Sound, Oof..."
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="glass-input w-full px-3.5 py-2.5 text-xs text-slate-900 dark:text-white"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 items-start">
+          <div>
+            <div className="flex items-center justify-between mb-1 h-5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Emoji
+              </label>
+              <span className="text-[10px] text-slate-400 font-normal">Opcional</span>
+            </div>
+            <EmojiPicker value={emoji} onChange={setEmoji} />
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1 h-5">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                Categoría
+              </label>
+            </div>
+            <GlassSelect
+              value={category}
+              onChange={(val) => setCategory(val as SoundCategory)}
+              options={[
+                { value: "memes", label: "Memes" },
+                { value: "gaming", label: "Gaming" },
+                { value: "reactions", label: "Reacciones" },
+                { value: "sfx", label: "Efectos SFX" },
+                { value: "anime", label: "Anime" },
+              ]}
+              size="md"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1.5">
+            Pertenencia / Ámbito
+          </label>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={() => setScope("mine")}
+              className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
+                scope === "mine"
+                  ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-500 ring-1 ring-emerald-500/30"
+                  : "border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 text-slate-600 dark:text-slate-400"
+              }`}
+            >
+              <div className={`p-1.5 rounded-lg shrink-0 ${scope === "mine" ? "bg-emerald-500/20 text-emerald-500" : "bg-black/5 dark:bg-white/5 text-slate-400"}`}>
+                <User size={15} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold text-slate-900 dark:text-white leading-tight">
+                  Propio (Mío)
+                </div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5 truncate">
+                  Aparece en &quot;Propios&quot;
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setScope("all")}
+              className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
+                scope === "all"
+                  ? "border-purple-500/50 bg-purple-500/10 text-purple-400 ring-1 ring-purple-500/30"
+                  : "border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 text-slate-600 dark:text-slate-400"
+              }`}
+            >
+              <div className={`p-1.5 rounded-lg shrink-0 ${scope === "all" ? "bg-purple-500/20 text-purple-400" : "bg-black/5 dark:bg-white/5 text-slate-400"}`}>
+                <Globe size={15} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold text-slate-900 dark:text-white leading-tight">
+                  De todos (Público)
+                </div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5 truncate">
+                  Sonido global para el bot
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <div>
+            <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block mb-1">
+              Archivo de Audio (Opcional)
+            </label>
+            <input
+              type="file"
+              accept=".mp3,.ogg,.oga,.wav,.webm,.m4a,audio/*"
+              onChange={handleFileChange}
+              className="glass-input w-full px-3.5 py-2 text-xs text-slate-700 dark:text-slate-300 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-[11px] file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-700 file:cursor-pointer"
+            />
+            <span className="text-[11px] text-slate-400 mt-1 block">
+              {audioFile
+                ? `Seleccionado: ${audioFile.name} (${(audioFile.size / 1024).toFixed(0)} KB) — sonará en Discord.`
+                : "Sin archivo solo sonará en tu navegador (preview). Con .mp3 sonará en el canal de voz."}
+            </span>
+        </div>
+
+        {error && (
+          <p className="text-[11px] text-rose-500 bg-rose-500/10 border border-rose-500/20 rounded-lg px-3 py-2">
+            {error}
+          </p>
+        )}
+      </form>
+    </GlassModal>
+  );
+}

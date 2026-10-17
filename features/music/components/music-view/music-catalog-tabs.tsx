@@ -1,0 +1,95 @@
+"use client";
+
+import type { MusicSubTab } from "@/types/music";
+import { Star, Flame, ListMusic, Play } from "lucide-react";
+
+export interface MusicCatalogTabsProps {
+  activeTab: MusicSubTab;
+  onTabChange: (tab: MusicSubTab) => void;
+  favoritesCount: number;
+  recSongsCount: number;
+  isPlayerBusy: boolean;
+  onPlayFavorites: () => void;
+  scrollRef: React.RefObject<HTMLDivElement | null>;
+}
+
+export function MusicCatalogTabs({
+  activeTab,
+  onTabChange,
+  favoritesCount,
+  recSongsCount,
+  isPlayerBusy,
+  onPlayFavorites,
+  scrollRef,
+}: MusicCatalogTabsProps) {
+  return (
+    <div ref={scrollRef} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1 min-w-0 scroll-mt-20">
+      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar max-w-full min-w-0 pb-0.5">
+        <button
+          onClick={() => onTabChange("favorites")}
+          className={`glass-pill px-3 py-1.5 text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+            activeTab === "favorites"
+              ? "glass-pill-active font-semibold"
+              : "text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          <Star
+            size={13}
+            className={
+              activeTab === "favorites" ? "fill-amber-400 text-amber-400" : ""
+            }
+          />
+          <span>Mis Favoritos</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-400/15 text-amber-400 font-mono font-bold">
+            {favoritesCount}
+          </span>
+        </button>
+
+        <button
+          onClick={() => onTabChange("catalog")}
+          className={`glass-pill px-3 py-1.5 text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+            activeTab === "catalog"
+              ? "glass-pill-active font-semibold"
+              : "text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          <Flame
+            size={13}
+            className={activeTab === "catalog" ? "text-purple-400" : ""}
+          />
+          <span>Recomendadas</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-500/15 text-purple-400 font-mono">
+            {recSongsCount}
+          </span>
+        </button>
+
+        <button
+          onClick={() => onTabChange("playlists")}
+          className={`glass-pill px-3 py-1.5 text-xs flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap ${
+            activeTab === "playlists"
+              ? "glass-pill-active font-semibold"
+              : "text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          <ListMusic
+            size={13}
+            className={activeTab === "playlists" ? "text-emerald-400" : ""}
+          />
+          <span>Playlists</span>
+        </button>
+      </div>
+
+      {/* Action button: Play all favorites */}
+      {activeTab === "favorites" && favoritesCount > 0 && (
+        <button
+          onClick={onPlayFavorites}
+          disabled={isPlayerBusy}
+          className="glass-btn px-3 py-1 text-xs flex items-center gap-1.5 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 cursor-pointer disabled:opacity-50"
+        >
+          <Play size={12} className="fill-current" />
+          <span>Reproducir todos mis favoritos</span>
+        </button>
+      )}
+    </div>
+  );
+}

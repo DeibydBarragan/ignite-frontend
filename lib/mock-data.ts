@@ -1,99 +1,31 @@
-export interface DiscordUser {
-  id: string;
-  username: string;
-  discriminator: string;
-  avatar: string;
-  status: "online" | "idle" | "dnd" | "offline";
-  isVoiceConnected: boolean;
-  currentChannelId: string | null;
-}
+import type {
+  DiscordUser,
+  VoiceChannel,
+  DiscordGuild,
+  MusicSource,
+  Song,
+  SoundCategory,
+  SoundItem,
+  PhraseTrigger,
+  TTSMessage,
+  LiveEvent,
+} from "@/types/domain";
 
-export interface VoiceChannel {
-  id: string;
-  name: string;
-  userCount: number;
-  bitrate: number;
-}
+export type {
+  DiscordUser,
+  VoiceChannel,
+  DiscordGuild,
+  MusicSource,
+  Song,
+  SoundCategory,
+  SoundItem,
+  PhraseTrigger,
+  TTSMessage,
+  LiveEvent,
+};
 
-export interface DiscordGuild {
-  id: string;
-  name: string;
-  icon: string;
-  memberCount: number;
-  botPresent: boolean;
-  voiceChannels: VoiceChannel[];
-}
-
-export type MusicSource = "youtube" | "spotify";
-
-export interface Song {
-  id: string;
-  title: string;
-  artist: string;
-  albumArt: string;
-  coverUrl?: string | null;
-  duration: number; // in seconds
-  formattedDuration?: string;
-  source: MusicSource;
-  url: string;
-  category: "lofi" | "gaming" | "synthwave" | "hits" | "rock";
-  isLyric?: boolean;
-  isAutoplay?: boolean;
-  isLive?: boolean;
-  playCount?: number;
-  rank?: number;
-  requestedBy?: {
-    id: string;
-    username: string;
-    avatar: string | null;
-  } | null;
-}
-
-export type SoundCategory = "memes" | "gaming" | "reactions" | "sfx" | "anime";
-
-export interface SoundItem {
-  id: string;
-  name: string;
-  emoji?: string;
-  category: SoundCategory;
-  duration: number; // in seconds
-  preset: "airhorn" | "violin" | "tada" | "badumtss" | "bruh" | "quack" | "alarm" | "levelup" | "victory" | "applause";
-  playsCount: number;
-  hasFile?: boolean; // true si el bot tiene el .mp3 real (suena en Discord)
-  uploadedBy?: string | null; // discord user id de quien lo subió (null = sonido de serie)
-  lastPlayedAt?: number | null; // timestamp de última reproducción
-}
-
-export interface PhraseTrigger {
-  id: string;
-  phrase: string;
-  soundId: string;
-  soundName: string;
-  soundEmoji?: string;
-  exactMatch: boolean;
-  enabled: boolean;
-  channelTarget: "all" | string;
-  triggerCount: number;
-  lastTriggered?: string;
-}
-
-export interface TTSMessage {
-  id: string;
-  text: string;
-  voice: string;
-  pitch: number;
-  rate: number;
-  channelName: string;
-  timestamp: string;
-}
-
-export interface LiveEvent {
-  id: string;
-  type: "voice_trigger" | "tts" | "music_play" | "soundboard";
-  title: string;
-  description: string;
-  timestamp: string;
-}
+const USE_MOCKS =
+  typeof process !== "undefined" && process.env.NEXT_PUBLIC_USE_MOCKS === "true";
 
 export const MOCK_USER: DiscordUser = {
   id: "48291049281749102",
@@ -307,3 +239,7 @@ export const MOCK_PHRASE_TRIGGERS: PhraseTrigger[] = [
 ];
 
 export const MOCK_INITIAL_EVENTS: LiveEvent[] = [];
+
+export function isMocksEnabled(): boolean {
+  return USE_MOCKS;
+}

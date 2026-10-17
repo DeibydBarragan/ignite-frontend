@@ -1,37 +1,57 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { Moon, Sun } from "lucide-react";
-import { Button } from "@heroui/react";
+import { Button } from "@/components/ui/button";
+import { useMounted } from "@/hooks/use-mounted";
+import { STORAGE_KEYS } from "@/lib/storage-keys";
+
+type Theme = "light" | "dark";
+
+const themeListeners = new Set<() => void>();
+
+function emitTheme() {
+  themeListeners.forEach((listener) => listener());
+}
+
+function subscribeTheme(callback: () => void): () => void {
+  themeListeners.add(callback);
+  return () => {
+    themeListeners.delete(callback);
+  };
+}
+
+function getThemeSnapshot(): Theme {
+  if (typeof document === "undefined") return "dark";
+  return document.documentElement.classList.contains("dark") ? "dark" : "light";
+}
+
+function getServerThemeSnapshot(): Theme {
+  return "dark";
+}
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<"light" | "dark">("dark");
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
+  const theme = useSyncExternalStore(subscribeTheme, getThemeSnapshot, getServerThemeSnapshot);
 
   useEffect(() => {
-    const isDark = document.documentElement.classList.contains("dark") ||
-      (!("theme" in localStorage) && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-      setTheme("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      setTheme("light");
-    }
-    setMounted(true);
+    const isDark =
+      document.documentElement.classList.contains("dark") ||
+      (!(STORAGE_KEYS.theme in localStorage) &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.classList.toggle("dark", isDark);
+    emitTheme();
   }, []);
 
   function toggle() {
-    const next = theme === "dark" ? "light" : "dark";
-    if (next === "dark") {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
+    const next: Theme = getThemeSnapshot() === "dark" ? "light" : "dark";
+    document.documentElement.classList.toggle("dark", next === "dark");
+    try {
+      localStorage.setItem(STORAGE_KEYS.theme, next);
+    } catch {
+      // storage bloqueado
     }
-    setTheme(next);
+    emitTheme();
   }
 
   if (!mounted) {

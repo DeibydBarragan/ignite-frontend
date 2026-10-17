@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useMounted } from "@/hooks/use-mounted";
 import { CheckCircle2, AlertCircle, Radio, X, Info, Loader2 } from "lucide-react";
 
 export type ToastType = "success" | "error" | "info" | "emit";
@@ -35,13 +36,13 @@ const ToastContext = createContext<ToastContextType | null>(null);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useMounted();
   const timersRef = useRef<Record<string, NodeJS.Timeout>>({});
 
   useEffect(() => {
-    setMounted(true);
+    const timers = timersRef.current;
     return () => {
-      Object.values(timersRef.current).forEach(clearTimeout);
+      Object.values(timers).forEach(clearTimeout);
     };
   }, []);
 
@@ -106,8 +107,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       timersRef.current[t.id] = setTimeout(() => {
         removeToast(t.id);
       }, 2000);
-    } catch (err: any) {
-      console.error("[Toast action error]:", err);
+    } catch (err: unknown) {
+      const { logger } = await import("@/lib/logger");
+      logger.error("[Toast action error]:", err);
+      const message = err instanceof Error ? err.message : "Ocurrió un error al realizar la acción.";
       setToasts((prev) =>
         prev.map((item) =>
           item.id === t.id
@@ -116,7 +119,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 isLoading: false,
                 type: "error",
                 action: undefined,
-                message: err?.message || "Ocurrió un error al realizar la acción.",
+                message,
               }
             : item
         )
@@ -208,7 +211,7 @@ export function useToast() {
     // Fallback si no está dentro de ToastProvider
     return {
       toast: (msg: string) => {
-        console.log("[Toast fallback]:", msg);
+        import("@/lib/logger").then(({ logger }) => logger.info("[Toast fallback]:", msg)).catch(() => {});
       },
     };
   }
