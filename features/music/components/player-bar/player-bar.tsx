@@ -35,7 +35,7 @@ export function PlayerBar() {
         <PlayerCollapsedBar />
       ) : (
         <div className="fixed bottom-3 inset-x-3 sm:inset-x-6 z-40 max-w-7xl mx-auto">
-          <div className="glass-panel p-3 sm:py-2.5 sm:px-4 border border-black/10 dark:border-white/10 shadow-2xl backdrop-blur-2xl">
+          <div className="glass-panel player-glass-dock p-3 sm:py-2.5 sm:px-4 border border-black/10 dark:border-white/10 shadow-2xl backdrop-blur-2xl">
             <div className="flex flex-col md:flex-row items-center justify-between gap-3 md:gap-6">
               {/* Left: Song Info */}
               <PlayerTrackInfo

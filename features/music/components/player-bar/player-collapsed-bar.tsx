@@ -18,7 +18,7 @@ export function PlayerCollapsedBar() {
   return (
     <div className="fixed bottom-4 right-4 sm:bottom-5 sm:right-6 z-40 flex items-center gap-2 group select-none">
       {/* Mini dock de controles: aparece al pasar el cursor por encima (hover) */}
-      <div className="flex items-center gap-1.5 p-1.5 rounded-full glass-panel border border-black/10 dark:border-white/10 shadow-2xl backdrop-blur-2xl opacity-0 pointer-events-none translate-x-3 scale-95 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out">
+      <div className="flex items-center gap-1.5 p-1.5 rounded-full glass-panel player-glass-dock border border-black/10 dark:border-white/10 shadow-2xl backdrop-blur-2xl opacity-0 pointer-events-none translate-x-3 scale-95 group-hover:opacity-100 group-hover:pointer-events-auto group-hover:translate-x-0 group-hover:scale-100 transition-all duration-200 ease-out">
         {/* Canción anterior */}
         <button
           type="button"
@@ -85,7 +85,7 @@ export function PlayerCollapsedBar() {
         onClick={() => setIsPlayerCollapsed(false)}
         title={`Abrir reproductor • ${currentSong.title}`}
         aria-label={`Abrir reproductor: ${currentSong.title}`}
-        className={`relative flex items-center gap-2.5 p-1.5 pr-3.5 rounded-full glass-panel border shadow-2xl backdrop-blur-2xl transition-all duration-300 cursor-pointer hover:scale-105 active:scale-95 ${
+        className={`relative flex items-center gap-2.5 p-1.5 pr-3.5 rounded-full glass-panel player-glass-dock border shadow-2xl backdrop-blur-2xl transition-all duration-300 cursor-pointer hover:scale-105 active:scale-95 ${
           isPlaying
             ? "border-[#1db954]/50 shadow-[#1db954]/25 ring-1 ring-[#1db954]/30"
             : "border-black/10 dark:border-white/10 hover:border-purple-500/40"

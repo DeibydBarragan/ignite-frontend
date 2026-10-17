@@ -74,7 +74,7 @@ export function PlaylistCard({
           {/* Source Badge */}
           <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 z-10">
             <span
-              className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border backdrop-blur-md flex items-center gap-1 shadow-xs ${sourceTheme.badge}`}
+              className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border md:backdrop-blur-md flex items-center gap-1 shadow-xs ${sourceTheme.badge}`}
             >
               <span className={`w-1.5 h-1.5 rounded-full ${sourceTheme.dot}`} />
               {sourceTheme.label}
@@ -90,7 +90,7 @@ export function PlaylistCard({
             }}
             disabled={isDeleteDisabled}
             title="Eliminar playlist"
-            className={`absolute top-2.5 right-2.5 p-1.5 rounded-full bg-black/60 hover:bg-rose-500/80 text-white/70 hover:text-white backdrop-blur-md border border-white/10 hover:border-rose-400/50 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 shadow-xs ${
+            className={`absolute top-2.5 right-2.5 p-1.5 rounded-full bg-black/70 hover:bg-rose-500/80 text-white/70 hover:text-white md:backdrop-blur-md border border-white/10 hover:border-rose-400/50 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 shadow-xs ${
               isDeleteDisabled ? "cursor-not-allowed opacity-30 pointer-events-none" : "cursor-pointer"
             }`}
           >
@@ -99,7 +99,7 @@ export function PlaylistCard({
 
           {/* Track count pill */}
           <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1 z-10 pointer-events-none">
-            <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-white/90 border border-white/10 flex items-center gap-1 shadow-xs">
+            <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-black/80 md:backdrop-blur-md text-white/90 border border-white/10 flex items-center gap-1 shadow-xs">
               <Music2 size={11} className="text-purple-400" />
               {neverSynced ? "Sin sincronizar" : `${pl.tracks.length} temas`}
             </span>
@@ -107,7 +107,7 @@ export function PlaylistCard({
 
           {/* Equalizer overlay when playing */}
           {isPlayingThis && (
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center gap-1.5 z-10">
+            <div className="absolute inset-0 bg-black/70 md:bg-black/60 md:backdrop-blur-xs flex items-center justify-center gap-1.5 z-10">
               <span className="w-1.5 h-6 bg-[#1ed760] rounded-full animate-pulse" />
               <span className="w-1.5 h-8 bg-purple-400 rounded-full animate-pulse [animation-delay:150ms]" />
               <span className="w-1.5 h-5 bg-[#1ed760] rounded-full animate-pulse [animation-delay:300ms]" />
