@@ -11,10 +11,9 @@ import { PlaylistsToolbar } from "./playlists-toolbar";
 import { PlaylistCard } from "./playlist-card";
 import { PlaylistDetailModal } from "./playlist-detail-modal";
 import { PlaylistFavModal } from "./playlist-fav-modal";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { CoverImage } from "@/components/ui/cover-image";
+import { PlaylistDeleteModal } from "./playlist-delete-modal";
 import { useToast } from "@/components/ui/toast";
-import { ListMusic, Loader2, Trash2, AlertTriangle, Music2 } from "lucide-react";
+import { ListMusic, Loader2 } from "lucide-react";
 
 export function PlaylistsView() {
   const isPlayerBusy = usePlayerStore((s) => s.isPlayerBusy);
@@ -46,6 +45,7 @@ export function PlaylistsView() {
   const [favConfirmPlaylist, setFavConfirmPlaylist] = useState<UserPlaylist | null>(null);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [queueingId, setQueueingId] = useState<string | null>(null);
+  const [playNextId, setPlayNextId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -59,21 +59,36 @@ export function PlaylistsView() {
   }, [playlists, search]);
 
   const handlePlayPlaylist = async (pl: UserPlaylist) => {
-    if (isPlayerBusy) return;
+    if (isPlayerBusy || playingId !== null) return;
     setPlayingId(pl.id);
     try {
       const res = await importUrlSong(pl.url, { skip: true });
       toast(res.success ? `Reproduciendo "${pl.name}".` : res.message, res.success ? "success" : "error");
-    } finally { setPlayingId(null); }
+    } finally {
+      setPlayingId(null);
+    }
+  };
+
+  const handlePlayNextPlaylist = async (pl: UserPlaylist) => {
+    if (playingId !== null || playNextId === pl.id) return;
+    setPlayNextId(pl.id);
+    try {
+      const res = await importUrlSong(pl.url, { next: true });
+      toast(res.success ? `"${pl.name}" se reproducirá a continuación.` : res.message, res.success ? "success" : "error");
+    } finally {
+      setPlayNextId(null);
+    }
   };
 
   const handleQueuePlaylist = async (pl: UserPlaylist) => {
-    if (isPlayerBusy) return;
+    if (playingId !== null || queueingId === pl.id) return;
     setQueueingId(pl.id);
     try {
       const res = await importUrlSong(pl.url);
       toast(res.success ? `"${pl.name}" añadida a la cola.` : res.message, res.success ? "success" : "error");
-    } finally { setQueueingId(null); }
+    } finally {
+      setQueueingId(null);
+    }
   };
 
   const handleImportFavorites = async (pl: UserPlaylist) => {
@@ -168,11 +183,14 @@ export function PlaylistsView() {
               isFav={isPlaylistFav(pl)}
               isPlaying={playingId === pl.id}
               isQueueing={queueingId === pl.id}
+              isPlayNext={playNextId === pl.id}
+              isAnyPlayBusy={playingId !== null}
               isPlayerBusy={isPlayerBusy}
               isFavProcessing={importingFavId === pl.id}
               favGlobalBusy={!!importingFavId}
               onOpen={() => openPlaylist(pl)}
               onPlay={() => handlePlayPlaylist(pl)}
+              onPlayNext={() => handlePlayNextPlaylist(pl)}
               onQueue={() => handleQueuePlaylist(pl)}
               onToggleFav={() => setFavConfirmPlaylist(pl)}
               onDelete={() => setPlaylistToDelete(pl)}
@@ -189,9 +207,11 @@ export function PlaylistsView() {
         favGlobalBusy={!!importingFavId}
         favProcessingId={importingFavId}
         queueingId={queueingId}
+        playNextId={playNextId}
         playingId={playingId}
         onToggleFav={setFavConfirmPlaylist}
         onQueuePlaylist={handleQueuePlaylist}
+        onPlayNextPlaylist={handlePlayNextPlaylist}
         onPlayPlaylist={handlePlayPlaylist}
       />
 
@@ -203,44 +223,11 @@ export function PlaylistsView() {
         onConfirm={handleFavConfirm}
       />
 
-      <ConfirmDialog
-        isOpen={!!playlistToDelete}
+      <PlaylistDeleteModal
+        playlist={playlistToDelete}
         onClose={() => setPlaylistToDelete(null)}
-        onConfirm={async () => {
-          if (!playlistToDelete) return;
-          const target = playlistToDelete;
-          setPlaylistToDelete(null);
-          await handleDelete(target.id, target.name);
-        }}
-        maxWidth="md"
-        icon={<Trash2 size={20} className="text-rose-500" />}
-        title="Eliminar playlist"
-        subtitle={playlistToDelete ? `¿Seguro que deseas eliminar «${playlistToDelete.name}»?` : undefined}
-        confirmText="Eliminar definitivamente"
-        confirmVariant="danger"
-        confirmIcon={<Trash2 size={14} />}
-      >
-        {playlistToDelete && (
-          <div className="space-y-4">
-            <div className="p-3.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/10 dark:border-white/10 flex items-center gap-3">
-              <div className="h-14 w-14 rounded-xl overflow-hidden bg-black/10 dark:bg-white/5 shrink-0">
-                <CoverImage src={playlistToDelete.cover} alt={playlistToDelete.name} className="w-full h-full" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h4 className="text-sm font-semibold text-slate-900 dark:text-white truncate leading-tight">{playlistToDelete.name}</h4>
-                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                  <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${playlistToDelete.source === "spotify" ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-red-500/10 text-red-500 border-red-500/20"}`}>{playlistToDelete.source === "spotify" ? "Spotify" : "YouTube"}</span>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 font-mono"><Music2 size={11} className="text-purple-400" />{playlistToDelete.tracks?.length ?? 0} temas</span>
-                </div>
-              </div>
-            </div>
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-2.5 text-xs text-rose-600 dark:text-rose-400">
-              <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-              <p className="leading-relaxed">Esta playlist se eliminará de tu biblioteca de Ignite. Las canciones seguirán existiendo en tu cuenta de origen.</p>
-            </div>
-          </div>
-        )}
-      </ConfirmDialog>
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

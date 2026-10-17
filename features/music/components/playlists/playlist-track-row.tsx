@@ -12,7 +12,7 @@ export interface PlaylistTrackRowProps {
   isFavorite: boolean;
   isCurrent: boolean;
   isPlaying: boolean;
-  isActionBlocked: boolean;
+  isAnyPlayBusy: boolean;
   pendingAction: "play" | "playNext" | "queue" | null;
   onToggleFavorite: (track: Song) => void;
   onPlay: (track: Song) => Promise<void>;
@@ -26,7 +26,7 @@ export const PlaylistTrackRow = memo(function PlaylistTrackRow({
   isFavorite: isFav,
   isCurrent,
   isPlaying,
-  isActionBlocked,
+  isAnyPlayBusy,
   pendingAction,
   onToggleFavorite,
   onPlay,
@@ -40,7 +40,10 @@ export const PlaylistTrackRow = memo(function PlaylistTrackRow({
   const isLoadingNext = activeAction === "playNext";
   const isLoadingQueue = activeAction === "queue";
   const isThisTrackBusy = activeAction !== null && activeAction !== undefined;
-  const isBlocked = isActionBlocked || isThisTrackBusy;
+
+  // Si se presiona Play, se bloquean todas las canciones mientras carga.
+  // Si se presiona Añadir a la cola o Siguiente, solo se bloquea la actual.
+  const isBlocked = isAnyPlayBusy || isThisTrackBusy;
 
   const handlePlay = async () => {
     if (isBlocked) return;
@@ -103,24 +106,45 @@ export const PlaylistTrackRow = memo(function PlaylistTrackRow({
         </div>
       </div>
 
+      {/* Orden de botones como en las tarjetas: Añadir a la cola (principal), Siguiente, Play, Favoritos */}
       <div className="flex items-center gap-1 shrink-0">
-        {/* Favorito */}
+        {/* 1. Añadir a la cola (principal) */}
         <button
           type="button"
-          onClick={() => onToggleFavorite(track)}
+          onClick={handleAddToQueue}
           disabled={isBlocked}
-          title={isFav ? "Quitar de favoritos" : "Guardar en favoritos"}
-          aria-label={isFav ? "Quitar de favoritos" : "Guardar en favoritos"}
-          className={`p-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-            isFav
-              ? "text-amber-400 hover:text-amber-500"
-              : "hover:bg-amber-500/15 text-slate-400 hover:text-amber-400"
-          }`}
+          title={isLoadingQueue ? "Añadiendo a la cola..." : "Añadir a la cola"}
+          aria-label={`Añadir ${track.title} a la cola`}
+          className="p-1.5 rounded-lg bg-[#1db954] hover:bg-[#1ed760] text-black transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed font-bold"
         >
-          <Star size={13} className={isFav ? "fill-amber-400" : ""} />
+          {isLoadingQueue ? (
+            <Loader2 size={13} className="animate-spin text-black" />
+          ) : (
+            <Plus size={13} strokeWidth={2.5} />
+          )}
         </button>
 
-        {/* Play */}
+        {/* 2. Siguiente */}
+        <button
+          type="button"
+          onClick={handlePlayNext}
+          disabled={isBlocked}
+          title={
+            isLoadingNext
+              ? "Poniendo siguiente..."
+              : "Reproducir a continuación (saltar cola)"
+          }
+          aria-label={`Reproducir ${track.title} a continuación`}
+          className="p-1.5 rounded-lg hover:bg-purple-500/15 text-slate-400 hover:text-purple-300 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {isLoadingNext ? (
+            <Loader2 size={13} className="animate-spin text-purple-400" />
+          ) : (
+            <ListPlus size={13} />
+          )}
+        </button>
+
+        {/* 3. Play */}
         <button
           type="button"
           onClick={handlePlay}
@@ -146,40 +170,20 @@ export const PlaylistTrackRow = memo(function PlaylistTrackRow({
           )}
         </button>
 
-        {/* Siguiente */}
+        {/* 4. Favoritos */}
         <button
           type="button"
-          onClick={handlePlayNext}
+          onClick={() => onToggleFavorite(track)}
           disabled={isBlocked}
-          title={
-            isLoadingNext
-              ? "Poniendo siguiente..."
-              : "Reproducir a continuación (saltar cola)"
-          }
-          aria-label={`Reproducir ${track.title} a continuación`}
-          className="p-1.5 rounded-lg hover:bg-purple-500/15 text-slate-400 hover:text-purple-300 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          title={isFav ? "Quitar de favoritos" : "Guardar en favoritos"}
+          aria-label={isFav ? "Quitar de favoritos" : "Guardar en favoritos"}
+          className={`p-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+            isFav
+              ? "text-amber-400 hover:text-amber-500"
+              : "hover:bg-amber-500/15 text-slate-400 hover:text-amber-400"
+          }`}
         >
-          {isLoadingNext ? (
-            <Loader2 size={13} className="animate-spin text-purple-400" />
-          ) : (
-            <ListPlus size={13} />
-          )}
-        </button>
-
-        {/* Añadir a la cola */}
-        <button
-          type="button"
-          onClick={handleAddToQueue}
-          disabled={isBlocked}
-          title={isLoadingQueue ? "Añadiendo a la cola..." : "Añadir a la cola"}
-          aria-label={`Añadir ${track.title} a la cola`}
-          className="p-1.5 rounded-lg hover:bg-purple-500/15 text-slate-400 hover:text-purple-400 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          {isLoadingQueue ? (
-            <Loader2 size={13} className="animate-spin text-purple-400" />
-          ) : (
-            <Plus size={13} />
-          )}
+          <Star size={13} className={isFav ? "fill-amber-400" : ""} />
         </button>
       </div>
     </div>

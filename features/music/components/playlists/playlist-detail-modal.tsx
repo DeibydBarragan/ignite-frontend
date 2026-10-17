@@ -16,6 +16,7 @@ import {
   ExternalLink,
   Star,
   Play,
+  ListPlus,
   Plus,
   AlertCircle,
 } from "lucide-react";
@@ -27,10 +28,12 @@ export interface PlaylistDetailModalProps {
   favGlobalBusy: boolean;
   favProcessingId: string | null;
   queueingId: string | null;
+  playNextId?: string | null;
   playingId: string | null;
   onClose: () => void;
   onToggleFav: (playlist: UserPlaylist) => void;
   onQueuePlaylist: (playlist: UserPlaylist) => void;
+  onPlayNextPlaylist?: (playlist: UserPlaylist) => void;
   onPlayPlaylist: (playlist: UserPlaylist) => void;
 }
 
@@ -41,10 +44,12 @@ export function PlaylistDetailModal({
   favGlobalBusy,
   favProcessingId,
   queueingId,
+  playNextId,
   playingId,
   onClose,
   onToggleFav,
   onQueuePlaylist,
+  onPlayNextPlaylist,
   onPlayPlaylist,
 }: PlaylistDetailModalProps) {
   const isPlayerBusy = usePlayerStore((s) => s.isPlayerBusy);
@@ -54,11 +59,12 @@ export function PlaylistDetailModal({
   const { isFavorite, toggleFavorite } = useFavorites();
   const { playSong, playNext, addToQueue } = useQueueActions();
 
-  const isAnySongActionPending =
+  // Si se presiona Play, se bloquean todas las canciones mientras carga.
+  // Si se presiona Añadir a la cola o Siguiente, solo se bloquea la actual.
+  const isAnyPlayBusy =
     isPlayerBusy ||
-    queueingId !== null ||
     playingId !== null ||
-    Object.keys(pendingSongActions).length > 0;
+    Object.values(pendingSongActions).some((a) => a === "play");
 
   const modalTracks =
     live?.status === "ok" && selected && live.playlistId === selected.id
@@ -99,6 +105,7 @@ export function PlaylistDetailModal({
 
               {/* Botón Favoritos con estado coloreado */}
               <button
+                type="button"
                 onClick={() => selected && onToggleFav(selected)}
                 disabled={favGlobalBusy}
                 title={isFav ? "Quitar playlist de favoritos" : "Guardar todos los temas en favoritos"}
@@ -117,12 +124,13 @@ export function PlaylistDetailModal({
               </button>
             </div>
 
-            {/* Botones de acción: + Añadir a la cola (principal coloreado) PRIMERO, luego Reproducir todo */}
+            {/* Botones de acción: Añadir cola (principal), Siguiente, Reproducir todo */}
             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-              {/* Botón principal coloreado: Añadir a la cola */}
+              {/* Botón 1: Añadir a la cola */}
               <button
+                type="button"
                 onClick={() => onQueuePlaylist(selected)}
-                disabled={isAnySongActionPending || queueingId === selected.id}
+                disabled={isAnyPlayBusy || queueingId === selected.id}
                 className="flex-1 sm:flex-none px-4 py-2 sm:py-1.5 rounded-xl text-xs font-bold bg-[#1db954] hover:bg-[#1ed760] text-black shadow-md shadow-[#1db954]/25 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all whitespace-nowrap active:scale-[0.98]"
               >
                 {queueingId === selected.id ? (
@@ -133,13 +141,31 @@ export function PlaylistDetailModal({
                 <span>Añadir a la cola</span>
               </button>
 
-              {/* Botón secundario: Reproducir todo */}
+              {/* Botón 2: Siguiente */}
+              {onPlayNextPlaylist && (
+                <button
+                  type="button"
+                  onClick={() => onPlayNextPlaylist(selected)}
+                  disabled={isAnyPlayBusy || playNextId === selected.id}
+                  className="flex-1 sm:flex-none px-3.5 py-2 sm:py-1.5 rounded-xl text-xs font-semibold glass-btn text-slate-900 dark:text-white hover:text-purple-400 hover:border-purple-500/40 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all whitespace-nowrap active:scale-[0.98]"
+                >
+                  {playNextId === selected.id ? (
+                    <Loader2 size={14} className="animate-spin text-purple-400" />
+                  ) : (
+                    <ListPlus size={15} />
+                  )}
+                  <span>Siguiente</span>
+                </button>
+              )}
+
+              {/* Botón 3: Reproducir todo */}
               <button
+                type="button"
                 onClick={() => {
                   onPlayPlaylist(selected);
                   onClose();
                 }}
-                disabled={isAnySongActionPending || playingId === selected.id}
+                disabled={isAnyPlayBusy || playingId === selected.id}
                 className="flex-1 sm:flex-none px-3.5 py-2 sm:py-1.5 rounded-xl text-xs font-semibold glass-btn text-slate-900 dark:text-white hover:text-purple-400 hover:border-purple-500/40 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all whitespace-nowrap active:scale-[0.98]"
               >
                 {playingId === selected.id ? (
@@ -183,7 +209,7 @@ export function PlaylistDetailModal({
                     isFavorite={isFavorite(track.id) || isFavorite(track.url)}
                     isCurrent={currentSong?.id === track.id || currentSong?.url === track.url}
                     isPlaying={isPlaying}
-                    isActionBlocked={isAnySongActionPending}
+                    isAnyPlayBusy={isAnyPlayBusy}
                     pendingAction={pendingSongActions[track.id] ?? null}
                     onToggleFavorite={toggleFavorite}
                     onPlay={playSong}

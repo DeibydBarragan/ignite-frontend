@@ -4,18 +4,21 @@ import type { UserPlaylist } from "@/types/domain";
 import { formatDuration, timeAgo, totalDuration } from "@/lib/formatters";
 import { CoverImage } from "@/components/ui/cover-image";
 import { playlistSourceTheme } from "./playlist-source-theme";
-import { Music2, Plus, Loader2, Play, Eye, Clock, Trash2, Star } from "lucide-react";
+import { Music2, Plus, ListPlus, Loader2, Play, Eye, Clock, Trash2, Star } from "lucide-react";
 
 export interface PlaylistCardProps {
   playlist: UserPlaylist;
   isPlaying: boolean;
   isQueueing: boolean;
+  isPlayNext: boolean;
+  isAnyPlayBusy: boolean;
   isFavProcessing: boolean;
   isPlayerBusy: boolean;
   isFav: boolean;
   favGlobalBusy: boolean;
   onOpen: () => void;
   onPlay: () => void;
+  onPlayNext: () => void;
   onQueue: () => void;
   onToggleFav: () => void;
   onDelete: () => void;
@@ -25,17 +28,26 @@ export function PlaylistCard({
   playlist: pl,
   isPlaying: isPlayingThis,
   isQueueing: isQueueingThis,
+  isPlayNext: isPlayNextThis,
+  isAnyPlayBusy,
   isFavProcessing: isImportingThisFav,
   isPlayerBusy,
   isFav,
   favGlobalBusy,
   onOpen,
   onPlay,
+  onPlayNext,
   onQueue,
   onToggleFav,
   onDelete,
 }: PlaylistCardProps) {
-  const isCardBusy = isPlayingThis || isQueueingThis || isImportingThisFav || isPlayerBusy;
+  const isThisCardBusy = isPlayingThis || isQueueingThis || isPlayNextThis || isImportingThisFav;
+  const isPlayDisabled = isAnyPlayBusy || isPlayerBusy || isThisCardBusy;
+  const isQueueDisabled = isAnyPlayBusy || isQueueingThis || isPlayingThis || isPlayNextThis;
+  const isPlayNextDisabled = isAnyPlayBusy || isPlayNextThis || isPlayingThis || isQueueingThis;
+  const isFavDisabled = isAnyPlayBusy || isThisCardBusy || favGlobalBusy;
+  const isDeleteDisabled = isAnyPlayBusy || isThisCardBusy;
+
   const neverSynced = pl.tracks.length === 0;
   const sourceTheme = playlistSourceTheme(pl.source);
 
@@ -81,10 +93,10 @@ export function PlaylistCard({
               e.stopPropagation();
               onDelete();
             }}
-            disabled={isCardBusy}
+            disabled={isDeleteDisabled}
             title="Eliminar playlist"
             className={`absolute top-2.5 right-2.5 p-1.5 rounded-full bg-black/60 hover:bg-rose-500/80 text-white/70 hover:text-white backdrop-blur-md border border-white/10 hover:border-rose-400/50 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 shadow-xs ${
-              isCardBusy ? "cursor-not-allowed opacity-30 pointer-events-none" : "cursor-pointer"
+              isDeleteDisabled ? "cursor-not-allowed opacity-30 pointer-events-none" : "cursor-pointer"
             }`}
           >
             <Trash2 size={13} />
@@ -106,7 +118,6 @@ export function PlaylistCard({
               <span className="w-1.5 h-5 bg-[#1ed760] rounded-full animate-pulse [animation-delay:300ms]" />
             </div>
           )}
-
         </div>
 
         {/* Title & Metadata */}
@@ -153,7 +164,7 @@ export function PlaylistCard({
         )}
       </div>
 
-      {/* Streamlined Action Buttons */}
+      {/* Streamlined Action Buttons: Orden: Añadir cola (principal), Siguiente, Play, Favoritos */}
       <div className="flex items-center gap-1.5 sm:gap-2 pt-2.5 border-t border-black/5 dark:border-white/5 mt-auto">
         <button
           type="button"
@@ -165,43 +176,47 @@ export function PlaylistCard({
           <span className="truncate">Ver temas</span>
         </button>
 
-        {/* Botón principal coloreado: Añadir a la cola (+) PRIMERO */}
+        {/* Botón 1: Añadir a la cola (+) PRIMERO (principal coloreado) */}
         <button
           type="button"
           onClick={onQueue}
-          disabled={isCardBusy}
+          disabled={isQueueDisabled}
           title="Añadir toda la playlist a la cola"
           aria-label={`Añadir ${pl.name} a la cola`}
           className="h-8.5 w-8.5 rounded-xl text-xs font-bold bg-[#1db954] hover:bg-[#1ed760] disabled:opacity-50 text-black flex items-center justify-center transition-all cursor-pointer disabled:cursor-not-allowed shadow-xs shrink-0"
         >
-          {isQueueingThis ? (
-            <Loader2 size={14} className="animate-spin text-black" />
-          ) : (
-            <Plus size={16} strokeWidth={2.5} />
-          )}
+          {isQueueingThis ? <Loader2 size={14} className="animate-spin text-black" /> : <Plus size={16} strokeWidth={2.5} />}
         </button>
 
-        {/* Botón secundario: Reproducir (Play) SEGUNDO */}
+        {/* Botón 2: Siguiente (ListPlus) SEGUNDO */}
+        <button
+          type="button"
+          onClick={onPlayNext}
+          disabled={isPlayNextDisabled}
+          title="Reproducir playlist a continuación (saltar cola)"
+          aria-label={`Reproducir ${pl.name} a continuación`}
+          className="h-8.5 w-8.5 rounded-xl text-xs font-semibold glass-btn text-slate-600 dark:text-slate-300 hover:text-purple-400 hover:border-purple-500/30 disabled:opacity-50 flex items-center justify-center transition-all cursor-pointer disabled:cursor-not-allowed shrink-0"
+        >
+          {isPlayNextThis ? <Loader2 size={14} className="animate-spin text-purple-400" /> : <ListPlus size={15} />}
+        </button>
+
+        {/* Botón 3: Reproducir (Play) TERCERO */}
         <button
           type="button"
           onClick={onPlay}
-          disabled={isCardBusy}
+          disabled={isPlayDisabled}
           title={isPlayingThis ? "Sonando ahora" : "Reproducir playlist ahora"}
           aria-label={`Reproducir ${pl.name}`}
           className="h-8.5 w-8.5 rounded-xl text-xs font-semibold glass-btn text-slate-600 dark:text-slate-300 hover:text-purple-400 hover:border-purple-500/30 disabled:opacity-50 flex items-center justify-center transition-all cursor-pointer disabled:cursor-not-allowed shrink-0"
         >
-          {isPlayingThis ? (
-            <Loader2 size={14} className="animate-spin text-purple-400" />
-          ) : (
-            <Play size={14} className="fill-current text-slate-700 dark:text-slate-200 ml-0.5" />
-          )}
+          {isPlayingThis ? <Loader2 size={14} className="animate-spin text-purple-400" /> : <Play size={14} className="fill-current text-slate-700 dark:text-slate-200 ml-0.5" />}
         </button>
 
-        {/* Botón Favoritos (coloreado en ámbar si está en favoritos) TERCERO */}
+        {/* Botón 4: Favoritos (Star) CUARTO */}
         <button
           type="button"
           onClick={onToggleFav}
-          disabled={isCardBusy || favGlobalBusy}
+          disabled={isFavDisabled}
           title={isFav ? "Quitar playlist de favoritos" : "Guardar todos los temas en favoritos"}
           aria-label={isFav ? `Quitar temas de ${pl.name} de favoritos` : `Guardar temas de ${pl.name} en favoritos`}
           className={`h-8.5 w-8.5 rounded-xl flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0 ${
@@ -210,11 +225,7 @@ export function PlaylistCard({
               : "glass-btn text-slate-500 dark:text-slate-300 hover:text-amber-400 hover:border-amber-400/30"
           }`}
         >
-          {isImportingThisFav ? (
-            <Loader2 size={14} className="animate-spin text-amber-400" />
-          ) : (
-            <Star size={14} className={isFav ? "fill-amber-400 text-amber-400" : ""} />
-          )}
+          {isImportingThisFav ? <Loader2 size={14} className="animate-spin text-amber-400" /> : <Star size={14} className={isFav ? "fill-amber-400 text-amber-400" : ""} />}
         </button>
       </div>
     </div>
