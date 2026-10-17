@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, memo } from "react";
+import { useState, useCallback, useEffect, useRef, memo } from "react";
 import type { Song } from "@/types/domain";
 import { usePlayerStore } from "@/features/music/stores/player-store";
 import { useQueueStore } from "@/features/music/stores/queue-store";
@@ -9,14 +9,42 @@ import { useFavorites } from "@/context/favorites-context";
 import { formatDuration } from "@/lib/formatters";
 import { CoverImage } from "@/components/ui/cover-image";
 import { logger } from "@/lib/logger";
-import { SongCoverOverlays } from "./song-cover-overlays";
+import { SongCoverOverlays, type FeedbackStatus } from "./song-cover-overlays";
 import { SongCardActions } from "./song-card-actions";
-import { Plus, Clock, Loader2, Star, Check } from "lucide-react";
+import { Clock, Star } from "lucide-react";
 
 const SOURCE_COLORS: Record<Song["source"], { label: string; bg: string; text: string }> = {
   youtube: { label: "YouTube", bg: "bg-red-500/10", text: "text-red-500 border-red-500/20" },
   spotify: { label: "Spotify", bg: "bg-emerald-500/10", text: "text-emerald-500 border-emerald-500/20" },
 };
+
+function useProgressiveFeedback(visibleMs = 1500, fadeMs = 700) {
+  const [status, setStatus] = useState<FeedbackStatus>("idle");
+  const timersRef = useRef<{ t1?: NodeJS.Timeout; t2?: NodeJS.Timeout }>({});
+
+  const trigger = useCallback(() => {
+    if (timersRef.current.t1) clearTimeout(timersRef.current.t1);
+    if (timersRef.current.t2) clearTimeout(timersRef.current.t2);
+
+    setStatus("visible");
+    timersRef.current.t1 = setTimeout(() => {
+      setStatus("fading");
+      timersRef.current.t2 = setTimeout(() => {
+        setStatus("idle");
+      }, fadeMs);
+    }, visibleMs);
+  }, [visibleMs, fadeMs]);
+
+  useEffect(() => {
+    const timers = timersRef.current;
+    return () => {
+      if (timers.t1) clearTimeout(timers.t1);
+      if (timers.t2) clearTimeout(timers.t2);
+    };
+  }, []);
+
+  return [status, trigger] as const;
+}
 
 export const SongCard = memo(function SongCard({ song }: { song: Song }) {
   const isCurrent = usePlayerStore((s) => s.currentSong?.id === song.id);
@@ -25,8 +53,8 @@ export const SongCard = memo(function SongCard({ song }: { song: Song }) {
   const { playSong, playNext, addToQueue } = useQueueActions();
   const { isFavorite, toggleFavorite } = useFavorites();
 
-  const [showNextFeedback, setShowNextFeedback] = useState(false);
-  const [showQueueFeedback, setShowQueueFeedback] = useState(false);
+  const [nextFeedback, triggerNextFeedback] = useProgressiveFeedback();
+  const [queueFeedback, triggerQueueFeedback] = useProgressiveFeedback();
 
   const isFav = isFavorite(song.id) || isFavorite(song.url);
   const isLoadingThisSongPlay = songPendingAction === "play";
@@ -36,13 +64,11 @@ export const SongCard = memo(function SongCard({ song }: { song: Song }) {
 
   const handlePlayNext = async () => {
     if (isActionDisabled) return;
-    setShowNextFeedback(true);
     try {
       await playNext(song);
-    } finally {
-      setTimeout(() => {
-        setShowNextFeedback(false);
-      }, 2600);
+      triggerNextFeedback();
+    } catch (err) {
+      logger.error("Error playing next song:", err);
     }
   };
 
@@ -50,75 +76,62 @@ export const SongCard = memo(function SongCard({ song }: { song: Song }) {
     if (isActionDisabled) return;
     try {
       await addToQueue(song);
-      setShowQueueFeedback(true);
-      setTimeout(() => {
-        setShowQueueFeedback(false);
-      }, 2600);
+      triggerQueueFeedback();
     } catch (err) {
       logger.error("Error adding song to queue:", err);
     }
   };
 
+  const sourceConfig = SOURCE_COLORS[song.source] || {
+    label: song.source,
+    bg: "bg-slate-500/10",
+    text: "text-slate-500 border-slate-500/20",
+  };
+
   return (
     <article
-      className={`group relative glass-panel p-3 transition-all duration-200 flex flex-col justify-between hover:shadow-lg ${
+      aria-label={`${song.title} por ${song.artist}`}
+      className={`group relative glass-panel p-2.5 flex flex-col justify-between transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/5 ${
         isCurrent
-          ? "border-[#1db954]/50 bg-[#1db954]/5 dark:bg-[#1db954]/5 ring-1 ring-[#1db954]/30"
-          : "hover:border-purple-500/30 dark:hover:border-purple-500/30"
+          ? "border-[#1db954]/50 bg-[#1db954]/5 ring-1 ring-[#1db954]/30"
+          : "hover:border-purple-500/40"
       }`}
     >
       <div>
-        {/* Album Artwork with add-to-queue overlay */}
-        <div className="relative aspect-square w-full rounded-xl overflow-hidden mb-3 bg-black/10 dark:bg-white/5">
+        {/* Cover Container */}
+        <div
+          onClick={() => !isActionDisabled && playSong(song)}
+          title={`Reproducir: ${song.title}`}
+          className="relative aspect-square w-full rounded-2xl overflow-hidden mb-2 bg-black/20 dark:bg-black/40 shadow-inner group/cover cursor-pointer select-none"
+        >
           <CoverImage
             src={song.albumArt}
             alt={song.title}
             className="w-full h-full"
-            imgClassName="group-hover:scale-105 transition-transform duration-300"
-          />
-          <button
-            type="button"
-            aria-label={`Añadir ${song.title} a la cola`}
-            onClick={() => !isActionDisabled && handleAddToQueue()}
-            className="absolute inset-0 z-0 w-full h-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+            iconSize={32}
+            imgClassName="group-hover:scale-105 transition-transform duration-500 ease-out"
           />
 
-          {/* Rank Badge */}
-          {typeof song.rank === "number" && (
-            <span
-              className={`absolute top-2 left-2 text-[10px] font-black px-2 py-0.5 rounded-full border backdrop-blur-md z-10 shadow-sm ${
-                song.rank === 1
-                  ? "bg-amber-400 text-slate-950 border-amber-300 ring-2 ring-amber-400/50"
-                  : song.rank === 2
-                  ? "bg-slate-200 text-slate-900 border-slate-300"
-                  : song.rank === 3
-                  ? "bg-amber-700/90 text-amber-100 border-amber-600"
-                  : "bg-black/60 text-slate-200 border-white/10"
-              }`}
-            >
-              #{song.rank}
-            </span>
-          )}
+          {/* Gradient Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent pointer-events-none" />
 
-          {/* Source badge */}
-          <span
-            className={`absolute ${typeof song.rank === "number" ? "top-8" : "top-2"} left-2 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border backdrop-blur-md ${SOURCE_COLORS[song.source].bg} ${SOURCE_COLORS[song.source].text}`}
-          >
-            {SOURCE_COLORS[song.source].label}
-          </span>
-
-          {/* Lyric Badge */}
-          {song.isLyric && (
+          {/* Badges (Top-Left): Source Badge & Rank */}
+          <div className="absolute top-2 left-2 flex items-center gap-1 z-10 pointer-events-none">
+            {typeof song.rank === "number" && (
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-amber-400 border border-amber-400/30 font-mono">
+                #{song.rank}
+              </span>
+            )}
             <span
-              title="Video con letra"
-              className={`absolute ${typeof song.rank === "number" ? "top-14" : "top-9"} left-2 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border backdrop-blur-md bg-sky-500/10 text-sky-500 border-sky-500/20`}
+              className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border backdrop-blur-md shadow-xs ${sourceConfig.bg} ${sourceConfig.text}`}
             >
-              Lyric
+              {sourceConfig.label}
             </span>
-          )}
+          </div>
 
           {/* Favorite Button */}
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               toggleFavorite(song);
@@ -143,40 +156,15 @@ export const SongCard = memo(function SongCard({ song }: { song: Song }) {
             </span>
           )}
 
-          {/* Overlays: carga de play, feedback de Sig/cola y ecualizador */}
+          {/* Overlays: carga de play, feedback progresivo de Sig/cola y ecualizador */}
           <SongCoverOverlays
             isLoadingPlay={isLoadingThisSongPlay}
-            showNextFeedback={showNextFeedback && !isLoadingThisSongPlay}
-            showQueueFeedback={showQueueFeedback && !isLoadingThisSongPlay && !showNextFeedback}
+            nextFeedback={nextFeedback}
+            queueFeedback={queueFeedback}
             showEqualizer={
-              isCurrent && isPlaying && !isLoadingThisSongPlay && !showQueueFeedback && !showNextFeedback
+              isCurrent && isPlaying && !isLoadingThisSongPlay
             }
           />
-
-          {/* Quick Add-to-Queue Hover Button (Spotify Green with Plus) */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleAddToQueue();
-            }}
-            aria-label={`Añadir ${song.title} a la cola`}
-            title="Añadir a la cola"
-            className={`absolute bottom-2.5 right-2.5 h-9 w-9 rounded-full bg-[#1db954] text-black shadow-lg shadow-[#1db954]/25 flex items-center justify-center transition-all transform cursor-pointer z-20 ${
-              isLoadingThisSongQueue || showQueueFeedback
-                ? "opacity-100 scale-105"
-                : isActionDisabled || isLoadingThisSongPlay || showNextFeedback
-                ? "opacity-0 pointer-events-none"
-                : "opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 hover:scale-105 hover:bg-[#1ed760]"
-            }`}
-          >
-            {isLoadingThisSongQueue ? (
-              <Loader2 size={16} className="animate-spin text-black" />
-            ) : showQueueFeedback ? (
-              <Check size={18} strokeWidth={3} className="text-black animate-in zoom-in" />
-            ) : (
-              <Plus size={18} strokeWidth={2.5} />
-            )}
-          </button>
         </div>
 
         {/* Info */}
@@ -204,8 +192,8 @@ export const SongCard = memo(function SongCard({ song }: { song: Song }) {
           isLoadingPlay={isLoadingThisSongPlay}
           isLoadingNext={isLoadingThisSongNext}
           isLoadingQueue={isLoadingThisSongQueue}
-          showNextFeedback={showNextFeedback}
-          showQueueFeedback={showQueueFeedback}
+          nextFeedback={nextFeedback}
+          queueFeedback={queueFeedback}
           onPlay={() => !isActionDisabled && playSong(song)}
           onPlayNext={handlePlayNext}
           onAddToQueue={handleAddToQueue}

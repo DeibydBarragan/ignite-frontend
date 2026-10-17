@@ -107,30 +107,6 @@ export function PlaylistCard({
             </div>
           )}
 
-          {/* Quick Add-to-Queue Floating Button (como en la tarjeta de canción) */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onQueue();
-            }}
-            disabled={isCardBusy}
-            aria-label={`Añadir ${pl.name} a la cola`}
-            title="Añadir toda la playlist a la cola"
-            className={`absolute bottom-2.5 right-2.5 w-11 h-11 rounded-full bg-[#1db954] text-black shadow-lg shadow-[#1db954]/30 flex items-center justify-center transition-all duration-300 transform z-10 ${
-              isQueueingThis
-                ? "opacity-100 scale-100 cursor-not-allowed"
-                : isCardBusy
-                ? "opacity-0 pointer-events-none"
-                : "opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 hover:scale-110 active:scale-95 hover:bg-[#1ed760] cursor-pointer"
-            }`}
-          >
-            {isQueueingThis ? (
-              <Loader2 size={18} className="animate-spin text-black" />
-            ) : (
-              <Plus size={20} strokeWidth={2.5} />
-            )}
-          </button>
         </div>
 
         {/* Title & Metadata */}
