@@ -5,7 +5,7 @@ import { Radio } from "lucide-react";
 
 export function RecentTTSCard({ messages }: { messages: TTSMessage[] }) {
   return (
-    <div className="glass-panel p-4 border border-black/5 dark:border-white/10">
+    <div className="glass-card p-4 border border-black/5 dark:border-white/10">
       <div className="flex items-center gap-2 mb-3 border-b border-black/5 dark:border-white/5 pb-2.5">
         <Radio size={15} className="text-purple-600 dark:text-purple-400" />
         <h4 className="text-xs font-semibold text-slate-900 dark:text-white">

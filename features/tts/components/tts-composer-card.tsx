@@ -51,7 +51,7 @@ export function TTSComposerCard({
   }, [voices]);
 
   return (
-    <div className="glass-panel p-5 sm:p-6 border border-black/5 dark:border-white/10">
+    <div className="glass-card p-5 sm:p-6 border border-black/5 dark:border-white/10">
       <div className="flex items-center mb-4">
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-600/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">

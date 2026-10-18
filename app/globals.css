@@ -99,10 +99,34 @@ body {
   background: rgba(18, 21, 31, 0.65);
 }
 
-/* Optimización móvil (GPU): en pantallas <= 768px desactivamos backdrop-filter en
+/* Tarjetas de contenido individuales y pads repetitivos (SoundPad, SongCard, PlaylistCard, TTS)
+   Rendimiento ultra-fluido (120 FPS): sin backdrop-filter innecesario sobre fondos estáticos,
+   con aceleración por hardware GPU y content-visibility automática para saltar elementos fuera de pantalla. */
+.glass-card {
+  position: relative;
+  border-radius: 1.25rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 10px 25px -8px rgba(0, 0, 0, 0.06),
+              inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transform: translateZ(0);
+  content-visibility: auto;
+  contain-intrinsic-size: 0 100px;
+}
+
+.dark .glass-card {
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 14px 35px -10px rgba(0, 0, 0, 0.45),
+              inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  background: rgba(18, 21, 31, 0.78);
+}
+
+/* Optimización móvil y tablet (GPU): en pantallas <= 1024px desactivamos backdrop-filter en
    paneles repetidos (evita docenas de pasadas de rasterizado offscreen por frame durante el scroll).
    Se incrementa la opacidad base (88%) manteniendo borde y sombra para preservar la estética frosted. */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .glass-panel {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;

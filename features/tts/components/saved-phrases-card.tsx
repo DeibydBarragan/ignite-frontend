@@ -31,7 +31,7 @@ export function SavedPhrasesCard({
   onEmit,
 }: SavedPhrasesCardProps) {
   return (
-    <div className="glass-panel p-4 border border-black/5 dark:border-white/10">
+    <div className="glass-card p-4 border border-black/5 dark:border-white/10">
       <div className="flex items-center justify-between mb-3 border-b border-black/5 dark:border-white/5 pb-2.5">
         <div className="flex items-center gap-2">
           <Bookmark size={15} className="text-purple-600 dark:text-purple-400" />

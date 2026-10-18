@@ -41,7 +41,7 @@ export const SoundPad = memo(function SoundPad({
     <button
       type="button"
       onClick={() => !isPadBusy && onPlay()}
-      className={`group text-left relative glass-panel p-3.5 flex flex-col justify-between transition-all duration-150 ${
+      className={`group text-left relative glass-card p-3.5 flex flex-col justify-between transition-all duration-150 ${
         isPadBusy ? "cursor-not-allowed opacity-80" : "cursor-pointer active:scale-95"
       } ${
         isPlaying

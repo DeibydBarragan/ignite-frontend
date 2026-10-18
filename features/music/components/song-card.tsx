@@ -91,7 +91,7 @@ export const SongCard = memo(function SongCard({ song }: { song: Song }) {
   return (
     <article
       aria-label={`${song.title} por ${song.artist}`}
-      className={`group relative glass-panel p-2.5 flex flex-col justify-between transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/5 ${
+      className={`group relative glass-card p-2.5 flex flex-col justify-between transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/5 ${
         isCurrent
           ? "border-[#1db954]/50 bg-[#1db954]/5 ring-1 ring-[#1db954]/30"
           : "hover:border-purple-500/40"
@@ -119,12 +119,12 @@ export const SongCard = memo(function SongCard({ song }: { song: Song }) {
           {/* Badges (Top-Left): Source Badge & Rank */}
           <div className="absolute top-2 left-2 flex items-center gap-1 z-10 pointer-events-none">
             {typeof song.rank === "number" && (
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-black/80 md:backdrop-blur-md text-amber-400 border border-amber-400/30 font-mono">
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-black/85 text-amber-400 border border-amber-400/30 font-mono shadow-xs">
                 #{song.rank}
               </span>
             )}
             <span
-              className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border md:backdrop-blur-md shadow-xs ${sourceConfig.bg} ${sourceConfig.text}`}
+              className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border shadow-xs ${sourceConfig.bg} ${sourceConfig.text}`}
             >
               {sourceConfig.label}
             </span>
@@ -138,10 +138,10 @@ export const SongCard = memo(function SongCard({ song }: { song: Song }) {
               toggleFavorite(song);
             }}
             title={isFav ? "Quitar de favoritos" : "Guardar en favoritos"}
-            className={`absolute top-2 right-2 p-1.5 rounded-full md:backdrop-blur-md transition-all cursor-pointer z-20 ${
+            className={`absolute top-2 right-2 p-1.5 rounded-full transition-all cursor-pointer z-20 ${
               isFav
                 ? "bg-amber-400/20 text-amber-400 border border-amber-400/30 opacity-100 scale-105"
-                : "bg-black/60 text-white/70 hover:text-amber-400 hover:bg-black/80 opacity-0 group-hover:opacity-100"
+                : "bg-black/75 border border-white/10 text-white/70 hover:text-amber-400 hover:bg-black/90 opacity-0 group-hover:opacity-100"
             }`}
           >
             <Star size={12} className={isFav ? "fill-amber-400" : ""} />
@@ -151,7 +151,7 @@ export const SongCard = memo(function SongCard({ song }: { song: Song }) {
           {typeof song.playCount === "number" && song.playCount > 0 && (
             <span
               title={`${song.playCount} ${song.playCount === 1 ? "reproducción" : "reproducciones"}`}
-              className="absolute bottom-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/80 md:backdrop-blur-md text-amber-400 border border-amber-400/30 flex items-center gap-1 shadow-md z-10 pointer-events-none"
+              className="absolute bottom-2 left-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-black/85 text-amber-400 border border-amber-400/30 flex items-center gap-1 shadow-md z-10 pointer-events-none"
             >
               🔥 {song.playCount}
             </span>
