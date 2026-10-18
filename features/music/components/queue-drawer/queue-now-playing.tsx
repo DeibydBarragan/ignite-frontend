@@ -4,6 +4,7 @@ import type { Song } from "@/types/domain";
 import { usePlayerStore } from "@/features/music/stores/player-store";
 import { formatDuration } from "@/lib/formatters";
 import { CoverImage } from "@/components/ui/cover-image";
+import { LiveEqualizer } from "@/components/ui/live-equalizer";
 import { Disc3, User, Star } from "lucide-react";
 
 export interface QueueNowPlayingProps {
@@ -26,9 +27,9 @@ export function QueueNowPlaying({
   return (
     <div className="p-3.5 rounded-xl border border-purple-500/20 bg-purple-500/[0.04] dark:bg-purple-950/20">
       <div className="text-[11px] font-medium text-purple-600 dark:text-purple-400 mb-2 flex items-center justify-between">
-        <span className="flex items-center gap-1.5">
-          <Disc3 size={13} className={isPlaying ? "animate-spin" : ""} />
-          Reproduciendo ahora
+        <span className="flex items-center gap-2">
+          <LiveEqualizer size="xs" variant="spotify" isPlaying={isPlaying} />
+          <span className="font-semibold text-slate-900 dark:text-white">Reproduciendo ahora</span>
         </span>
         <span className="font-mono tabular-nums text-slate-500 dark:text-slate-400">
           {formatDuration(currentTime)} / {formatDuration(song.duration)}

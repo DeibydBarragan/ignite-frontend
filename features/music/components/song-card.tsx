@@ -8,6 +8,7 @@ import { useQueueActions } from "@/hooks/use-queue-actions";
 import { useFavorites } from "@/context/favorites-context";
 import { formatDuration } from "@/lib/formatters";
 import { CoverImage } from "@/components/ui/cover-image";
+import { LiveEqualizer } from "@/components/ui/live-equalizer";
 import { logger } from "@/lib/logger";
 import { SongCoverOverlays, type FeedbackStatus } from "./song-cover-overlays";
 import { SongCardActions } from "./song-card-actions";
@@ -169,13 +170,20 @@ export const SongCard = memo(function SongCard({ song }: { song: Song }) {
         </div>
 
         {/* Info */}
-        <h3
-          onClick={() => !isActionDisabled && handleAddToQueue()}
-          className="font-semibold text-xs text-slate-900 dark:text-white truncate transition-colors cursor-pointer hover:text-[#1ed760]"
-          title={`Añadir a la cola: ${song.title}`}
-        >
-          {song.title}
-        </h3>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          {isCurrent && isPlaying && (
+            <LiveEqualizer size="xs" variant="spotify" className="shrink-0 mb-0.5" />
+          )}
+          <h3
+            onClick={() => !isActionDisabled && handleAddToQueue()}
+            className={`font-semibold text-xs truncate transition-colors cursor-pointer ${
+              isCurrent ? "text-[#1ed760] font-bold" : "text-slate-900 dark:text-white hover:text-[#1ed760]"
+            }`}
+            title={`Añadir a la cola: ${song.title}`}
+          >
+            {song.title}
+          </h3>
+        </div>
         <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5" title={song.artist}>{song.artist}</p>
       </div>
 

@@ -4,6 +4,7 @@ import { useAuth } from "@/context/auth-context";
 import { usePlayerStore } from "@/features/music/stores/player-store";
 import { GuildSelector } from "./guild-selector";
 import { TabServiceBadge } from "@/components/tab-service-badge";
+import { LiveEqualizer } from "@/components/ui/live-equalizer";
 import { Volume2, VolumeX, Music, Mic } from "lucide-react";
 
 export type ActiveTab = "music" | "soundboard" | "tts";
@@ -115,9 +116,8 @@ export function ContextToolbar({ activeTab, onTabChange }: ContextToolbarProps) 
               <span>{tab.label}</span>
 
               {tab.live && (
-                <span className="flex h-1.5 w-1.5 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#1db954] opacity-75" />
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#1db954]" />
+                <span className="flex items-center gap-1 ml-1" title="Música sonando en Discord">
+                  <LiveEqualizer size="xs" variant="spotify" />
                 </span>
               )}
             </button>

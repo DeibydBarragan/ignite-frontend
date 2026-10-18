@@ -3,6 +3,7 @@
 import { usePlayerStore } from "@/features/music/stores/player-store";
 import type { Song } from "@/types/domain";
 import { CoverImage } from "@/components/ui/cover-image";
+import { LiveEqualizer } from "@/components/ui/live-equalizer";
 import { Loader2, ExternalLink, User, Star, ChevronDown } from "lucide-react";
 
 export interface PlayerTrackInfoProps {
@@ -43,6 +44,17 @@ export function PlayerTrackInfo({
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
+          {isPlaying && (
+            <div
+              className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-md bg-[#1db954]/10 border border-[#1db954]/25 shrink-0"
+              title="Sonando en Discord"
+            >
+              <LiveEqualizer size="xs" variant="spotify" isPlaying={isPlaying} />
+              <span className="text-[9px] font-bold text-[#1ed760] uppercase tracking-wider hidden sm:inline">
+                En Vivo
+              </span>
+            </div>
+          )}
           <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
             {song.title}
           </h4>
