@@ -1,6 +1,7 @@
 "use client";
 
 import { Flame, Loader2, Lock, LogIn, ShieldAlert } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export interface AuthWallProps {
   isLoading: boolean;
@@ -25,7 +26,10 @@ export function AuthWall({ isLoading, onLogin }: AuthWallProps) {
   }
 
   return (
-    <main className="flex-1 flex items-center justify-center px-4 py-12 max-w-lg mx-auto w-full">
+    <main className="flex-1 flex items-center justify-center px-4 py-12 max-w-lg mx-auto w-full relative">
+      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+        <ThemeToggle />
+      </div>
       <div className="glass-panel p-8 sm:p-10 border border-black/10 dark:border-white/10 shadow-2xl backdrop-blur-2xl text-center flex flex-col items-center relative overflow-hidden w-full">
         {/* Background ambient glow */}
         <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-64 h-64 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
