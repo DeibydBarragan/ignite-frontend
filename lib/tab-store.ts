@@ -1,6 +1,6 @@
 import { STORAGE_KEYS, migrateLegacyKeys } from "@/lib/storage-keys";
 
-const TABS = ["music", "soundboard", "tts"] as const;
+const TABS = ["music", "soundboard", "tts", "voice"] as const;
 
 export type StoredTab = (typeof TABS)[number];
 

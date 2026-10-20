@@ -5,7 +5,7 @@ import { usePlayerStore } from "@/features/music/stores/player-store";
 import { formatDuration } from "@/lib/formatters";
 import { CoverImage } from "@/components/ui/cover-image";
 import { LiveEqualizer } from "@/components/ui/live-equalizer";
-import { Disc3, User, Star } from "lucide-react";
+import { User, Star } from "lucide-react";
 
 export interface QueueNowPlayingProps {
   song: Song;

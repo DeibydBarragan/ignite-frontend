@@ -16,6 +16,14 @@ export function TabServiceBadge({ activeTab, isBotOnline }: TabServiceBadgeProps
             ? "El bot de música (Ignite Music) está activo y conectado"
             : "El bot de música (Ignite Music) está detenido",
         }
+      : activeTab === "voice"
+      ? {
+          isOnline: isBotOnline,
+          label: isBotOnline ? "Voz IA Online" : "Voz IA Offline",
+          title: isBotOnline
+            ? "Módulo de comandos de voz con Groq Whisper activo"
+            : "El bot de música está detenido",
+        }
       : activeTab === "tts"
       ? {
           isOnline: true,

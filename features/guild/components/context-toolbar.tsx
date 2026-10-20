@@ -5,9 +5,9 @@ import { usePlayerStore } from "@/features/music/stores/player-store";
 import { GuildSelector } from "./guild-selector";
 import { TabServiceBadge } from "@/components/tab-service-badge";
 import { LiveEqualizer } from "@/components/ui/live-equalizer";
-import { Volume2, VolumeX, Music, Mic } from "lucide-react";
+import { Volume2, VolumeX, Music, Mic, Radio } from "lucide-react";
 
-export type ActiveTab = "music" | "soundboard" | "tts";
+export type ActiveTab = "music" | "soundboard" | "tts" | "voice";
 
 interface ContextToolbarProps {
   activeTab: ActiveTab;
@@ -45,6 +45,17 @@ export function ContextToolbar({ activeTab, onTabChange }: ContextToolbarProps) 
       icon: <Mic size={14} />,
       live: false,
     },
+    // Pestaña oculta por defecto en la barra; solo visible cuando se accede expresamente vía URL (/#voice o ?tab=voice)
+    ...(activeTab === "voice"
+      ? [
+          {
+            id: "voice" as ActiveTab,
+            label: "Comandos de Voz",
+            icon: <Radio size={14} />,
+            live: false,
+          },
+        ]
+      : []),
   ];
 
   return (

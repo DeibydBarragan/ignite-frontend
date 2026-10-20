@@ -38,6 +38,15 @@ const TTSView = dynamic(
   }
 );
 
+const VoiceView = dynamic(
+  () =>
+    import("@/features/voice/components/voice-view").then((m) => m.VoiceView),
+  {
+    loading: () => <TabLoadingSkeleton />,
+    ssr: false,
+  }
+);
+
 export function DashboardView() {
   const { isLoggedIn, isLoadingAuth, loginDiscord } = useAuth();
   const hasSong = usePlayerStore((s) => s.currentSong !== null);
@@ -52,6 +61,7 @@ export function DashboardView() {
       const idleId = (window as unknown as { requestIdleCallback: (cb: () => void) => number }).requestIdleCallback(() => {
         void import("@/features/soundboard/components/soundboard-view");
         void import("@/features/tts/components/tts-view");
+        void import("@/features/voice/components/voice-view");
       });
       return () => {
         if ("cancelIdleCallback" in window) {
@@ -86,6 +96,7 @@ export function DashboardView() {
           {activeTab === "music" && <MusicView />}
           {activeTab === "soundboard" && <SoundboardView />}
           {activeTab === "tts" && <TTSView />}
+          {activeTab === "voice" && <VoiceView />}
         </div>
       </main>
       <PlayerBar />

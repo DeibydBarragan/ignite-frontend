@@ -23,6 +23,11 @@ describe("getTabSnapshot", () => {
     expect(getTabSnapshot()).toBe("soundboard");
   });
 
+  it("reconoce el hash #voice para comandos de voz", () => {
+    window.history.replaceState(null, "", "/#voice");
+    expect(getTabSnapshot()).toBe("voice");
+  });
+
   it("usa el query param si el hash no es válido", () => {
     window.history.replaceState(null, "", "/?tab=tts");
     expect(getTabSnapshot()).toBe("tts");
