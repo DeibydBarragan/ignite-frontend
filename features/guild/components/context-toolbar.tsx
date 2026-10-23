@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/context/auth-context";
 import { usePlayerStore } from "@/features/music/stores/player-store";
+import { useDevMode } from "@/features/auth/hooks/use-dev-mode";
 import { GuildSelector } from "./guild-selector";
 import { TabServiceBadge } from "@/components/tab-service-badge";
 import { LiveEqualizer } from "@/components/ui/live-equalizer";
@@ -24,6 +25,7 @@ export function ContextToolbar({ activeTab, onTabChange }: ContextToolbarProps) 
     currentVoiceChannel,
     isBotOnline,
   } = useAuth();
+  const { isDevMode } = useDevMode();
   const hasLiveSong = usePlayerStore((s) => !!s.currentSong && s.isPlaying);
 
   const TABS = [
@@ -45,8 +47,8 @@ export function ContextToolbar({ activeTab, onTabChange }: ContextToolbarProps) 
       icon: <Mic size={14} />,
       live: false,
     },
-    // Pestaña oculta por defecto en la barra; solo visible cuando se accede expresamente vía URL (/#voice o ?tab=voice)
-    ...(activeTab === "voice"
+    // Pestaña visible si el Modo Dev está activo o si se accede expresamente vía URL (/#voice o ?tab=voice)
+    ...(isDevMode || activeTab === "voice"
       ? [
           {
             id: "voice" as ActiveTab,

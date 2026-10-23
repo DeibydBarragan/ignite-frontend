@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useCallback } from "react";
+import { create } from "zustand";
 import { useAuth } from "@/context/auth-context";
 import { igniteApi } from "@/lib/ignite-api";
 import { setApiDevMode } from "@/lib/http";
@@ -14,26 +15,50 @@ const DEV_USER_IDS = (
 
 const STORAGE_KEY = "ignite_dev_mode_active";
 
+interface DevModeStore {
+  isDevMode: boolean;
+  isLoaded: boolean;
+  setDevMode: (val: boolean) => void;
+  setLoaded: (val: boolean) => void;
+}
+
+export const useDevModeStore = create<DevModeStore>((set) => ({
+  isDevMode: false,
+  isLoaded: false,
+  setDevMode: (val) => {
+    set({ isDevMode: val });
+    setApiDevMode(val);
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(STORAGE_KEY, String(val));
+      } catch {}
+    }
+  },
+  setLoaded: (val) => set({ isLoaded: val }),
+}));
+
 export function useDevMode() {
   const { user } = useAuth();
-  const [isDevMode, setIsDevModeState] = useState<boolean>(false);
-  const [isLoaded, setIsLoaded] = useState<boolean>(false);
+  const isDevMode = useDevModeStore((s) => s.isDevMode);
+  const isLoaded = useDevModeStore((s) => s.isLoaded);
+  const setDevMode = useDevModeStore((s) => s.setDevMode);
+  const setLoaded = useDevModeStore((s) => s.setLoaded);
 
   const isDevUser = Boolean(user?.id && DEV_USER_IDS.includes(user.id));
 
-  // Load initial local preference
+  // Load initial local preference and sync with bot backend
   useEffect(() => {
     if (!isDevUser) {
-      setApiDevMode(false);
-      setIsDevModeState(false);
+      if (isDevMode) setDevMode(false);
       return;
     }
 
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      const active = stored === "true";
-      setIsDevModeState(active);
-      setApiDevMode(active);
+      if (stored !== null) {
+        const active = stored === "true";
+        setDevMode(active);
+      }
     } catch {
       // localStorage unavailable or SSR
     }
@@ -42,28 +67,19 @@ export function useDevMode() {
     igniteApi
       .getDevMode(user?.id)
       .then((backendActive) => {
-        setIsDevModeState(backendActive);
-        setApiDevMode(backendActive);
-        try {
-          localStorage.setItem(STORAGE_KEY, String(backendActive));
-        } catch {}
+        setDevMode(backendActive);
       })
       .catch(() => undefined)
       .finally(() => {
-        setIsLoaded(true);
+        setLoaded(true);
       });
-  }, [isDevUser, user?.id]);
+  }, [isDevUser, user?.id, setDevMode, setLoaded]);
 
   const toggleDevMode = useCallback(async () => {
     if (!isDevUser || !user?.id) return false;
 
     const nextState = !isDevMode;
-    setIsDevModeState(nextState);
-    setApiDevMode(nextState);
-
-    try {
-      localStorage.setItem(STORAGE_KEY, String(nextState));
-    } catch {}
+    setDevMode(nextState);
 
     try {
       await igniteApi.setDevMode(nextState, user.id);
@@ -72,7 +88,7 @@ export function useDevMode() {
     }
 
     return nextState;
-  }, [isDevUser, isDevMode, user?.id]);
+  }, [isDevUser, isDevMode, user?.id, setDevMode]);
 
   return {
     isDevUser,
