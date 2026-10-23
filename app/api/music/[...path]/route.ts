@@ -47,6 +47,10 @@ async function proxy(req: NextRequest, path: string[]) {
   if (discordUserId) {
     headers["X-User-Discord-Id"] = discordUserId;
   }
+  const devMode = req.headers.get("x-dev-mode");
+  if (devMode) {
+    headers["X-Dev-Mode"] = devMode;
+  }
 
   const init: RequestInit = {
     method: req.method,

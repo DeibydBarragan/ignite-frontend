@@ -18,11 +18,16 @@ export interface RequestOptions extends RequestInit {
 }
 
 let apiUserId: string | null = null;
+let apiDevMode: boolean = false;
 
 const MUTATION_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 export function setApiUserId(id: string | null): void {
   apiUserId = id;
+}
+
+export function setApiDevMode(enabled: boolean): void {
+  apiDevMode = enabled;
 }
 
 export async function httpRequest<T>(
@@ -44,6 +49,9 @@ export async function httpRequest<T>(
     const method = (fetchOpts.method ?? "GET").toUpperCase();
     if (apiUserId && MUTATION_METHODS.has(method)) {
       headers.set("X-User-Discord-Id", apiUserId);
+    }
+    if (apiDevMode && MUTATION_METHODS.has(method)) {
+      headers.set("X-Dev-Mode", "true");
     }
 
     const res = await fetch(url, { ...fetchOpts, headers, signal: controller.signal });

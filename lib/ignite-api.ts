@@ -248,6 +248,29 @@ class IgniteApiClient {
     if (!res.ok) return { success: false, songs: [] };
     return { success: true, songs: res.data.songs };
   }
+
+  async getDevMode(): Promise<boolean> {
+    const devModeSchema = z.object({
+      success: z.boolean(),
+      devMode: z.boolean(),
+      userId: z.string().nullable().optional(),
+    });
+    const res = await httpRequest(musicUrl("user/dev-mode"), devModeSchema, { method: "GET" });
+    return res.ok && res.data.devMode;
+  }
+
+  async setDevMode(enabled: boolean): Promise<boolean> {
+    const devModeSchema = z.object({
+      success: z.boolean(),
+      devMode: z.boolean(),
+      userId: z.string().nullable().optional(),
+    });
+    const res = await httpRequest(musicUrl("user/dev-mode"), devModeSchema, {
+      method: "POST",
+      body: JSON.stringify({ enabled }),
+    });
+    return res.ok && res.data.devMode;
+  }
 }
 
 export const igniteApi = new IgniteApiClient();

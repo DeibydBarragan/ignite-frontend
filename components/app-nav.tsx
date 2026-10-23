@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/context/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { DevModeToggle } from "@/components/dev-mode-toggle";
 import { UserBadge } from "@/features/auth/components/user-badge";
 import { Flame } from "lucide-react";
 
@@ -25,6 +26,7 @@ export function AppNav() {
 
         {/* Right side: Discord User Login & Theme */}
         <div className="flex items-center gap-2 sm:gap-2.5">
+          <DevModeToggle />
           <ThemeToggle />
           <UserBadge
             user={user}
