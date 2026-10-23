@@ -40,6 +40,11 @@ function fallbackBase(): string {
 }
 
 export async function getMusicBaseUrl(): Promise<string> {
+  const localEnv = process.env.IGNITE_API_URL ?? process.env.NEXT_PUBLIC_IGNITE_API_URL;
+  if (localEnv && (localEnv.includes("localhost") || localEnv.includes("127.0.0.1"))) {
+    return cleanUrl(localEnv) || "http://localhost:3001";
+  }
+
   const now = Date.now();
   if (cachedBase && now - cachedAt < TTL_MS) return cachedBase;
   if (inflight) return inflight;

@@ -249,25 +249,33 @@ class IgniteApiClient {
     return { success: true, songs: res.data.songs };
   }
 
-  async getDevMode(): Promise<boolean> {
+  async getDevMode(userId?: string): Promise<boolean> {
     const devModeSchema = z.object({
       success: z.boolean(),
       devMode: z.boolean(),
       userId: z.string().nullable().optional(),
     });
-    const res = await httpRequest(musicUrl("user/dev-mode"), devModeSchema, { method: "GET" });
+    const headers: Record<string, string> = {};
+    if (userId) headers["X-User-Discord-Id"] = userId;
+    const res = await httpRequest(musicUrl("user/dev-mode"), devModeSchema, {
+      method: "GET",
+      headers,
+    });
     return res.ok && res.data.devMode;
   }
 
-  async setDevMode(enabled: boolean): Promise<boolean> {
+  async setDevMode(enabled: boolean, userId?: string): Promise<boolean> {
     const devModeSchema = z.object({
       success: z.boolean(),
       devMode: z.boolean(),
       userId: z.string().nullable().optional(),
     });
+    const headers: Record<string, string> = {};
+    if (userId) headers["X-User-Discord-Id"] = userId;
     const res = await httpRequest(musicUrl("user/dev-mode"), devModeSchema, {
       method: "POST",
-      body: JSON.stringify({ enabled }),
+      headers,
+      body: JSON.stringify({ enabled, userId }),
     });
     return res.ok && res.data.devMode;
   }

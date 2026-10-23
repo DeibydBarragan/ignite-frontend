@@ -40,7 +40,7 @@ export function useDevMode() {
 
     // Sync with bot backend if reachable
     igniteApi
-      .getDevMode()
+      .getDevMode(user?.id)
       .then((backendActive) => {
         setIsDevModeState(backendActive);
         setApiDevMode(backendActive);
@@ -52,10 +52,10 @@ export function useDevMode() {
       .finally(() => {
         setIsLoaded(true);
       });
-  }, [isDevUser]);
+  }, [isDevUser, user?.id]);
 
   const toggleDevMode = useCallback(async () => {
-    if (!isDevUser) return false;
+    if (!isDevUser || !user?.id) return false;
 
     const nextState = !isDevMode;
     setIsDevModeState(nextState);
@@ -66,13 +66,13 @@ export function useDevMode() {
     } catch {}
 
     try {
-      await igniteApi.setDevMode(nextState);
+      await igniteApi.setDevMode(nextState, user.id);
     } catch (err) {
       console.warn("Could not sync dev mode with bot backend:", err);
     }
 
     return nextState;
-  }, [isDevUser, isDevMode]);
+  }, [isDevUser, isDevMode, user?.id]);
 
   return {
     isDevUser,
