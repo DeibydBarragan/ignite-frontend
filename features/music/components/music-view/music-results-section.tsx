@@ -5,7 +5,9 @@ import type { MusicSubTab, TopSubTab } from "@/types/music";
 import { SongCard } from "../song-card";
 import { PlaylistsView } from "../playlists/playlists-view";
 import { Pagination } from "./pagination";
-import { Loader2, Star, Sparkles, Radio, Trophy, Music2 } from "lucide-react";
+import { SongGridSkeleton } from "@/components/ui/view-skeletons";
+import { SONG_GRID } from "@/components/ui/grids";
+import { Star, Sparkles, Radio, Trophy, Music2 } from "lucide-react";
 
 export interface MusicResultsSectionProps {
   activeTab: MusicSubTab;
@@ -46,12 +48,7 @@ export function MusicResultsSection({
 
   if (activeTab === "favorites") {
     if (isLoadingFavorites) {
-      return (
-        <div className="p-12 text-center glass-panel">
-          <Loader2 size={28} className="mx-auto text-amber-400 animate-spin mb-2" />
-          <p className="text-xs text-slate-400">Cargando tus favoritos desde Supabase...</p>
-        </div>
-      );
+      return <SongGridSkeleton />;
     }
 
     if (favoritesCount === 0) {
@@ -79,12 +76,7 @@ export function MusicResultsSection({
 
   if (activeTab === "radio") {
     if (isLoadingRecs) {
-      return (
-        <div className="p-12 text-center glass-panel">
-          <Loader2 size={28} className="mx-auto text-purple-400 animate-spin mb-2" />
-          <p className="text-xs text-slate-400">Sintonizando radio en vivo...</p>
-        </div>
-      );
+      return <SongGridSkeleton />;
     }
 
     if (songsCount === 0) {
@@ -104,12 +96,7 @@ export function MusicResultsSection({
 
   if (activeTab === "top") {
     if (isLoadingRecs) {
-      return (
-        <div className="p-12 text-center glass-panel">
-          <Loader2 size={28} className="mx-auto text-amber-400 animate-spin mb-2" />
-          <p className="text-xs text-slate-400">Cargando el ranking del servidor...</p>
-        </div>
-      );
+      return <SongGridSkeleton />;
     }
 
     if (songsCount === 0) {
@@ -143,7 +130,7 @@ export function MusicResultsSection({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+      <div className={SONG_GRID}>
         {paginatedSongs.map((song) => (
           <SongCard key={song.id} song={song} />
         ))}

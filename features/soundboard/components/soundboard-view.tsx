@@ -7,14 +7,15 @@ import type { SoundItem, SoundCategory } from "@/types/domain";
 import { AddSoundModal } from "./add-sound-modal";
 import { EditSoundModal } from "./edit-sound-modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { SoundPad } from "./sound-pad";
+import { SoundPad, SoundPadSkeleton } from "./sound-pad";
 import { SoundboardToolbar, type SoundScope, type SoundSort } from "./soundboard-toolbar";
 import { ActivityFeed } from "./activity-feed";
+import { SOUND_GRID } from "@/components/ui/grids";
 import { Volume2, Plus, Trash2 } from "lucide-react";
 
 export function SoundboardView() {
   const { user } = useAuth();
-  const { sounds, activeSoundId, playSound, attachSoundAudio, deleteCustomSound } = useSoundboard();
+  const { sounds, isLoadingSounds, activeSoundId, playSound, attachSoundAudio, deleteCustomSound } = useSoundboard();
 
   const [searchSound, setSearchSound] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<"all" | SoundCategory>("all");
@@ -133,7 +134,13 @@ export function SoundboardView() {
         />
 
         {/* MPC Audio Sampler Grid */}
-        {filteredSounds.length === 0 ? (
+        {isLoadingSounds && sounds.length === 0 ? (
+          <div className={SOUND_GRID} aria-busy="true" aria-label="Cargando sonidos">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <SoundPadSkeleton key={i} />
+            ))}
+          </div>
+        ) : filteredSounds.length === 0 ? (
           <div className="p-12 text-center glass-panel border border-dashed border-black/10 dark:border-white/10">
             <Volume2 size={36} className="mx-auto text-purple-400/40 mb-3" />
             <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
@@ -161,7 +168,7 @@ export function SoundboardView() {
             )}
           </div>
         ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+        <div className={SOUND_GRID}>
           {filteredSounds.map((snd) => (
             <SoundPad
               key={snd.id}

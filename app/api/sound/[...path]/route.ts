@@ -76,7 +76,32 @@ export async function GET(req: NextRequest, ctx: Ctx) {
 }
 
 export async function POST(req: NextRequest, ctx: Ctx) {
-  return proxy(req, await resolvePath(ctx));
+  const path = await resolvePath(ctx);
+  if (path.length === 2 && path[0] === "tts" && path[1] === "preview") {
+    try {
+      const cloned = req.clone();
+      const body = await cloned.json().catch(() => null);
+      if (body && typeof body.text === "string" && body.text.trim().length > 0) {
+        const { synthesizeEdgeTTS } = await import("@/lib/server/edge-tts");
+        const buf = await synthesizeEdgeTTS({
+          text: body.text,
+          voice: body.voice,
+          rate: body.rate,
+          pitch: body.pitch,
+        });
+        return new NextResponse(new Uint8Array(buf), {
+          status: 200,
+          headers: {
+            "Content-Type": "audio/mpeg",
+            "Cache-Control": "no-store",
+          },
+        });
+      }
+    } catch {
+      // Fallback to proxy
+    }
+  }
+  return proxy(req, path);
 }
 
 export async function PUT(req: NextRequest, ctx: Ctx) {

@@ -84,6 +84,49 @@ class IgniteApiClient {
     return res.data;
   }
 
+  async joinVoice(
+    guildId: string,
+    options?: { channelId?: string; userId?: string }
+  ): Promise<{ success: boolean; message?: string; channel?: { id: string; name: string }; error?: string }> {
+    const res = await httpRequest(
+      musicUrl(`guilds/${encodeURIComponent(guildId)}/voice/join`),
+      z.object({
+        success: z.boolean(),
+        message: z.string().optional(),
+        channel: z.object({ id: z.string(), name: z.string() }).optional(),
+        error: z.string().optional(),
+      }),
+      {
+        method: "POST",
+        body: JSON.stringify(options || {}),
+      }
+    );
+    if (!res.ok) {
+      return { success: false, error: res.error || "Error al conectar al canal de voz" };
+    }
+    return res.data;
+  }
+
+  async leaveVoice(
+    guildId: string
+  ): Promise<{ success: boolean; message?: string; error?: string }> {
+    const res = await httpRequest(
+      musicUrl(`guilds/${encodeURIComponent(guildId)}/voice/leave`),
+      z.object({
+        success: z.boolean(),
+        message: z.string().optional(),
+        error: z.string().optional(),
+      }),
+      {
+        method: "POST",
+      }
+    );
+    if (!res.ok) {
+      return { success: false, error: res.error || "Error al desconectar del canal de voz" };
+    }
+    return res.data;
+  }
+
   async getPlayerState(guildId: string): Promise<ApiPlayerState | null> {
     const res = await httpRequest(
       musicUrl(`guilds/${encodeURIComponent(guildId)}/player`),
@@ -101,7 +144,7 @@ class IgniteApiClient {
     const res = await httpRequest(
       musicUrl(`guilds/${encodeURIComponent(guildId)}/play`),
       playResponseSchema,
-      { method: "POST", body: JSON.stringify(params), timeoutMs: 10000 }
+      { method: "POST", body: JSON.stringify(params), timeoutMs: 35000 }
     );
     if (!res.ok) {
       return { success: false, error: res.error || "El servicio del bot está desconectado o no responde" };

@@ -19,6 +19,13 @@ function soundUrl(path: string): string {
 class SoundApiClient {
   private currentAudio: HTMLAudioElement | null = null;
 
+  stopAudio(): void {
+    if (this.currentAudio) {
+      this.currentAudio.pause();
+      this.currentAudio = null;
+    }
+  }
+
   async getVoices(): Promise<VoiceItem[]> {
     const { FALLBACK_VOICES } = await import("@/lib/sound-fallbacks");
     const res = await httpRequest(soundUrl("voices"), voicesResponseSchema, { method: "GET" });

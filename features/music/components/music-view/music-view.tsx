@@ -17,7 +17,9 @@ import { MusicSearchBar } from "./music-search-bar";
 import { MusicCatalogTabs } from "./music-catalog-tabs";
 import { RadioHeader, TopSongsHeader } from "./recommendations-header";
 import { MusicResultsSection } from "./music-results-section";
-import type { MusicSubTab, TopSubTab } from "@/types/music";
+import { SearchResultsSection } from "./search-results-section";
+import { buildSearchResults } from "../../lib/build-search-results";
+import type { MusicSubTab, SearchScope, TopSubTab } from "@/types/music";
 
 function detectInputPlatform(text: string): "spotify" | "youtube" | null {
   const found = detectPlatform(text);
@@ -49,6 +51,11 @@ export function MusicView() {
   );
 
   const [searchInput, setSearchInput] = useState("");
+  const [searchScope, setSearchScope] = useLocalStorage<SearchScope>(
+    STORAGE_KEYS.musicSearchScope,
+    "all",
+    z.enum(["all", "favorites", "youtube"])
+  );
 
   const radioSongKey = activeTab === "radio" ? currentSong?.id : undefined;
   const { recSongs, basedOnSong, isLoadingRecs, refresh: refreshRecs } = useRecommendations({
@@ -62,8 +69,20 @@ export function MusicView() {
   const detectedPlatform = useMemo(() => detectInputPlatform(searchInput.trim()), [searchInput]);
   const isUrl = detectedPlatform !== null;
 
-  const { searchResults, setSearchResults, isSearching, showSuggestions, setShowSuggestions } =
-    useLiveSearch(searchInput, isUrl);
+  const { searchResults, isSearching } = useLiveSearch(searchInput, isUrl, searchScope);
+
+  // Con texto (2+ letras, no un enlace) la zona de tarjetas muestra los resultados de búsqueda.
+  const isSearchActive = !isUrl && searchInput.trim().length >= 2;
+  const searchGroups = useMemo(
+    () =>
+      buildSearchResults({
+        query: searchInput,
+        scope: searchScope,
+        favorites,
+        youtube: searchResults,
+      }),
+    [searchInput, searchScope, favorites, searchResults]
+  );
 
   const playAllRecs = async () => {
     if (isPlayerBusy || recSongs.length === 0) return;
@@ -74,37 +93,25 @@ export function MusicView() {
     }
   };
 
-  const currentList = activeTab === "favorites" ? favorites : recSongs;
-
-  const displayedSongs = useMemo(() => {
-    if (isUrl) return currentList;
-    const query = searchInput.toLowerCase().trim();
-    if (!query) return currentList;
-    return currentList.filter((song) => {
-      return (
-        song.title.toLowerCase().includes(query) ||
-        song.artist.toLowerCase().includes(query) ||
-        song.source.toLowerCase().includes(query)
-      );
-    });
-  }, [currentList, searchInput, isUrl]);
+  const displayedSongs = activeTab === "favorites" ? favorites : recSongs;
+  const pagedSource = isSearchActive ? searchGroups.combined : displayedSongs;
 
   // ══════════ PAGINACIÓN TRADICIONAL ══════════
   const ITEMS_PER_PAGE = 12;
   const catalogScrollRef = useRef<HTMLDivElement | null>(null);
 
-  const pageResetKey = `${activeTab}|${topSubTab}|${searchInput}`;
+  const pageResetKey = `${activeTab}|${topSubTab}|${isSearchActive ? `${searchScope}|${searchInput}` : ""}`;
   const [pageState, setPageState] = useState({ key: "", page: 1 });
   const currentPage = pageState.key === pageResetKey ? pageState.page : 1;
   const setCurrentPage = (page: number) => setPageState({ key: pageResetKey, page });
 
-  const totalPages = Math.max(1, Math.ceil(displayedSongs.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(pagedSource.length / ITEMS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
 
   const paginatedSongs = useMemo(() => {
     const start = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
-    return displayedSongs.slice(start, start + ITEMS_PER_PAGE);
-  }, [displayedSongs, safeCurrentPage]);
+    return pagedSource.slice(start, start + ITEMS_PER_PAGE);
+  }, [pagedSource, safeCurrentPage]);
 
   const goToPage = (page: number) => {
     const target = Math.max(1, Math.min(page, totalPages));
@@ -118,9 +125,6 @@ export function MusicView() {
     if (isPlayerBusy) return;
     const query = rawQuery.trim();
     if (!query) return;
-
-    setShowSuggestions(false);
-    setSearchResults([]);
 
     try {
       const res = await importUrlSong(query, { next: opts?.next, skip: opts?.skip });
@@ -147,17 +151,19 @@ export function MusicView() {
           isImporting={isImporting}
           isPlayerBusy={isPlayerBusy}
           pendingAction={pendingAction}
-          searchResults={searchResults}
-          isSearching={isSearching}
-          showSuggestions={showSuggestions}
-          onShowSuggestionsChange={setShowSuggestions}
+          scope={searchScope}
+          onScopeChange={setSearchScope}
           onSubmit={submitQuery}
         />
 
         {/* ══════════ TABS DE NAVEGACIÓN DEL CATÁLOGO ══════════ */}
         <MusicCatalogTabs
           activeTab={activeTab}
-          onTabChange={setActiveTab}
+          onTabChange={(tab) => {
+            // Elegir una pestaña sale de la búsqueda.
+            setSearchInput("");
+            setActiveTab(tab);
+          }}
           favoritesCount={favorites.length}
           radioSongsCount={activeTab === "radio" ? recSongs.length : 0}
           topSongsCount={activeTab === "top" ? recSongs.length : 0}
@@ -169,7 +175,7 @@ export function MusicView() {
       </div>
 
       {/* ══════════ CABECERA: RADIO EN VIVO ══════════ */}
-      {activeTab === "radio" && (
+      {!isSearchActive && activeTab === "radio" && (
         <RadioHeader
           basedOnSong={basedOnSong}
           isLoadingRadio={isLoadingRecs}
@@ -181,7 +187,7 @@ export function MusicView() {
       )}
 
       {/* ══════════ CABECERA: TOP CANCIONES ══════════ */}
-      {activeTab === "top" && (
+      {!isSearchActive && activeTab === "top" && (
         <TopSongsHeader
           topSubTab={topSubTab}
           onTopSubTabChange={setTopSubTab}
@@ -193,23 +199,41 @@ export function MusicView() {
         />
       )}
 
-      {/* ══════════ LISTA DE CANCIONES / PLAYLISTS / ESTADOS ══════════ */}
-      <MusicResultsSection
-        activeTab={activeTab}
-        topSubTab={topSubTab}
-        favoritesCount={favorites.length}
-        isLoadingFavorites={isLoadingFavorites}
-        isLoadingRecs={isLoadingRecs}
-        songsCount={recSongs.length}
-        displayedSongs={displayedSongs}
-        paginatedSongs={paginatedSongs}
-        searchInput={searchInput}
-        currentPage={safeCurrentPage}
-        totalPages={totalPages}
-        itemsPerPage={ITEMS_PER_PAGE}
-        onPageChange={goToPage}
-        onExploreSuggestions={() => setActiveTab("radio")}
-      />
+      {/* ══════════ RESULTADOS DE BÚSQUEDA (favoritas primero, luego YouTube) ══════════ */}
+      {isSearchActive ? (
+        <SearchResultsSection
+          query={searchInput.trim()}
+          scope={searchScope}
+          favoritesCount={searchGroups.favorites.length}
+          youtubeCount={searchGroups.youtube.length}
+          paginatedSongs={paginatedSongs}
+          totalItems={searchGroups.combined.length}
+          currentPage={safeCurrentPage}
+          totalPages={totalPages}
+          itemsPerPage={ITEMS_PER_PAGE}
+          isSearching={isSearching}
+          onPageChange={goToPage}
+          onScopeChange={setSearchScope}
+        />
+      ) : (
+        /* ══════════ LISTA DE CANCIONES / PLAYLISTS / ESTADOS ══════════ */
+        <MusicResultsSection
+          activeTab={activeTab}
+          topSubTab={topSubTab}
+          favoritesCount={favorites.length}
+          isLoadingFavorites={isLoadingFavorites}
+          isLoadingRecs={isLoadingRecs}
+          songsCount={recSongs.length}
+          displayedSongs={displayedSongs}
+          paginatedSongs={paginatedSongs}
+          searchInput={searchInput}
+          currentPage={safeCurrentPage}
+          totalPages={totalPages}
+          itemsPerPage={ITEMS_PER_PAGE}
+          onPageChange={goToPage}
+          onExploreSuggestions={() => setActiveTab("radio")}
+        />
+      )}
     </div>
   );
 }

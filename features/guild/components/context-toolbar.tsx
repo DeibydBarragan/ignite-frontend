@@ -3,10 +3,11 @@
 import { useAuth } from "@/context/auth-context";
 import { usePlayerStore } from "@/features/music/stores/player-store";
 import { useDevMode } from "@/features/auth/hooks/use-dev-mode";
+import { useToast } from "@/components/ui/toast";
 import { GuildSelector } from "./guild-selector";
 import { TabServiceBadge } from "@/components/tab-service-badge";
 import { LiveEqualizer } from "@/components/ui/live-equalizer";
-import { Volume2, VolumeX, Music, Mic, Radio } from "lucide-react";
+import { Volume2, VolumeX, Music, Mic, Radio, Headphones, LogOut, Loader2 } from "lucide-react";
 
 export type ActiveTab = "music" | "soundboard" | "tts" | "voice";
 
@@ -23,10 +24,34 @@ export function ContextToolbar({ activeTab, onTabChange }: ContextToolbarProps) 
     setSelectedGuildId,
     isVoiceConnected,
     currentVoiceChannel,
+    botVoiceChannel,
+    isBotInVoice,
+    isJoiningVoice,
+    joinVoice,
+    leaveVoice,
     isBotOnline,
   } = useAuth();
+  const { toast } = useToast();
   const { isDevMode } = useDevMode();
   const hasLiveSong = usePlayerStore((s) => !!s.currentSong && s.isPlaying);
+
+  const handleJoinVoice = async () => {
+    const success = await joinVoice();
+    if (success) {
+      toast("¡Bot conectado al canal de voz!", "success");
+    } else {
+      toast("No se pudo conectar al canal de voz. Verifica que el bot esté en el servidor.", "error");
+    }
+  };
+
+  const handleLeaveVoice = async () => {
+    const success = await leaveVoice();
+    if (success) {
+      toast("Bot desconectado del canal de voz.", "info");
+    } else {
+      toast("Error al desconectar el bot.", "error");
+    }
+  };
 
   const TABS = [
     {
@@ -71,10 +96,10 @@ export function ContextToolbar({ activeTab, onTabChange }: ContextToolbarProps) 
           onSelectGuildId={setSelectedGuildId}
         />
 
-        {/* Indicador de Canal de Voz Activo */}
+        {/* Indicador de Canal de Voz Activo del Usuario */}
         {isVoiceConnected && currentVoiceChannel ? (
           <div
-            title={`Conectado al canal ${currentVoiceChannel.name} (${currentVoiceChannel.userCount} oyentes)`}
+            title={`Estás en el canal ${currentVoiceChannel.name} (${currentVoiceChannel.userCount} oyentes)`}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#1db954]/25 bg-[#1db954]/[0.05] dark:bg-[#1db954]/[0.03] text-xs transition-colors"
           >
             <span className="relative flex h-2 w-2 shrink-0">
@@ -95,8 +120,49 @@ export function ContextToolbar({ activeTab, onTabChange }: ContextToolbarProps) 
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-black/5 dark:border-white/5 bg-black/[0.02] dark:bg-white/[0.02] text-xs text-slate-400"
           >
             <VolumeX size={12} className="shrink-0 text-slate-400" />
-            <span className="text-[11px]">Sin canal de voz</span>
+            <span className="text-[11px]">Tú: Sin canal</span>
           </div>
+        )}
+
+        {/* Botón / Estado del Bot en Canal de Voz (Sin Música) */}
+        {isBotInVoice && botVoiceChannel ? (
+          <div
+            title={`Ignite Music está conectado en ${botVoiceChannel.name}`}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-500/30 bg-purple-500/[0.08] dark:bg-purple-500/[0.06] text-xs transition-colors"
+          >
+            <span className="relative flex h-2 w-2 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-500 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500" />
+            </span>
+            <Radio size={13} className="text-purple-600 dark:text-purple-400 shrink-0" />
+            <span className="font-medium text-slate-900 dark:text-white truncate max-w-[110px] sm:max-w-[140px]">
+              Bot: {botVoiceChannel.name}
+            </span>
+            <button
+              type="button"
+              onClick={handleLeaveVoice}
+              disabled={isJoiningVoice}
+              title="Desconectar al bot del chat de voz"
+              className="ml-1 p-0.5 rounded text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+            >
+              <LogOut size={12} />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={handleJoinVoice}
+            disabled={isJoiningVoice || !isBotOnline}
+            title="Unir el bot al chat de voz sin poner música (para escuchar comandos o estar presente)"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-purple-500/30 bg-purple-500/[0.08] hover:bg-purple-500/20 active:scale-95 text-xs font-medium text-purple-700 dark:text-purple-300 transition-all cursor-pointer shadow-xs disabled:opacity-50 disabled:pointer-events-none"
+          >
+            {isJoiningVoice ? (
+              <Loader2 size={13} className="animate-spin text-purple-600 dark:text-purple-400" />
+            ) : (
+              <Headphones size={13} className="text-purple-600 dark:text-purple-400" />
+            )}
+            <span>Unir Bot al Chat</span>
+          </button>
         )}
 
         {/* Indicador de Estado del Servicio Activo */}

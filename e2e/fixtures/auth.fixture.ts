@@ -73,7 +73,7 @@ export async function setupMocks(page: Page, options: { authenticated?: boolean 
       await route.fulfill({ status: 200, json: { channels: MOCK_VOICE_CHANNELS } });
     } else if (url.includes("/voice-status")) {
       await route.fulfill({ status: 200, json: MOCK_VOICE_STATUS });
-    } else if (url.includes("/guilds") && !url.includes("/player") && !url.includes("/queue")) {
+    } else if (url.includes("/guilds") && !url.includes("/player") && !url.includes("/queue") && !url.includes("/voice")) {
       await route.fulfill({ status: 200, json: { guilds: MOCK_GUILDS } });
     } else if (url.includes("/player") || url.includes("/now-playing")) {
       await route.fulfill({
@@ -97,6 +97,24 @@ export async function setupMocks(page: Page, options: { authenticated?: boolean 
       await route.fulfill({
         status: 200,
         json: { source: "top", basedOn: null, songs: MOCK_SONGS },
+      });
+    } else if (url.includes("/voice/logs")) {
+      await route.fulfill({ status: 200, json: { logs: [] } });
+    } else if (url.includes("/voice")) {
+      // Covers GET /voice, PUT /voice and POST /voice/reset
+      await route.fulfill({
+        status: 200,
+        json: {
+          enabled: true,
+          wake_word: "bot, ignite",
+          language: "es",
+          tts_feedback_enabled: true,
+          tts_voice: "es-MX-DaliaNeural",
+          tts_pitch: 1.0,
+          tts_rate: 1.0,
+          tts_templates: {},
+          bindings: [],
+        },
       });
     } else if (url.includes("/search")) {
       await route.fulfill({ status: 200, json: { results: MOCK_SONGS } });

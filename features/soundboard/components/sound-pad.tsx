@@ -3,6 +3,7 @@
 import { memo } from "react";
 import type { SoundItem } from "@/types/domain";
 import { formatRelativeTime } from "@/lib/formatters";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Volume2, Pencil, Trash2, Clock, Upload, Loader2 } from "lucide-react";
 
 function formatPadTime(ts: number | null | undefined): string | null {
@@ -188,3 +189,19 @@ export const SoundPad = memo(function SoundPad({
     </button>
   );
 });
+
+/** Placeholder con la MISMA forma que SoundPad: icono arriba y dos líneas de texto. */
+export function SoundPadSkeleton() {
+  return (
+    <div className="glass-card p-3.5 flex flex-col justify-between h-32" aria-hidden="true">
+      <div className="flex items-start justify-between w-full mb-3">
+        <Skeleton className="h-11 w-11 rounded-xl" />
+        <Skeleton className="h-3 w-8 rounded-md" />
+      </div>
+      <div className="space-y-1.5 w-full">
+        <Skeleton className="h-3.5 w-3/4 rounded-md" />
+        <Skeleton className="h-2.5 w-1/2 rounded-md" />
+      </div>
+    </div>
+  );
+}

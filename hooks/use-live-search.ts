@@ -1,47 +1,51 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { igniteApi } from "@/lib/ignite-api";
 import type { Song } from "@/types/domain";
+import type { SearchScope } from "@/types/music";
 
-export function useLiveSearch(searchInput: string, isUrl: boolean) {
-  const [searchResults, setSearchResults] = useState<Song[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+/** Cuántos resultados de YouTube se piden (el servidor admite hasta 15). */
+export const SEARCH_LIMIT = 12;
+const DEBOUNCE_MS = 350;
 
-  // Búsqueda en vivo: Videos exactos de YouTube
+/**
+ * Búsqueda en vivo en YouTube.
+ *
+ * - No pide nada si el texto es un enlace, tiene menos de 2 letras o el filtro es "favoritos".
+ * - Los resultados se quedan mientras el texto no cambie: usar una tarjeta no los borra.
+ * - Una respuesta de un texto anterior nunca se muestra (se compara con el texto actual).
+ */
+export function useLiveSearch(searchInput: string, isUrl: boolean, scope: SearchScope) {
+  const query = searchInput.trim();
+  const enabled = !isUrl && query.length >= 2 && scope !== "favorites";
+  const [state, setState] = useState<{ query: string | null; results: Song[] }>({
+    query: null,
+    results: [],
+  });
+
   useEffect(() => {
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    const q = searchInput.trim();
-    if (isUrl || q.length < 2) {
-      searchTimer.current = setTimeout(() => {
-        setSearchResults([]);
-        setShowSuggestions(false);
-        setIsSearching(false);
-      }, 0);
-      return () => {
-        if (searchTimer.current) clearTimeout(searchTimer.current);
-      };
-    }
-
-    searchTimer.current = setTimeout(async () => {
-      setIsSearching(true);
+    if (!enabled) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      let items: Song[] = [];
       try {
-        const items = await igniteApi.searchVideos(q, 6);
-        setSearchResults(items);
-        setShowSuggestions(items.length > 0);
+        items = await igniteApi.searchVideos(query, SEARCH_LIMIT);
       } catch {
-        setSearchResults([]);
-      } finally {
-        setIsSearching(false);
+        items = [];
       }
-    }, 350);
+      if (!cancelled) setState({ query, results: items });
+    }, DEBOUNCE_MS);
 
     return () => {
-      if (searchTimer.current) clearTimeout(searchTimer.current);
+      cancelled = true;
+      clearTimeout(timer);
     };
-  }, [searchInput, isUrl]);
+  }, [enabled, query]);
 
-  return { searchResults, setSearchResults, isSearching, showSuggestions, setShowSuggestions };
+  const isFresh = enabled && state.query === query;
+  return {
+    searchResults: isFresh ? state.results : [],
+    isSearching: enabled && !isFresh,
+  };
 }

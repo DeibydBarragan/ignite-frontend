@@ -12,6 +12,7 @@ import { LiveEqualizer } from "@/components/ui/live-equalizer";
 import { logger } from "@/lib/logger";
 import { SongCoverOverlays, type FeedbackStatus } from "./song-cover-overlays";
 import { SongCardActions } from "./song-card-actions";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Clock, Star } from "lucide-react";
 
 const SOURCE_COLORS: Record<Song["source"], { label: string; bg: string; text: string }> = {
@@ -211,3 +212,25 @@ export const SongCard = memo(function SongCard({ song }: { song: Song }) {
     </article>
   );
 });
+
+/** Placeholder con la MISMA forma que SongCard: portada cuadrada, título, artista y pie. */
+export function SongCardSkeleton() {
+  return (
+    <article className="glass-card p-2.5 flex flex-col justify-between" aria-hidden="true">
+      <div>
+        <Skeleton className="aspect-square w-full rounded-2xl mb-2" />
+        {/* Título (~16px + mt) y artista (~16.5px): igualan el alto del texto real. */}
+        <div className="flex items-center gap-1.5 mt-0.5 h-[18px]">
+          <Skeleton className="h-3.5 w-3/4 rounded-md" />
+        </div>
+        <div className="h-[18px] flex items-center mt-0.5">
+          <Skeleton className="h-3 w-1/2 rounded-md" />
+        </div>
+      </div>
+      <div className="mt-2.5 pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between gap-1.5">
+        <Skeleton className="h-2.5 w-10 rounded-md" />
+        <Skeleton className="h-6 w-16 rounded-lg" />
+      </div>
+    </article>
+  );
+}

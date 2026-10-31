@@ -7,10 +7,13 @@ import {
 import { VOICE_COMMANDS } from "@/features/voice/types/voice-types";
 
 describe("Voice Types & Definitions", () => {
-  it("contiene los 10 comandos esperados con sus plantillas por defecto", () => {
-    expect(VOICE_COMMANDS).toHaveLength(10);
+  it("contiene los 13 comandos esperados con sus plantillas por defecto", () => {
+    expect(VOICE_COMMANDS).toHaveLength(13);
     const ids = VOICE_COMMANDS.map((c) => c.id);
+    expect(ids).toContain("autoplay_on");
+    expect(ids).toContain("autoplay_off");
     expect(ids).toContain("play");
+    expect(ids).toContain("play_next");
     expect(ids).toContain("enqueue");
     expect(ids).toContain("skip");
     expect(ids).toContain("pause");

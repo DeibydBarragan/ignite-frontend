@@ -13,6 +13,11 @@ export interface AuthContextValue {
   setSelectedGuildId: (id: string) => void;
   isVoiceConnected: boolean;
   currentVoiceChannel: VoiceChannel | null;
+  botVoiceChannel: { id: string; name: string } | null;
+  isBotInVoice: boolean;
+  isJoiningVoice: boolean;
+  joinVoice: (channelId?: string) => Promise<boolean>;
+  leaveVoice: () => Promise<boolean>;
   isBotOnline: boolean;
   setVoiceConnection: (connected: boolean, channelId?: string) => void;
 }

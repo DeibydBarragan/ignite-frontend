@@ -1,10 +1,14 @@
 "use client";
 
-import type { Song } from "@/types/domain";
-import type { MusicPlatform } from "@/types/music";
+import type { MusicPlatform, SearchScope } from "@/types/music";
 import type { PendingAction } from "@/types/player";
-import { SearchSuggestions } from "./search-suggestions";
 import { Search, Link2, Plus, ListPlus, Loader2 } from "lucide-react";
+
+const SCOPE_OPTIONS: { id: SearchScope; label: string }[] = [
+  { id: "all", label: "Todo" },
+  { id: "favorites", label: "Favoritos" },
+  { id: "youtube", label: "YouTube" },
+];
 
 export interface MusicSearchBarProps {
   searchInput: string;
@@ -14,10 +18,8 @@ export interface MusicSearchBarProps {
   isImporting: boolean;
   isPlayerBusy: boolean;
   pendingAction: PendingAction;
-  searchResults: Song[];
-  isSearching: boolean;
-  showSuggestions: boolean;
-  onShowSuggestionsChange: (value: boolean) => void;
+  scope: SearchScope;
+  onScopeChange: (scope: SearchScope) => void;
   onSubmit: (rawQuery: string, opts?: { next?: boolean; skip?: boolean }) => void;
 }
 
@@ -29,10 +31,8 @@ export function MusicSearchBar({
   isImporting,
   isPlayerBusy,
   pendingAction,
-  searchResults,
-  isSearching,
-  showSuggestions,
-  onShowSuggestionsChange,
+  scope,
+  onScopeChange,
   onSubmit,
 }: MusicSearchBarProps) {
   const handleImport = (e?: React.FormEvent) => {
@@ -42,15 +42,38 @@ export function MusicSearchBar({
 
   return (
     <div className="space-y-2.5">
-      <div className="flex items-center justify-between px-1">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
         <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
           <Search size={13} className="text-purple-400" />
           <span className="font-semibold">Reproducir o buscar canción</span>
         </div>
-        {isSearching && (
-          <div className="flex items-center gap-1.5 text-[11px] text-purple-400">
-            <Loader2 size={12} className="animate-spin" />
-            <span className="hidden sm:inline">Buscando videos...</span>
+
+        {/* Filtro: dónde buscar. Con un enlace pegado no aplica. */}
+        {!isUrl && (
+          <div
+            role="radiogroup"
+            aria-label="Dónde buscar"
+            className="p-0.5 rounded-lg bg-black/[0.04] dark:bg-white/[0.04] border border-black/5 dark:border-white/10 flex items-center gap-0.5"
+          >
+            {SCOPE_OPTIONS.map((opt) => {
+              const selected = scope === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => onScopeChange(opt.id)}
+                  className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer ${
+                    selected
+                      ? "bg-purple-600 text-white"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
@@ -69,14 +92,8 @@ export function MusicSearchBar({
             value={searchInput}
             disabled={isImporting}
             onChange={(e) => onSearchInputChange(e.target.value)}
-            onFocus={() => {
-              if (searchResults.length > 0) onShowSuggestionsChange(true);
-            }}
-            onBlur={() => {
-              setTimeout(() => onShowSuggestionsChange(false), 200);
-            }}
             onKeyDown={(e) => {
-              if (e.key === "Escape") onShowSuggestionsChange(false);
+              if (e.key === "Escape") onSearchInputChange("");
             }}
             className={`glass-input w-full pl-10 pr-52 sm:pr-60 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-0 ${
               isImporting ? "opacity-60 cursor-not-allowed" : ""
@@ -140,17 +157,6 @@ export function MusicSearchBar({
           )}
         </div>
 
-        {/* Dropdown: Videos exactos de YouTube */}
-        {showSuggestions && (searchResults.length > 0 || isSearching) && (
-          <SearchSuggestions
-            searchResults={searchResults}
-            isSearching={isSearching}
-            onPick={(url, opts) => {
-              onShowSuggestionsChange(false);
-              onSubmit(url, opts);
-            }}
-          />
-        )}
       </form>
     </div>
   );

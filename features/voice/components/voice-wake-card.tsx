@@ -1,140 +1,189 @@
 "use client";
 
-import { Sparkles, Radio, HelpCircle } from "lucide-react";
-import { GlassSelect } from "@/components/ui/glass-select";
+import { useState } from "react";
+import {
+  Radio,
+  Sparkles,
+  Lock,
+  Plus,
+  X,
+  HelpCircle,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export interface VoiceWakeCardProps {
   wakeWord: string;
   onWakeWordChange: (value: string) => void;
-  language: string;
-  onLanguageChange: (value: string) => void;
-  enabled: boolean;
-  onEnabledChange: (value: boolean) => void;
 }
 
-const LANGUAGE_OPTIONS = [
-  { value: "es", label: "Español (es)", flag: "🇪🇸" },
-  { value: "en", label: "English (en)", flag: "🇺🇸" },
-];
+const DEFAULT_WAKE_WORDS = ["bot", "ignite"];
 
 export function VoiceWakeCard({
   wakeWord,
   onWakeWordChange,
-  language,
-  onLanguageChange,
-  enabled,
-  onEnabledChange,
 }: VoiceWakeCardProps) {
-  const currentWake = wakeWord.trim() || "ignite";
+  const [newWakeInput, setNewWakeInput] = useState("");
+  const [inputError, setInputError] = useState<string | null>(null);
+
+  // Parse all configured wake words
+  const rawWords = (wakeWord || "")
+    .split(",")
+    .map((w) => w.trim().toLowerCase())
+    .filter(Boolean);
+
+  // Custom words: any configured word that is not in the built-in defaults
+  const customWakeWords = rawWords.filter(
+    (w) => !DEFAULT_WAKE_WORDS.includes(w)
+  );
+
+  const handleAddWakeWord = () => {
+    const cleaned = newWakeInput.trim().toLowerCase();
+    setInputError(null);
+
+    if (!cleaned) return;
+
+    if (cleaned.length < 2) {
+      setInputError("La palabra debe tener al menos 2 caracteres.");
+      return;
+    }
+
+    if (DEFAULT_WAKE_WORDS.includes(cleaned)) {
+      setInputError(`"${cleaned}" ya es una palabra de activación predeterminada.`);
+      return;
+    }
+
+    if (customWakeWords.includes(cleaned)) {
+      setInputError(`"${cleaned}" ya está en tu lista de palabras de activación.`);
+      return;
+    }
+
+    const updatedCustom = [...customWakeWords, cleaned];
+    onWakeWordChange([...DEFAULT_WAKE_WORDS, ...updatedCustom].join(", "));
+    setNewWakeInput("");
+  };
+
+  const handleRemoveWakeWord = (wordToRemove: string) => {
+    const updatedCustom = customWakeWords.filter((w) => w !== wordToRemove);
+    onWakeWordChange([...DEFAULT_WAKE_WORDS, ...updatedCustom].join(", "));
+  };
 
   return (
-    <div className="glass-card p-5 sm:p-6 border border-black/5 dark:border-white/10 space-y-5">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-black/5 dark:border-white/5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-600/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
-            <Radio size={20} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-base text-slate-900 dark:text-white">
-                Activación por Voz
-              </h3>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                <Sparkles size={10} /> Groq Whisper AI
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Personaliza el nombre con el que llamas al bot y el idioma del reconocimiento.
-            </p>
-          </div>
+    <div className="glass-card p-5 sm:p-6 border border-black/5 dark:border-white/10 space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-3 pb-4 border-b border-black/5 dark:border-white/5">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-600/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+          <Radio size={20} />
         </div>
-
-        {/* Master Toggle */}
-        <label className="flex items-center gap-3 cursor-pointer select-none self-start sm:self-center">
-          <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-            {enabled ? "Módulo Activado" : "Módulo Pausado"}
-          </span>
-          <div className="relative inline-flex items-center">
-            <input
-              type="checkbox"
-              checked={enabled}
-              onChange={(e) => onEnabledChange(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-slate-300 dark:bg-slate-700 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-base text-slate-900 dark:text-white">
+              Activación por Voz
+            </h3>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <Sparkles size={10} /> Groq Whisper
+            </span>
           </div>
-        </label>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Configura las palabras con las que despiertas al bot antes de darle una orden.
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Wake Word Input */}
+      {/* SECTION 1: Wake Words Card (Styled like command cards) */}
+      <div className="rounded-2xl border border-black/5 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02] p-4 sm:p-5 space-y-4">
         <div>
-          <label className="flex items-center gap-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-            <span>Palabra de Activación (Wake Word)</span>
+          <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-900 dark:text-white mb-1">
+            <span>Palabras de Activación (Wake Words)</span>
             <span
-              title="Palabra o nombre con el que iniciarás todas tus órdenes por voz."
+              title="Cualquiera de estas palabras despertará al bot en el canal antes de ejecutar lo que digas."
               className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-help"
             >
-              <HelpCircle size={13} />
-            </span>
-          </label>
-          <div className="relative">
-            <input
-              type="text"
-              value={wakeWord}
-              onChange={(e) => onWakeWordChange(e.target.value.toLowerCase())}
-              placeholder="ej. ignite, bot, jarvis, oye"
-              className="glass-input w-full px-3.5 py-2.5 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 font-medium"
-            />
-            <span className="absolute right-3 top-2.5 text-[11px] text-slate-400 font-mono">
-              prefijo obligatorio
+              <HelpCircle size={14} />
             </span>
           </div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5">
-            El bot sólo responderá cuando tu frase comience por esta palabra.
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            El bot procesará y ejecutará tu comando cuando tu frase empiece por alguna de estas palabras.
           </p>
         </div>
 
-        {/* Language Selector */}
-        <div>
-          <label className="text-xs font-medium text-slate-700 dark:text-slate-300 block mb-1.5">
-            Idioma del Modelo de Voz
-          </label>
-          <GlassSelect
-            value={language}
-            onChange={onLanguageChange}
-            options={LANGUAGE_OPTIONS}
-            size="md"
-          />
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5">
-            Optimiza el prompt inicial de Whisper para mayor precisión en este idioma.
-          </p>
-        </div>
-      </div>
+        {/* Wake Words Pills Group */}
+        <div className="space-y-3">
+          <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            Palabras Activas ({DEFAULT_WAKE_WORDS.length + customWakeWords.length})
+          </div>
 
-      {/* Live Syntax Preview */}
-      <div className="p-3.5 rounded-xl bg-purple-600/[0.04] dark:bg-purple-500/[0.05] border border-purple-500/15">
-        <div className="flex items-center justify-between text-xs font-medium text-purple-700 dark:text-purple-300 mb-1.5">
-          <span>Estructura de detección en vivo:</span>
-          <span className="font-mono text-[11px] bg-purple-500/10 px-2 py-0.5 rounded-md">
-            &lt;wake_word&gt; + &lt;frase&gt; + [parámetro]
-          </span>
-        </div>
-        <div className="space-y-1 text-xs text-slate-600 dark:text-slate-400 font-mono">
-          <p className="flex items-center gap-2">
-            <span className="text-emerald-500 font-bold">✔</span>
-            <span>
-              &ldquo;<strong className="text-purple-600 dark:text-purple-400">{currentWake}</strong> reproduce una noche en medellin&rdquo;
-              <span className="text-slate-400 dark:text-slate-500 ml-2">➔ Reproducir &apos;una noche en medellin&apos;</span>
-            </span>
-          </p>
-          <p className="flex items-center gap-2">
-            <span className="text-emerald-500 font-bold">✔</span>
-            <span>
-              &ldquo;<strong className="text-purple-600 dark:text-purple-400">{currentWake}</strong> salta&rdquo;
-              <span className="text-slate-400 dark:text-slate-500 ml-2">➔ Pasa a la siguiente canción</span>
-            </span>
-          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* System Default Wake Words */}
+            {DEFAULT_WAKE_WORDS.map((word) => (
+              <span
+                key={word}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/25 shadow-2xs"
+                title="Palabra de activación predeterminada del sistema (siempre activa)"
+              >
+                <Lock size={12} className="text-purple-500 shrink-0" />
+                <span>&ldquo;{word}&rdquo;</span>
+                <span className="text-[10px] font-medium px-1.5 py-0.2 rounded-md bg-purple-500/15 text-purple-600 dark:text-purple-400">
+                  Predeterminado
+                </span>
+              </span>
+            ))}
+
+            {/* Custom User Wake Words */}
+            {customWakeWords.map((word) => (
+              <span
+                key={word}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 shadow-2xs group"
+              >
+                <Sparkles size={12} className="text-emerald-500 shrink-0" />
+                <span>&ldquo;{word}&rdquo;</span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveWakeWord(word)}
+                  title={`Eliminar "${word}"`}
+                  className="ml-0.5 p-0.5 rounded-md hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 transition-colors"
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+
+          {/* Quick Add Custom Wake Word Input */}
+          <div className="pt-2">
+            <div className="flex items-center gap-2 max-w-md">
+              <input
+                type="text"
+                value={newWakeInput}
+                onChange={(e) => {
+                  setNewWakeInput(e.target.value);
+                  if (inputError) setInputError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddWakeWord();
+                  }
+                }}
+                placeholder="Añadir palabra personalizada (ej. jarvis, oye, asistente)"
+                className="glass-input flex-1 px-3 py-2 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 font-medium rounded-xl"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAddWakeWord}
+                disabled={!newWakeInput.trim()}
+                className="shrink-0 text-xs px-3 py-2 rounded-xl"
+              >
+                <Plus size={14} />
+                <span>Añadir</span>
+              </Button>
+            </div>
+            {inputError && (
+              <p className="text-[11px] text-rose-500 mt-1 font-medium">
+                {inputError}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>

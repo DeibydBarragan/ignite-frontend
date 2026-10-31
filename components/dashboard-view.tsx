@@ -8,7 +8,11 @@ import { AuthWall } from "@/features/auth/components/auth-wall";
 import { AppNav } from "@/components/app-nav";
 import { ContextToolbar, type ActiveTab } from "@/features/guild/components/context-toolbar";
 import { MusicView } from "@/features/music/components/music-view/music-view";
-import { TabLoadingSkeleton } from "@/components/ui/tab-loading-skeleton";
+import {
+  SoundboardViewSkeleton,
+  TtsViewSkeleton,
+  VoiceViewSkeleton,
+} from "@/components/ui/view-skeletons";
 import { PlayerBar } from "@/features/music/components/player-bar/player-bar";
 import {
   getServerTabSnapshot,
@@ -24,7 +28,7 @@ const SoundboardView = dynamic(
       (m) => m.SoundboardView
     ),
   {
-    loading: () => <TabLoadingSkeleton />,
+    loading: () => <SoundboardViewSkeleton />,
     ssr: false,
   }
 );
@@ -33,7 +37,7 @@ const TTSView = dynamic(
   () =>
     import("@/features/tts/components/tts-view").then((m) => m.TTSView),
   {
-    loading: () => <TabLoadingSkeleton />,
+    loading: () => <TtsViewSkeleton />,
     ssr: false,
   }
 );
@@ -42,7 +46,7 @@ const VoiceView = dynamic(
   () =>
     import("@/features/voice/components/voice-view").then((m) => m.VoiceView),
   {
-    loading: () => <TabLoadingSkeleton />,
+    loading: () => <VoiceViewSkeleton />,
     ssr: false,
   }
 );

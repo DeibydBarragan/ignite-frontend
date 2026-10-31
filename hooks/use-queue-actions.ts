@@ -1,8 +1,7 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import type { Song } from "@/types/domain";
-import type { PlayerQueueTask } from "@/types/player";
 import { useAuthCore } from "@/context/auth-context";
 import { usePlayerStore } from "@/features/music/stores/player-store";
 import { useQueueStore } from "@/features/music/stores/queue-store";
@@ -26,9 +25,7 @@ export function useQueueActions(): QueueActionsValue {
   const { addLiveEvent } = useLiveEvents();
   const { toast } = useToast();
 
-  const taskQueueRef = useRef<PlayerQueueTask[]>([]);
-  const pendingSongIdsRef = useRef<Set<string>>(new Set());
-  const processNextTask = useQueueProcessor(taskQueueRef);
+  const enqueueTask = useQueueProcessor();
 
   const checkVoiceRequirement = useVoiceCheck({
     isLoggedIn: auth.isLoggedIn,
@@ -62,7 +59,6 @@ export function useQueueActions(): QueueActionsValue {
         return;
       }
 
-      pendingSongIdsRef.current.add(song.id);
       useQueueStore.getState().setPendingSongAction(song.id, "play");
 
       try {
@@ -108,7 +104,6 @@ export function useQueueActions(): QueueActionsValue {
         auth.setIsBotOnline(false);
         toast("Error al conectar con el servicio del bot.", "error");
       } finally {
-        pendingSongIdsRef.current.delete(song.id);
         useQueueStore.getState().setPendingSongAction(song.id, null);
       }
     },
@@ -117,38 +112,40 @@ export function useQueueActions(): QueueActionsValue {
 
   const addToQueue = useCallback(
     async (song: Song) => {
-      if (!auth.isLoggedIn || pendingSongIdsRef.current.has(song.id)) return;
+      // El bloqueo es por canción y global: si esta canción ya está en curso, no se repite.
+      if (!auth.isLoggedIn || useQueueStore.getState().pendingSongActions[song.id]) return;
 
-      const voiceCheck = await checkVoiceRequirement();
-      if (!voiceCheck.canPlay) return;
-
-      pendingSongIdsRef.current.add(song.id);
+      // Se marca antes del chequeo de voz (que es async) para que un doble clic no la repita.
       useQueueStore.getState().setPendingSongAction(song.id, "queue");
+      const voiceCheck = await checkVoiceRequirement();
+      if (!voiceCheck.canPlay) {
+        useQueueStore.getState().setPendingSongAction(song.id, null);
+        return;
+      }
 
       return new Promise<void>((resolve, reject) => {
-        taskQueueRef.current.push({ song, mode: "queue", resolve, reject });
-        processNextTask();
+        enqueueTask({ song, mode: "queue", resolve, reject });
       });
     },
-    [auth.isLoggedIn, checkVoiceRequirement, processNextTask]
+    [auth.isLoggedIn, checkVoiceRequirement, enqueueTask]
   );
 
   const playNext = useCallback(
     async (song: Song) => {
-      if (!auth.isLoggedIn || pendingSongIdsRef.current.has(song.id)) return;
+      if (!auth.isLoggedIn || useQueueStore.getState().pendingSongActions[song.id]) return;
 
-      const voiceCheck = await checkVoiceRequirement();
-      if (!voiceCheck.canPlay) return;
-
-      pendingSongIdsRef.current.add(song.id);
       useQueueStore.getState().setPendingSongAction(song.id, "playNext");
+      const voiceCheck = await checkVoiceRequirement();
+      if (!voiceCheck.canPlay) {
+        useQueueStore.getState().setPendingSongAction(song.id, null);
+        return;
+      }
 
       return new Promise<void>((resolve, reject) => {
-        taskQueueRef.current.unshift({ song, mode: "playNext", resolve, reject });
-        processNextTask();
+        enqueueTask({ song, mode: "playNext", resolve, reject }, { priority: true });
       });
     },
-    [auth.isLoggedIn, checkVoiceRequirement, processNextTask]
+    [auth.isLoggedIn, checkVoiceRequirement, enqueueTask]
   );
 
   return { playSong, addToQueue, playNext };

@@ -8,12 +8,13 @@ import { usePlaylists } from "@/hooks/use-playlists";
 import { useFavPlaylists } from "@/hooks/use-fav-playlists";
 import type { UserPlaylist } from "@/types/domain";
 import { PlaylistsToolbar } from "./playlists-toolbar";
-import { PlaylistCard } from "./playlist-card";
+import { PlaylistCard, PlaylistCardSkeleton } from "./playlist-card";
 import { PlaylistDetailModal } from "./playlist-detail-modal";
 import { PlaylistFavModal } from "./playlist-fav-modal";
 import { PlaylistDeleteModal } from "./playlist-delete-modal";
 import { useToast } from "@/components/ui/toast";
-import { ListMusic, Loader2 } from "lucide-react";
+import { PLAYLIST_GRID } from "@/components/ui/grids";
+import { ListMusic } from "lucide-react";
 
 export function PlaylistsView() {
   const isPlayerBusy = usePlayerStore((s) => s.isPlayerBusy);
@@ -158,9 +159,10 @@ export function PlaylistsView() {
       />
 
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-16 gap-3 text-slate-500">
-          <Loader2 size={32} className="animate-spin text-purple-500" />
-          <p className="text-xs">Cargando tus playlists...</p>
+        <div className={PLAYLIST_GRID} aria-busy="true" aria-label="Cargando playlists">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <PlaylistCardSkeleton key={i} />
+          ))}
         </div>
       ) : filtered.length === 0 ? (
         <div className="glass-panel p-8 text-center rounded-2xl flex flex-col items-center gap-2">
@@ -175,7 +177,7 @@ export function PlaylistsView() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        <div className={PLAYLIST_GRID}>
           {filtered.map((pl) => (
             <PlaylistCard
               key={pl.id}

@@ -51,7 +51,11 @@ export function useRecommendations({
 }) {
   const [recSongs, setRecSongs] = useState<Song[]>([]);
   const [basedOnSong, setBasedOnSong] = useState<Song | null>(null);
-  const [isLoadingRecs, setIsLoadingRecs] = useState(false);
+  // Arranca en carga si la pestaña activa pide recomendaciones y hay servidor, para no
+  // mostrar el estado "vacío" en el primer render antes de que corra el efecto.
+  const [isLoadingRecs, setIsLoadingRecs] = useState(
+    () => (activeTab === "radio" || activeTab === "top") && !!selectedGuildId
+  );
   const [recsRefreshKey, setRecsRefreshKey] = useState(0);
   const isForcedRef = useRef(false);
 

@@ -4,6 +4,7 @@ import type { UserPlaylist } from "@/types/domain";
 import { formatDuration, timeAgo, totalDuration } from "@/lib/formatters";
 import { CoverImage } from "@/components/ui/cover-image";
 import { playlistSourceTheme } from "./playlist-source-theme";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Music2, Plus, Loader2, Play, Eye, Clock, Trash2, Star } from "lucide-react";
 
 export interface PlaylistCardProps {
@@ -211,6 +212,25 @@ export function PlaylistCard({
         >
           {isImportingThisFav ? <Loader2 size={14} className="animate-spin text-amber-400" /> : <Star size={14} className={isFav ? "fill-amber-400 text-amber-400" : ""} />}
         </button>
+      </div>
+    </div>
+  );
+}
+
+/** Placeholder con la MISMA forma que PlaylistCard: banner 16:10, título, metadatos y pie. */
+export function PlaylistCardSkeleton() {
+  return (
+    <div className="glass-card p-3.5 flex flex-col justify-between" aria-hidden="true">
+      <div>
+        <Skeleton className="aspect-[16/10] w-full rounded-2xl mb-3" />
+        <Skeleton className="h-4 w-3/4 rounded-md mb-2" />
+        <Skeleton className="h-2.5 w-2/5 rounded-md mb-3" />
+        <Skeleton className="h-2.5 w-full rounded-md mb-3" />
+      </div>
+      <div className="flex items-center gap-2">
+        <Skeleton className="h-8.5 flex-1 rounded-xl" />
+        <Skeleton className="h-8.5 w-8.5 rounded-xl" />
+        <Skeleton className="h-8.5 w-8.5 rounded-xl" />
       </div>
     </div>
   );

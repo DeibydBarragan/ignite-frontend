@@ -22,6 +22,7 @@ import { useToast } from "@/components/ui/toast";
 
 export interface SoundboardContextValue extends SoundCrudValue {
   sounds: SoundItem[];
+  isLoadingSounds: boolean;
   activeSoundId: string | null;
   playSound: (soundId: string) => void;
   phraseTriggers: PhraseTrigger[];
@@ -53,7 +54,7 @@ export function SoundboardProvider({ children }: { children: ReactNode }) {
   const [activeSoundId, setActiveSoundId] = useState<string | null>(null);
   const activeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useRemoteSounds(auth.isLoggedIn, setSounds);
+  const { isLoadingSounds } = useRemoteSounds(auth.isLoggedIn, setSounds);
 
   const playSound = useCallback(
     (soundId: string) => {
@@ -190,6 +191,7 @@ export function SoundboardProvider({ children }: { children: ReactNode }) {
   const value = useMemo<SoundboardContextValue>(
     () => ({
       sounds,
+      isLoadingSounds,
       activeSoundId,
       playSound,
       phraseTriggers,
@@ -201,6 +203,7 @@ export function SoundboardProvider({ children }: { children: ReactNode }) {
     }),
     [
       sounds,
+      isLoadingSounds,
       activeSoundId,
       playSound,
       phraseTriggers,

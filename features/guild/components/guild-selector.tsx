@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { DiscordGuild } from "@/types/domain";
 import { CoverImage } from "@/components/ui/cover-image";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Server, ChevronDown, Check, Users } from "lucide-react";
 
 export interface GuildSelectorProps {
@@ -23,8 +24,11 @@ export function GuildSelector({
   if (!selectedGuild) {
     return (
       <div className="glass-btn flex items-center gap-2.5 px-3 py-1.5 rounded-xl border border-black/10 dark:border-white/10">
-        <Server size={14} className="text-slate-400 animate-pulse" />
-        <span className="text-xs text-slate-400">Cargando servidores…</span>
+        <Skeleton className="w-7 h-7 rounded-lg shrink-0" />
+        <div className="space-y-1">
+          <Skeleton className="h-3 w-24 rounded-md" />
+          <Skeleton className="h-2 w-16 rounded-md" />
+        </div>
       </div>
     );
   }

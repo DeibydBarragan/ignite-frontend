@@ -39,11 +39,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
   const [isVoiceConnected, setIsVoiceConnected] = useState(false);
   const [currentVoiceChannelId, setCurrentVoiceChannelId] = useState("");
+  const [botVoiceChannel, setBotVoiceChannelState] = useState<{ id: string; name: string } | null>(null);
+  const [isJoiningVoice, setIsJoiningVoice] = useState(false);
   const isBotOnline = useGuildStore((s) => s.isBotOnline);
   const setIsBotOnline = useGuildStore((s) => s.setIsBotOnline);
   const botVoiceChannelRef = useRef<{ id: string; name: string } | null>(null);
 
   const setBotVoiceChannel = useCallback((channel: { id: string; name: string } | null) => {
+    setBotVoiceChannelState(channel);
     botVoiceChannelRef.current = channel;
   }, []);
 
@@ -55,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsVoiceConnected(false);
       setCurrentVoiceChannelId("");
     }
+    setBotVoiceChannelState(status.bot);
     botVoiceChannelRef.current = status.bot;
   }, []);
 
@@ -181,6 +185,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [isLoggedIn, selectedGuild]
   );
 
+  const joinVoice = useCallback(
+    async (channelId?: string) => {
+      if (!selectedGuildId) return false;
+      setIsJoiningVoice(true);
+      try {
+        const targetChannelId =
+          channelId ||
+          currentVoiceChannelId ||
+          (selectedGuild?.voiceChannels.length ? selectedGuild.voiceChannels[0].id : undefined);
+
+        const res = await igniteApi.joinVoice(selectedGuildId, {
+          channelId: targetChannelId,
+          userId: user?.id,
+        });
+
+        if (res.success && res.channel) {
+          setBotVoiceChannelState(res.channel);
+          botVoiceChannelRef.current = res.channel;
+          return true;
+        }
+        return false;
+      } catch (err) {
+        logger.error("[joinVoice] Error:", err);
+        return false;
+      } finally {
+        setIsJoiningVoice(false);
+      }
+    },
+    [selectedGuildId, currentVoiceChannelId, selectedGuild, user?.id]
+  );
+
+  const leaveVoice = useCallback(async () => {
+    if (!selectedGuildId) return false;
+    setIsJoiningVoice(true);
+    try {
+      const res = await igniteApi.leaveVoice(selectedGuildId);
+      if (res.success) {
+        setBotVoiceChannelState(null);
+        botVoiceChannelRef.current = null;
+        return true;
+      }
+      return false;
+    } catch (err) {
+      logger.error("[leaveVoice] Error:", err);
+      return false;
+    } finally {
+      setIsJoiningVoice(false);
+    }
+  }, [selectedGuildId]);
+
   const value = useMemo<AuthCoreValue>(
     () => ({
       user,
@@ -194,6 +248,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSelectedGuildId,
       isVoiceConnected,
       currentVoiceChannel,
+      botVoiceChannel,
+      isBotInVoice: Boolean(botVoiceChannel),
+      isJoiningVoice,
+      joinVoice,
+      leaveVoice,
       isBotOnline,
       setVoiceConnection,
       currentVoiceChannelId,
@@ -215,6 +274,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       selectedGuild,
       isVoiceConnected,
       currentVoiceChannel,
+      botVoiceChannel,
+      isJoiningVoice,
+      joinVoice,
+      leaveVoice,
       isBotOnline,
       setVoiceConnection,
       currentVoiceChannelId,

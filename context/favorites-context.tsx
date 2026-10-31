@@ -40,7 +40,9 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
   const isPlayerBusy = usePlayerStore((s) => s.isPlayerBusy);
   const { playSong, addToQueue } = useQueueActions();
   const [favorites, setFavorites] = useState<Song[]>([]);
-  const [isLoadingFavorites, setIsLoadingFavorites] = useState(false);
+  // Arranca en carga si ya hay sesión, para no mostrar el estado "vacío" un instante
+  // antes de la primera petición a Supabase.
+  const [isLoadingFavorites, setIsLoadingFavorites] = useState(() => isLoggedIn && !!user?.id);
 
   useEffect(() => {
     let cancelled = false;

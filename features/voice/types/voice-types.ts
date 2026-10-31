@@ -1,5 +1,6 @@
 export type VoiceCommandId =
   | "play"
+  | "play_next"
   | "enqueue"
   | "skip"
   | "pause"
@@ -7,6 +8,8 @@ export type VoiceCommandId =
   | "stop"
   | "previous"
   | "shuffle"
+  | "autoplay_on"
+  | "autoplay_off"
   | "volume"
   | "queue";
 
@@ -20,6 +23,9 @@ export interface GuildVoiceSettings {
   wake_word: string;
   language: string;
   tts_feedback_enabled: boolean;
+  tts_voice?: string;
+  tts_pitch?: number;
+  tts_rate?: number;
   tts_templates: Record<string, string>;
   bindings: VoiceBinding[];
 }
@@ -37,17 +43,33 @@ export interface VoiceCommandDefinition {
 export const VOICE_COMMANDS: VoiceCommandDefinition[] = [
   {
     id: "play",
-    label: "Reproducir canción",
-    description: "Busca y reproduce una canción o URL inmediatamente.",
+    label: "Reproducir ahora (saltando la actual)",
+    description: "Busca y reproduce inmediatamente, saltando la canción en reproducción.",
     requiresParam: true,
     paramPlaceholder: "ej. Bohemian Rhapsody, link de Spotify o YouTube",
     defaultPhrases: ["reproduce", "reproducir", "pon", "poner", "toca", "tocar"],
     defaultTemplate: "Reproduciendo {query}",
   },
   {
+    id: "play_next",
+    label: "Poner a continuación (después de la actual)",
+    description: "Inserta la canción justo después de la que está sonando ahora mismo.",
+    requiresParam: true,
+    paramPlaceholder: "ej. Numb, título de canción",
+    defaultPhrases: [
+      "pon despues",
+      "reproduce despues",
+      "pon a continuacion",
+      "añade a continuacion",
+      "toca despues",
+      "play next",
+    ],
+    defaultTemplate: "Añadida {query} a continuación",
+  },
+  {
     id: "enqueue",
-    label: "Añadir a la cola",
-    description: "Agrega una canción al final de la lista sin interrumpir la actual.",
+    label: "Añadir al final de la cola",
+    description: "Agrega una canción al final de toda la lista de reproducción.",
     requiresParam: true,
     paramPlaceholder: "ej. Starboy, nombre de canción",
     defaultPhrases: ["agrega", "agregar", "añade", "añadir", "encola"],
@@ -66,7 +88,7 @@ export const VOICE_COMMANDS: VoiceCommandDefinition[] = [
     label: "Pausar música",
     description: "Pone en pausa la reproducción actual.",
     requiresParam: false,
-    defaultPhrases: ["pausa", "pausar", "para", "espera"],
+    defaultPhrases: ["pausa", "pausar", "espera"],
     defaultTemplate: "Música pausada",
   },
   {
@@ -102,6 +124,22 @@ export const VOICE_COMMANDS: VoiceCommandDefinition[] = [
     defaultTemplate: "Lista en modo aleatorio",
   },
   {
+    id: "autoplay_on",
+    label: "Activar autoplay",
+    description: "Activa el modo autoplay: al acabar la lista, sigue con canciones relacionadas.",
+    requiresParam: false,
+    defaultPhrases: ["activa autoplay", "activa el autoplay", "enciende autoplay", "prende autoplay", "activa la reproduccion automatica"],
+    defaultTemplate: "Autoplay activado",
+  },
+  {
+    id: "autoplay_off",
+    label: "Desactivar autoplay",
+    description: "Desactiva el modo autoplay: al acabar la lista, la música se detiene.",
+    requiresParam: false,
+    defaultPhrases: ["desactiva autoplay", "desactiva el autoplay", "apaga autoplay", "quita autoplay", "desactiva la reproduccion automatica"],
+    defaultTemplate: "Autoplay desactivado",
+  },
+  {
     id: "volume",
     label: "Ajustar volumen",
     description: "Modifica el volumen de reproducción (0 a 100%).",
@@ -119,3 +157,22 @@ export const VOICE_COMMANDS: VoiceCommandDefinition[] = [
     defaultTemplate: "Mostrando la lista",
   },
 ];
+
+export interface VoiceLogEntry {
+  id: string;
+  timestamp: string;
+  guildId: string;
+  userId?: string | null;
+  audioBytes: number;
+  voskHeard: string;
+  wakeWordSpotted: boolean;
+  matchedWakeWord?: string | null;
+  gateReason?: string | null;
+  groqEngaged: boolean;
+  groqText?: string | null;
+  groqElapsedMs?: number | null;
+  commandId?: string | null;
+  query?: string | null;
+  ttsMessage?: string | null;
+  status: string;
+}

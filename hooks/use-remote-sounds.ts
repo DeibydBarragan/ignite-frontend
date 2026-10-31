@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
 import type { SoundItem } from "@/types/domain";
 import { soundApi } from "@/lib/sound-api";
 import {
@@ -12,10 +12,18 @@ import {
 export function useRemoteSounds(
   isLoggedIn: boolean,
   setSounds: Dispatch<SetStateAction<SoundItem[]>>
-) {
+): { isLoadingSounds: boolean } {
+  // Arranca en carga si ya hay sesión, para que la vista muestre skeleton en vez de "vacío".
+  const [isLoadingSounds, setIsLoadingSounds] = useState(isLoggedIn);
+
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
+      if (!isLoggedIn) {
+        if (!cancelled) setIsLoadingSounds(false);
+        return;
+      }
+      setIsLoadingSounds(true);
       try {
         const remote = await soundApi.getSounds();
         if (cancelled || !remote) return;
@@ -64,6 +72,8 @@ export function useRemoteSounds(
         });
       } catch {
         // Catálogo remoto no disponible: se conserva el catálogo local.
+      } finally {
+        if (!cancelled) setIsLoadingSounds(false);
       }
     };
     load();
@@ -71,4 +81,6 @@ export function useRemoteSounds(
       cancelled = true;
     };
   }, [isLoggedIn, setSounds]);
+
+  return { isLoadingSounds };
 }

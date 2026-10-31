@@ -1,6 +1,7 @@
 "use client";
 
 import type { VoiceItem, SavedPhrase } from "@/types/domain";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Bookmark, Plus, Play, Trash2, ArrowUpLeft, Radio, Loader2 } from "lucide-react";
 
 export interface SavedPhrasesCardProps {
@@ -50,10 +51,7 @@ export function SavedPhrasesCard({
       </div>
 
       {isLoading ? (
-        <div className="py-8 flex flex-col items-center justify-center gap-2 text-slate-400">
-          <Loader2 size={20} className="animate-spin text-purple-500" />
-          <span className="text-xs">Cargando frases de Supabase...</span>
-        </div>
+        <SavedPhrasesSkeleton />
       ) : phrases.length === 0 ? (
         <div className="text-center py-8 px-2">
           <Bookmark size={28} className="mx-auto text-slate-400/50 mb-2" />
@@ -158,6 +156,42 @@ export function SavedPhrasesCard({
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Placeholder con la MISMA forma que una frase guardada: título, texto y pie con acciones. */
+export function PhraseSkeleton() {
+  return (
+    <div
+      className="p-3 rounded-xl bg-black/[0.02] dark:bg-white/[0.02] border border-black/5 dark:border-white/5 flex flex-col gap-2"
+      aria-hidden="true"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 space-y-1.5">
+          <Skeleton className="h-3 w-2/5 rounded-md" />
+          <Skeleton className="h-2.5 w-4/5 rounded-md" />
+        </div>
+        <Skeleton className="h-4 w-4 rounded-md shrink-0" />
+      </div>
+      <div className="flex items-center justify-between border-t border-black/5 dark:border-white/5 pt-2">
+        <Skeleton className="h-4 w-20 rounded-full" />
+        <div className="flex items-center gap-1.5">
+          <Skeleton className="h-5 w-12 rounded" />
+          <Skeleton className="h-5 w-14 rounded" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Lista de placeholders de frases, para la carga de la tarjeta. */
+export function SavedPhrasesSkeleton({ count = 4 }: { count?: number }) {
+  return (
+    <div className="space-y-2.5" aria-busy="true" aria-label="Cargando frases guardadas">
+      {Array.from({ length: count }).map((_, i) => (
+        <PhraseSkeleton key={i} />
+      ))}
     </div>
   );
 }
