@@ -12,10 +12,10 @@ export interface CoverImageProps {
   iconSize?: number;
   priority?: boolean;
   sizes?: string;
+  unoptimized?: boolean;
 }
 
-const ALLOWED_HOSTS = new Set([
-  "i.ytimg.com",
+const ALLOWED_OPTIMIZED_HOSTS = new Set([
   "images.unsplash.com",
   "cdn.discordapp.com",
   "i.scdn.co",
@@ -28,7 +28,17 @@ function isUnoptimizedUrl(url: string): boolean {
   if (!url.startsWith("http://") && !url.startsWith("https://")) return true;
   try {
     const parsed = new URL(url);
-    return !ALLOWED_HOSTS.has(parsed.hostname);
+    // YouTube CDN bloquea y limita con HTTP 429 (Too Many Requests) cuando el servidor de
+    // Next.js/Vercel intenta optimizar múltiples carátulas en paralelo.
+    // Al marcarlo unoptimized, el navegador descarga la imagen directamente desde la CDN de Google.
+    if (
+      parsed.hostname.endsWith(".ytimg.com") ||
+      parsed.hostname === "img.youtube.com" ||
+      parsed.hostname.endsWith(".ggpht.com")
+    ) {
+      return true;
+    }
+    return !ALLOWED_OPTIMIZED_HOSTS.has(parsed.hostname);
   } catch {
     return true;
   }
@@ -46,6 +56,7 @@ function CoverImageInner({
   iconSize = 18,
   priority = false,
   sizes = "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 280px",
+  unoptimized,
 }: CoverImageProps) {
   const [loaded, setLoaded] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -68,7 +79,7 @@ function CoverImageInner({
           fill
           sizes={sizes}
           priority={priority}
-          unoptimized={isUnoptimizedUrl(safeSrc)}
+          unoptimized={unoptimized ?? isUnoptimizedUrl(safeSrc)}
           draggable={false}
           onLoad={() => setLoaded(true)}
           onError={() => setFailed(true)}

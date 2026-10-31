@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
     agentUpgrade: "security",
   },
   images: {
-    formats: ["image/avif", "image/webp"],
+    unoptimized: true,
     remotePatterns: [
       { protocol: "https", hostname: "i.ytimg.com" },
       { protocol: "https", hostname: "images.unsplash.com" },
