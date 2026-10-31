@@ -3,6 +3,8 @@ import {
   apiVoiceStatusSchema,
   controlResponseSchema,
   playResponseSchema,
+  playlistSearchResultSchema,
+  searchPlaylistsResponseSchema,
   songSchema,
 } from "@/lib/schemas";
 
@@ -89,5 +91,42 @@ describe("controlResponseSchema", () => {
   it("acepta mensajes opcionales", () => {
     expect(controlResponseSchema.safeParse({ success: true }).success).toBe(true);
     expect(controlResponseSchema.safeParse({ success: false, error: "boom" }).success).toBe(true);
+  });
+});
+
+describe("playlistSearchResultSchema", () => {
+  it("valida y transforma una playlist de búsqueda", () => {
+    const raw = {
+      id: "PL123",
+      title: "Top Hits 2026",
+      url: "https://www.youtube.com/playlist?list=PL123",
+      thumbnail: "https://i.ytimg.com/vi/abc/hqdefault.jpg",
+      trackCount: 45,
+      uploader: "Music Channel",
+    };
+    const res = playlistSearchResultSchema.safeParse(raw);
+    expect(res.success).toBe(true);
+    if (res.success) {
+      expect(res.data.name).toBe("Top Hits 2026");
+      expect(res.data.cover).toBe("https://i.ytimg.com/vi/abc/hqdefault.jpg");
+      expect(res.data.author).toBe("Music Channel");
+      expect(res.data.source).toBe("youtube");
+    }
+  });
+
+  it("valida la respuesta completa de búsqueda de playlists", () => {
+    const res = searchPlaylistsResponseSchema.safeParse({
+      query: "reggaeton",
+      results: [
+        {
+          id: "PL123",
+          title: "Lista",
+          url: "https://www.youtube.com/playlist?list=PL123",
+          thumbnail: "https://i.ytimg.com/vi/abc/hqdefault.jpg",
+          trackCount: 10,
+        },
+      ],
+    });
+    expect(res.success).toBe(true);
   });
 });

@@ -16,12 +16,17 @@ import { useToast } from "@/components/ui/toast";
 import { PLAYLIST_GRID } from "@/components/ui/grids";
 import { ListMusic } from "lucide-react";
 
-export function PlaylistsView() {
+export interface PlaylistsViewProps {
+  playlistsState?: ReturnType<typeof usePlaylists>;
+}
+
+export function PlaylistsView({ playlistsState }: PlaylistsViewProps = {}) {
   const isPlayerBusy = usePlayerStore((s) => s.isPlayerBusy);
   const { importPlaylistToFavorites, removePlaylistFromFavorites, isFavorite } = useFavorites();
   const importUrlSong = useUrlImport();
   const { toast } = useToast();
 
+  const localState = usePlaylists();
   const {
     playlists,
     isLoading,
@@ -36,7 +41,7 @@ export function PlaylistsView() {
     live,
     openPlaylist,
     closeModal,
-  } = usePlaylists();
+  } = playlistsState ?? localState;
 
   const { favPlaylistIds, saveFavPlaylistIds, isPlaylistFav } = useFavPlaylists(isFavorite);
 

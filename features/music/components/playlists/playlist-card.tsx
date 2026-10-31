@@ -20,7 +20,7 @@ export interface PlaylistCardProps {
   onPlay: () => void;
   onQueue: () => void;
   onToggleFav: () => void;
-  onDelete: () => void;
+  onDelete?: () => void;
 }
 
 export function PlaylistCard({
@@ -84,26 +84,32 @@ export function PlaylistCard({
           </div>
 
           {/* Delete Action Button */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            disabled={isDeleteDisabled}
-            title="Eliminar playlist"
-            className={`absolute top-2.5 right-2.5 p-1.5 rounded-full bg-black/80 hover:bg-rose-500/80 text-white/70 hover:text-white border border-white/10 hover:border-rose-400/50 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 shadow-xs ${
-              isDeleteDisabled ? "cursor-not-allowed opacity-30 pointer-events-none" : "cursor-pointer"
-            }`}
-          >
-            <Trash2 size={13} />
-          </button>
+          {onDelete && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              disabled={isDeleteDisabled}
+              title="Eliminar playlist"
+              className={`absolute top-2.5 right-2.5 p-1.5 rounded-full bg-black/80 hover:bg-rose-500/80 text-white/70 hover:text-white border border-white/10 hover:border-rose-400/50 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 shadow-xs ${
+                isDeleteDisabled ? "cursor-not-allowed opacity-30 pointer-events-none" : "cursor-pointer"
+              }`}
+            >
+              <Trash2 size={13} />
+            </button>
+          )}
 
           {/* Track count pill */}
           <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1 z-10 pointer-events-none">
             <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-black/85 text-white/90 border border-white/10 flex items-center gap-1 shadow-xs">
               <Music2 size={11} className="text-purple-400" />
-              {neverSynced ? "Sin sincronizar" : `${pl.tracks.length} temas`}
+              {neverSynced
+                ? pl.trackCount !== undefined
+                  ? `${pl.trackCount} temas`
+                  : "Sin sincronizar"
+                : `${pl.tracks.length} temas`}
             </span>
           </div>
 
@@ -156,7 +162,7 @@ export function PlaylistCard({
           </p>
         ) : (
           <p className="text-[11px] text-slate-400/60 dark:text-slate-500 italic truncate mb-3">
-            Abre la playlist para sincronizar sus temas
+            {pl.uploader ? `Por ${pl.uploader}` : "Abre la playlist para sincronizar sus temas"}
           </p>
         )}
       </div>

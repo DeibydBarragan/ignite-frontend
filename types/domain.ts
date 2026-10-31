@@ -213,6 +213,21 @@ export interface UserPlaylist {
   /** Cuándo se sincronizó el snapshot con la plataforma. null = nunca. */
   synced_at?: string | null;
   created_at?: string;
+  trackCount?: number;
+  uploader?: string;
+}
+
+export interface PlaylistSearchResult {
+  id: string;
+  title: string;
+  name: string;
+  url: string;
+  thumbnail: string;
+  cover: string;
+  trackCount: number;
+  uploader?: string;
+  author?: string;
+  source: MusicSource;
 }
 
 export interface SavedPhrase {

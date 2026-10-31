@@ -9,6 +9,8 @@ import { useQueueActions } from "@/hooks/use-queue-actions";
 import { useUrlImport } from "@/hooks/use-url-import";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useLiveSearch } from "@/hooks/use-live-search";
+import { usePlaylists } from "@/hooks/use-playlists";
+import { usePlaylistSearch } from "@/features/music/hooks/use-playlist-search";
 import { useRecommendations } from "@/features/music/hooks/use-recommendations";
 import { detectPlatform } from "@/lib/formatters";
 import { STORAGE_KEYS } from "@/lib/storage-keys";
@@ -19,6 +21,8 @@ import { RadioHeader, TopSongsHeader } from "./recommendations-header";
 import { MusicResultsSection } from "./music-results-section";
 import { SearchResultsSection } from "./search-results-section";
 import { buildSearchResults } from "../../lib/build-search-results";
+import { buildPlaylistSearchResults } from "../../lib/build-playlist-search-results";
+import type { Song, UserPlaylist } from "@/types/domain";
 import type { MusicSubTab, SearchScope, TopSubTab } from "@/types/music";
 
 function detectInputPlatform(text: string): "spotify" | "youtube" | null {
@@ -54,7 +58,7 @@ export function MusicView() {
   const [searchScope, setSearchScope] = useLocalStorage<SearchScope>(
     STORAGE_KEYS.musicSearchScope,
     "all",
-    z.enum(["all", "favorites", "youtube"])
+    z.enum(["all", "favorites", "youtube", "playlists"])
   );
 
   const radioSongKey = activeTab === "radio" ? currentSong?.id : undefined;
@@ -69,10 +73,16 @@ export function MusicView() {
   const detectedPlatform = useMemo(() => detectInputPlatform(searchInput.trim()), [searchInput]);
   const isUrl = detectedPlatform !== null;
 
+  const playlistsState = usePlaylists();
+  const { playlists: userPlaylists } = playlistsState;
+
   const { searchResults, isSearching } = useLiveSearch(searchInput, isUrl, searchScope);
+  const { playlistResults, isSearchingPlaylists } = usePlaylistSearch(searchInput, isUrl, searchScope);
 
   // Con texto (2+ letras, no un enlace) la zona de tarjetas muestra los resultados de búsqueda.
   const isSearchActive = !isUrl && searchInput.trim().length >= 2;
+  const isPlaylistSearch = isSearchActive && searchScope === "playlists";
+
   const searchGroups = useMemo(
     () =>
       buildSearchResults({
@@ -82,6 +92,16 @@ export function MusicView() {
         youtube: searchResults,
       }),
     [searchInput, searchScope, favorites, searchResults]
+  );
+
+  const playlistSearchGroups = useMemo(
+    () =>
+      buildPlaylistSearchResults({
+        query: searchInput,
+        userPlaylists,
+        youtubePlaylists: playlistResults,
+      }),
+    [searchInput, userPlaylists, playlistResults]
   );
 
   const playAllRecs = async () => {
@@ -94,7 +114,11 @@ export function MusicView() {
   };
 
   const displayedSongs = activeTab === "favorites" ? favorites : recSongs;
-  const pagedSource = isSearchActive ? searchGroups.combined : displayedSongs;
+  const pagedSource = isSearchActive
+    ? isPlaylistSearch
+      ? playlistSearchGroups.combined
+      : searchGroups.combined
+    : displayedSongs;
 
   // ══════════ PAGINACIÓN TRADICIONAL ══════════
   const ITEMS_PER_PAGE = 12;
@@ -108,7 +132,7 @@ export function MusicView() {
   const totalPages = Math.max(1, Math.ceil(pagedSource.length / ITEMS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
 
-  const paginatedSongs = useMemo(() => {
+  const paginatedItems = useMemo(() => {
     const start = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
     return pagedSource.slice(start, start + ITEMS_PER_PAGE);
   }, [pagedSource, safeCurrentPage]);
@@ -139,6 +163,17 @@ export function MusicView() {
     }
   };
 
+  const handleTabChange = (tab: MusicSubTab) => {
+    // Elegir una pestaña sale de la búsqueda y sincroniza el ámbito
+    setSearchInput("");
+    setActiveTab(tab);
+    if (tab === "playlists") {
+      setSearchScope("playlists");
+    } else if (searchScope === "playlists") {
+      setSearchScope("all");
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* ══════════ COMANDO: BÚSQUEDA Y DETECCIÓN DE ENLACES ══════════ */}
@@ -159,11 +194,7 @@ export function MusicView() {
         {/* ══════════ TABS DE NAVEGACIÓN DEL CATÁLOGO ══════════ */}
         <MusicCatalogTabs
           activeTab={activeTab}
-          onTabChange={(tab) => {
-            // Elegir una pestaña sale de la búsqueda.
-            setSearchInput("");
-            setActiveTab(tab);
-          }}
+          onTabChange={handleTabChange}
           favoritesCount={favorites.length}
           radioSongsCount={activeTab === "radio" ? recSongs.length : 0}
           topSongsCount={activeTab === "top" ? recSongs.length : 0}
@@ -204,14 +235,16 @@ export function MusicView() {
         <SearchResultsSection
           query={searchInput.trim()}
           scope={searchScope}
-          favoritesCount={searchGroups.favorites.length}
-          youtubeCount={searchGroups.youtube.length}
-          paginatedSongs={paginatedSongs}
-          totalItems={searchGroups.combined.length}
+          favoritesCount={isPlaylistSearch ? playlistSearchGroups.userPlaylists.length : searchGroups.favorites.length}
+          youtubeCount={isPlaylistSearch ? playlistSearchGroups.youtubePlaylists.length : searchGroups.youtube.length}
+          paginatedSongs={isPlaylistSearch ? [] : (paginatedItems as Song[])}
+          paginatedPlaylists={isPlaylistSearch ? (paginatedItems as UserPlaylist[]) : []}
+          playlistsState={playlistsState}
+          totalItems={isPlaylistSearch ? playlistSearchGroups.combined.length : searchGroups.combined.length}
           currentPage={safeCurrentPage}
           totalPages={totalPages}
           itemsPerPage={ITEMS_PER_PAGE}
-          isSearching={isSearching}
+          isSearching={isPlaylistSearch ? isSearchingPlaylists : isSearching}
           onPageChange={goToPage}
           onScopeChange={setSearchScope}
         />
@@ -225,13 +258,14 @@ export function MusicView() {
           isLoadingRecs={isLoadingRecs}
           songsCount={recSongs.length}
           displayedSongs={displayedSongs}
-          paginatedSongs={paginatedSongs}
+          paginatedSongs={paginatedItems as Song[]}
+          playlistsState={playlistsState}
           searchInput={searchInput}
           currentPage={safeCurrentPage}
           totalPages={totalPages}
           itemsPerPage={ITEMS_PER_PAGE}
           onPageChange={goToPage}
-          onExploreSuggestions={() => setActiveTab("radio")}
+          onExploreSuggestions={() => handleTabChange("radio")}
         />
       )}
     </div>

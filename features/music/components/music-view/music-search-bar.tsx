@@ -8,6 +8,7 @@ const SCOPE_OPTIONS: { id: SearchScope; label: string }[] = [
   { id: "all", label: "Todo" },
   { id: "favorites", label: "Favoritos" },
   { id: "youtube", label: "YouTube" },
+  { id: "playlists", label: "Playlists" },
 ];
 
 export interface MusicSearchBarProps {
@@ -45,7 +46,9 @@ export function MusicSearchBar({
       <div className="flex flex-wrap items-center justify-between gap-2 px-1">
         <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
           <Search size={13} className="text-purple-400" />
-          <span className="font-semibold">Reproducir o buscar canción</span>
+          <span className="font-semibold">
+            {scope === "playlists" ? "Buscar playlists" : "Reproducir o buscar canción"}
+          </span>
         </div>
 
         {/* Filtro: dónde buscar. Con un enlace pegado no aplica. */}
@@ -88,7 +91,11 @@ export function MusicSearchBar({
 
           <input
             type="text"
-            placeholder="Buscar canción, artista o pegar enlace de YouTube / Spotify..."
+            placeholder={
+              scope === "playlists"
+                ? "Buscar playlists en YouTube o pegar enlace..."
+                : "Buscar canción, artista o pegar enlace de YouTube / Spotify..."
+            }
             value={searchInput}
             disabled={isImporting}
             onChange={(e) => onSearchInputChange(e.target.value)}

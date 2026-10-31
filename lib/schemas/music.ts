@@ -129,6 +129,30 @@ export const searchResponseSchema = z.object({
   results: z.array(songSchema).default([]),
 });
 
+export const playlistSearchResultSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  name: z.string().optional(),
+  url: z.string().min(1),
+  thumbnail: z.string().min(1),
+  cover: z.string().optional(),
+  trackCount: z.number().int().nonnegative().default(0),
+  uploader: z.string().optional(),
+  author: z.string().optional(),
+  source: z.enum(["youtube", "spotify"]).default("youtube"),
+}).transform((item) => ({
+  ...item,
+  name: item.name || item.title,
+  cover: item.cover || item.thumbnail,
+  author: item.author || item.uploader || "YouTube",
+  uploader: item.uploader || item.author || "YouTube",
+}));
+
+export const searchPlaylistsResponseSchema = z.object({
+  query: z.string().optional(),
+  results: z.array(playlistSearchResultSchema).default([]),
+});
+
 export const queueActionSchema = z.object({
   success: z.boolean(),
   message: z.string().optional(),

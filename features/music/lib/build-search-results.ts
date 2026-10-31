@@ -43,6 +43,10 @@ export function buildSearchResults(input: {
 }): SearchResults {
   const query = input.query.trim().toLowerCase();
 
+  if (input.scope === "playlists") {
+    return { favorites: [], youtube: [], combined: [] };
+  }
+
   if (input.scope === "youtube") {
     const youtube: Song[] = [];
     for (const song of input.youtube) pushUnique(youtube, song);

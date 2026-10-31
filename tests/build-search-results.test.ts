@@ -90,4 +90,11 @@ describe("buildSearchResults", () => {
     expect(r.combined).toHaveLength(1);
     expect(r.favorites[0].id).toBe("f2");
   });
+
+  it("en 'playlists' no devuelve canciones de favoritos ni youtube de canciones", () => {
+    const r = buildSearchResults({ query: "bad bunny", scope: "playlists", favorites, youtube });
+    expect(r.combined).toEqual([]);
+    expect(r.favorites).toEqual([]);
+    expect(r.youtube).toEqual([]);
+  });
 });

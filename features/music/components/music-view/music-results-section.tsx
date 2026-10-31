@@ -2,6 +2,7 @@
 
 import type { Song } from "@/types/domain";
 import type { MusicSubTab, TopSubTab } from "@/types/music";
+import type { usePlaylists } from "@/hooks/use-playlists";
 import { SongCard } from "../song-card";
 import { PlaylistsView } from "../playlists/playlists-view";
 import { Pagination } from "./pagination";
@@ -24,6 +25,7 @@ export interface MusicResultsSectionProps {
   itemsPerPage: number;
   onPageChange: (page: number) => void;
   onExploreSuggestions: () => void;
+  playlistsState?: ReturnType<typeof usePlaylists>;
 }
 
 export function MusicResultsSection({
@@ -41,9 +43,10 @@ export function MusicResultsSection({
   itemsPerPage,
   onPageChange,
   onExploreSuggestions,
+  playlistsState,
 }: MusicResultsSectionProps) {
   if (activeTab === "playlists") {
-    return <PlaylistsView />;
+    return <PlaylistsView playlistsState={playlistsState} />;
   }
 
   if (activeTab === "favorites") {

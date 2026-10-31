@@ -5,6 +5,7 @@ import type {
   ApiVoiceChannel,
   ApiVoiceStatus,
   Song,
+  PlaylistSearchResult,
 } from "@/types/domain";
 import { httpRequest } from "@/lib/http";
 import {
@@ -15,6 +16,7 @@ import {
   recommendationsResponseSchema,
   resolvePlaylistResponseSchema,
   searchResponseSchema,
+  searchPlaylistsResponseSchema,
   suggestionsResponseSchema,
   topSongsResponseSchema,
   voiceChannelListResponseSchema,
@@ -29,6 +31,7 @@ export type {
   ApiVoiceMember,
   ApiVoiceChannel,
   ApiVoiceStatus,
+  PlaylistSearchResult,
 } from "@/types/domain";
 
 const healthSchema = z.object({
@@ -169,6 +172,18 @@ class IgniteApiClient {
     );
     if (!res.ok) return [];
     return res.data.suggestions;
+  }
+
+  async searchPlaylists(query: string, limit = 6): Promise<PlaylistSearchResult[]> {
+    const q = query.trim();
+    if (q.length < 2 || q.length > 100 || /^https?:\/\//i.test(q)) return [];
+    const res = await httpRequest(
+      musicUrl(`search/playlists?q=${encodeURIComponent(q)}&limit=${limit}`),
+      searchPlaylistsResponseSchema,
+      { method: "GET", timeoutMs: 8000 }
+    );
+    if (!res.ok) return [];
+    return res.data.results;
   }
 
   async searchVideos(query: string, limit = 6): Promise<Song[]> {

@@ -18,7 +18,7 @@ const DEBOUNCE_MS = 350;
  */
 export function useLiveSearch(searchInput: string, isUrl: boolean, scope: SearchScope) {
   const query = searchInput.trim();
-  const enabled = !isUrl && query.length >= 2 && scope !== "favorites";
+  const enabled = !isUrl && query.length >= 2 && scope !== "favorites" && scope !== "playlists";
   const [state, setState] = useState<{ query: string | null; results: Song[] }>({
     query: null,
     results: [],
