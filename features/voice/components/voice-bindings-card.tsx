@@ -218,7 +218,7 @@ export function VoiceBindingsCard({
                   role="tab"
                   aria-selected={isActive}
                   onClick={() => setActiveCategory(cat.id)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors whitespace-nowrap ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors whitespace-nowrap cursor-pointer ${
                     isActive
                       ? "bg-purple-600 text-white shadow-xs"
                       : "text-slate-600 dark:text-slate-400 hover:bg-black/5 dark:hover:bg-white/5"
@@ -254,7 +254,7 @@ export function VoiceBindingsCard({
                       setSelectedId(cmd.id);
                       setCustomInput("");
                     }}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors shrink-0 min-w-[180px] lg:min-w-0 ${
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors shrink-0 min-w-[180px] lg:min-w-0 cursor-pointer ${
                       isActive
                         ? "bg-purple-500/10 dark:bg-purple-500/15"
                         : "hover:bg-black/[0.03] dark:hover:bg-white/[0.04]"
@@ -347,7 +347,7 @@ export function VoiceBindingsCard({
                     <button
                       type="button"
                       onClick={() => handleRemovePhrase(phrase)}
-                      className="text-purple-500 hover:text-rose-500 transition-colors"
+                      className="text-purple-500 hover:text-rose-500 transition-colors cursor-pointer"
                       title={`Eliminar frase "${phrase}"`}
                     >
                       <X size={12} />

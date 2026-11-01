@@ -121,7 +121,11 @@ export function MusicView() {
     : displayedSongs;
 
   // ══════════ PAGINACIÓN TRADICIONAL ══════════
-  const ITEMS_PER_PAGE = 12;
+  // En Búsqueda y Radio en vivo se muestra todo en una sola vista fluida (hasta 24 temas, 4 filas completas),
+  // eliminando la segunda página vacía de solo 2 canciones.
+  // En Favoritos y Top Canciones se mantiene el paginador de 12 canciones por página.
+  const isSinglePageScope = isSearchActive || activeTab === "radio";
+  const itemsPerPage = isSinglePageScope ? 24 : 12;
   const catalogScrollRef = useRef<HTMLDivElement | null>(null);
 
   const pageResetKey = `${activeTab}|${topSubTab}|${isSearchActive ? `${searchScope}|${searchInput}` : ""}`;
@@ -129,13 +133,13 @@ export function MusicView() {
   const currentPage = pageState.key === pageResetKey ? pageState.page : 1;
   const setCurrentPage = (page: number) => setPageState({ key: pageResetKey, page });
 
-  const totalPages = Math.max(1, Math.ceil(pagedSource.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(pagedSource.length / itemsPerPage));
   const safeCurrentPage = Math.min(currentPage, totalPages);
 
   const paginatedItems = useMemo(() => {
-    const start = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
-    return pagedSource.slice(start, start + ITEMS_PER_PAGE);
-  }, [pagedSource, safeCurrentPage]);
+    const start = (safeCurrentPage - 1) * itemsPerPage;
+    return pagedSource.slice(start, start + itemsPerPage);
+  }, [pagedSource, safeCurrentPage, itemsPerPage]);
 
   const goToPage = (page: number) => {
     const target = Math.max(1, Math.min(page, totalPages));
@@ -243,7 +247,7 @@ export function MusicView() {
           totalItems={isPlaylistSearch ? playlistSearchGroups.combined.length : searchGroups.combined.length}
           currentPage={safeCurrentPage}
           totalPages={totalPages}
-          itemsPerPage={ITEMS_PER_PAGE}
+          itemsPerPage={itemsPerPage}
           isSearching={isPlaylistSearch ? isSearchingPlaylists : isSearching}
           onPageChange={goToPage}
           onScopeChange={setSearchScope}
@@ -263,7 +267,7 @@ export function MusicView() {
           searchInput={searchInput}
           currentPage={safeCurrentPage}
           totalPages={totalPages}
-          itemsPerPage={ITEMS_PER_PAGE}
+          itemsPerPage={itemsPerPage}
           onPageChange={goToPage}
           onExploreSuggestions={() => handleTabChange("radio")}
         />

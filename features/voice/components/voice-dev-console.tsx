@@ -129,7 +129,17 @@ export function VoiceDevConsole({ guildId }: VoiceDevConsoleProps) {
     try {
       const res = await fetchVoiceLogs(guildId, 60);
       if (res.ok && res.data?.logs) {
-        setLogs(res.data.logs);
+        setLogs((prev) => {
+          const fresh = res.data.logs;
+          if (
+            prev.length === fresh.length &&
+            prev[0]?.id === fresh[0]?.id &&
+            prev[prev.length - 1]?.id === fresh[fresh.length - 1]?.id
+          ) {
+            return prev;
+          }
+          return fresh;
+        });
       }
     } catch {
       // Ignore load error
@@ -144,45 +154,109 @@ export function VoiceDevConsole({ guildId }: VoiceDevConsoleProps) {
     void loadLogs();
   }, [loadLogs]);
 
-  // Connect to SSE stream for live updates
+  // Connect to SSE stream for live updates with auto-reconnection
   useEffect(() => {
     if (!guildId || typeof EventSource === "undefined") return;
 
     let source: EventSource | null = null;
-    try {
-      source = new EventSource(musicUrl(`guilds/${encodeURIComponent(guildId)}/events`));
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let isCancelled = false;
 
-      source.addEventListener("open", () => setIsLive(true));
-      source.addEventListener("error", () => setIsLive(false));
-
-      const handleVoiceLog = (e: MessageEvent) => {
+    const connect = () => {
+      if (isCancelled) return;
+      if (source) {
         try {
-          const entry: VoiceLogEntry = JSON.parse(e.data);
-          setLogs((prev) => {
-            if (prev.some((item) => item.id === entry.id)) {
-              return prev;
-            }
-            return [entry, ...prev.slice(0, 99)];
-          });
-        } catch {
-          // Ignore parse error
-        }
-      };
-
-      source.addEventListener("voice.log", handleVoiceLog);
-
-      return () => {
-        if (source) {
-          source.removeEventListener("voice.log", handleVoiceLog);
           source.close();
-        }
+        } catch {}
+        source = null;
+      }
+
+      try {
+        const s = new EventSource(musicUrl(`guilds/${encodeURIComponent(guildId)}/events`));
+        source = s;
+
+        s.addEventListener("open", () => {
+          if (isCancelled) return;
+          setIsLive(true);
+          // Refresca logs al conectar para sincronizar cualquier evento previo
+          void loadLogs();
+        });
+
+        s.addEventListener("error", () => {
+          if (isCancelled) return;
+          setIsLive(false);
+
+          // Si el EventSource pasó a CLOSED (2), el navegador no reintentará solo (p. ej. error 502/503 o reinicio).
+          // Debemos cerrarlo y programar una reconexión activa.
+          if (s.readyState === EventSource.CLOSED) {
+            try {
+              s.close();
+            } catch {}
+            if (source === s) source = null;
+            if (!reconnectTimer) {
+              reconnectTimer = setTimeout(() => {
+                reconnectTimer = null;
+                connect();
+              }, 3000);
+            }
+          }
+        });
+
+        const handleVoiceLog = (e: MessageEvent) => {
+          try {
+            const entry: VoiceLogEntry = JSON.parse(e.data);
+            setLogs((prev) => {
+              if (prev.some((item) => item.id === entry.id)) {
+                return prev;
+              }
+              return [entry, ...prev.slice(0, 99)];
+            });
+          } catch {
+            // Ignore parse error
+          }
+        };
+
+        s.addEventListener("voice.log", handleVoiceLog);
+      } catch {
         setIsLive(false);
-      };
-    } catch {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+        if (!reconnectTimer && !isCancelled) {
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
+            connect();
+          }, 3000);
+        }
+      }
+    };
+
+    connect();
+
+    return () => {
+      isCancelled = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (source) {
+        try {
+          source.close();
+        } catch {}
+        source = null;
+      }
       setIsLive(false);
-    }
-  }, [guildId]);
+    };
+  }, [guildId, loadLogs]);
+
+  // Fallback de sondeo automático:
+  // Si no está en vivo (!isLive), consultamos logs cada 3s para que los comandos
+  // sigan apareciendo automáticamente en pantalla sin obligar a hacer clic en "Actualizar".
+  // Si está en vivo, mantenemos un sondeo lento cada 25s como respaldo.
+  useEffect(() => {
+    if (!guildId) return;
+
+    const intervalMs = isLive ? 25000 : 3000;
+    const timer = setInterval(() => {
+      void loadLogs();
+    }, intervalMs);
+
+    return () => clearInterval(timer);
+  }, [guildId, isLive, loadLogs]);
 
   // Auto-scroll when logs change
   useEffect(() => {
@@ -226,7 +300,7 @@ export function VoiceDevConsole({ guildId }: VoiceDevConsoleProps) {
   ];
 
   const toolBtn =
-    "inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors disabled:opacity-40 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50";
+    "inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-xs text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-40 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500/50";
 
   return (
     <div className="glass-card rounded-2xl border border-black/5 dark:border-white/10 overflow-hidden font-mono text-slate-700 dark:text-slate-300">
@@ -290,7 +364,7 @@ export function VoiceDevConsole({ guildId }: VoiceDevConsoleProps) {
               role="tab"
               aria-selected={filter === f.id}
               onClick={() => setFilter(f.id)}
-              className={`px-2.5 py-1 rounded-md text-xs transition-colors ${
+              className={`px-2.5 py-1 rounded-md text-xs transition-colors cursor-pointer ${
                 filter === f.id
                   ? "bg-purple-600 text-white"
                   : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10"

@@ -140,7 +140,7 @@ export function VoiceWakeCard({
                   type="button"
                   onClick={() => handleRemoveWakeWord(word)}
                   title={`Eliminar "${word}"`}
-                  className="ml-0.5 p-0.5 rounded-md hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 transition-colors"
+                  className="ml-0.5 p-0.5 rounded-md hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 transition-colors cursor-pointer"
                 >
                   <X size={12} />
                 </button>

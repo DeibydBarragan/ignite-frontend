@@ -108,7 +108,7 @@ export function PlaylistCard({
               {neverSynced
                 ? pl.trackCount !== undefined
                   ? `${pl.trackCount} temas`
-                  : "Sin sincronizar"
+                  : "Playlist"
                 : `${pl.tracks.length} temas`}
             </span>
           </div>
@@ -134,14 +134,10 @@ export function PlaylistCard({
           </h4>
 
           <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-1">
-            {!neverSynced ? (
+            {!neverSynced && (
               <span className="flex items-center gap-1 text-slate-400 dark:text-slate-400">
                 <Clock size={11} />
                 ~{formatDuration(totalDuration(pl.tracks))}
-              </span>
-            ) : (
-              <span className="text-amber-500/90 dark:text-amber-400/90 text-[10px]">
-                No sincronizada
               </span>
             )}
             {pl.synced_at && (
@@ -160,10 +156,12 @@ export function PlaylistCard({
           >
             {pl.tracks.slice(0, 3).map((t) => t.title).join(" • ")}
           </p>
-        ) : (
-          <p className="text-[11px] text-slate-400/60 dark:text-slate-500 italic truncate mb-3">
-            {pl.uploader ? `Por ${pl.uploader}` : "Abre la playlist para sincronizar sus temas"}
+        ) : pl.uploader ? (
+          <p className="text-[11px] text-slate-400/70 dark:text-slate-400 truncate mb-3">
+            Por {pl.uploader}
           </p>
+        ) : (
+          <div className="mb-3" />
         )}
       </div>
 

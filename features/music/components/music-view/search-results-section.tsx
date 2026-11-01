@@ -73,7 +73,8 @@ export function SearchResultsSection({
 }: SearchResultsSectionProps) {
   const isPlaylistScope = scope === "playlists";
   const items = isPlaylistScope ? paginatedPlaylists : paginatedSongs;
-  const skeletonCount = isSearching ? (items.length === 0 ? 12 : 6) : 0;
+  const targetTotal = isPlaylistScope ? 5 : 12;
+  const skeletonCount = isSearching ? Math.max(0, targetTotal - items.length) : 0;
   const isEmpty = !isSearching && totalItems === 0;
 
   const {
