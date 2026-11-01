@@ -32,6 +32,8 @@ function rowToSong(item: FavoriteRow): Song {
 const FAVORITE_COLUMNS = "song_id,title,artist,album_art,url,duration,source,is_lyric";
 const LEGACY_FAVORITE_COLUMNS = "song_id,title,artist,album_art,url,duration,source";
 
+let hasIsLyricColumn: boolean | null = null;
+
 function favoritesQuery(uid: string, columns: string) {
   return supabase
     .from("user_favorites")
@@ -42,10 +44,14 @@ function favoritesQuery(uid: string, columns: string) {
 }
 
 export async function fetchFavoriteSongs(uid: string): Promise<Song[]> {
-  let { data, error } = await favoritesQuery(uid, FAVORITE_COLUMNS);
+  const columns = hasIsLyricColumn === false ? LEGACY_FAVORITE_COLUMNS : FAVORITE_COLUMNS;
+  let { data, error } = await favoritesQuery(uid, columns);
   if (error && error.code === "42703") {
-    // La BD aún no tiene la columna is_lyric (migración pendiente): reintentar sin ella.
+    // La BD aún no tiene la columna is_lyric (migración pendiente): memorizar y reintentar sin ella.
+    hasIsLyricColumn = false;
     ({ data, error } = await favoritesQuery(uid, LEGACY_FAVORITE_COLUMNS));
+  } else if (!error && hasIsLyricColumn === null) {
+    hasIsLyricColumn = true;
   }
   if (error) throw error;
   const rows = (data ?? []) as unknown as FavoriteRow[];
@@ -63,28 +69,46 @@ function toRow(uid: string, song: Song, withLyric: boolean) {
     url: song.url,
     duration,
     source: song.source,
-    ...(withLyric ? { is_lyric: song.isLyric ?? false } : {}),
+    ...(withLyric && hasIsLyricColumn !== false ? { is_lyric: song.isLyric ?? false } : {}),
   };
 }
 
 export async function insertFavorite(uid: string, song: Song): Promise<void> {
-  const { error } = await supabase.from("user_favorites").insert(toRow(uid, song, true));
-  if (!error) return;
-  const { error: retryError } = await supabase
-    .from("user_favorites")
-    .insert(toRow(uid, song, false));
-  if (retryError) throw retryError;
+  const tryWithLyric = hasIsLyricColumn !== false;
+  const { error } = await supabase.from("user_favorites").insert(toRow(uid, song, tryWithLyric));
+  if (!error) {
+    if (tryWithLyric && hasIsLyricColumn === null) hasIsLyricColumn = true;
+    return;
+  }
+  if (error.code === "42703") {
+    hasIsLyricColumn = false;
+    const { error: retryError } = await supabase
+      .from("user_favorites")
+      .insert(toRow(uid, song, false));
+    if (retryError) throw retryError;
+    return;
+  }
+  throw error;
 }
 
 export async function insertFavoriteRows(uid: string, songs: Song[]): Promise<void> {
+  const tryWithLyric = hasIsLyricColumn !== false;
   const { error } = await supabase
     .from("user_favorites")
-    .insert(songs.map((s) => toRow(uid, s, true)));
-  if (!error) return;
-  const { error: retryError } = await supabase
-    .from("user_favorites")
-    .insert(songs.map((s) => toRow(uid, s, false)));
-  if (retryError) throw retryError;
+    .insert(songs.map((s) => toRow(uid, s, tryWithLyric)));
+  if (!error) {
+    if (tryWithLyric && hasIsLyricColumn === null) hasIsLyricColumn = true;
+    return;
+  }
+  if (error.code === "42703") {
+    hasIsLyricColumn = false;
+    const { error: retryError } = await supabase
+      .from("user_favorites")
+      .insert(songs.map((s) => toRow(uid, s, false)));
+    if (retryError) throw retryError;
+    return;
+  }
+  throw error;
 }
 
 export async function deleteFavorite(uid: string, song: Song): Promise<void> {

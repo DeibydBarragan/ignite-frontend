@@ -39,10 +39,26 @@ function fallbackBase(): string {
   return cleaned;
 }
 
+async function isLocalhostReachable(base: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${base}/api/v1/health`, {
+      method: "GET",
+      signal: AbortSignal.timeout(400),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function getMusicBaseUrl(): Promise<string> {
   const localEnv = process.env.IGNITE_API_URL ?? process.env.NEXT_PUBLIC_IGNITE_API_URL;
-  if (localEnv && (localEnv.includes("localhost") || localEnv.includes("127.0.0.1"))) {
-    return cleanUrl(localEnv) || "http://localhost:3001";
+  const isLocal = localEnv && (localEnv.includes("localhost") || localEnv.includes("127.0.0.1"));
+  if (isLocal) {
+    const localBase = cleanUrl(localEnv) || "http://localhost:3001";
+    if (await isLocalhostReachable(localBase)) {
+      return localBase;
+    }
   }
 
   const now = Date.now();

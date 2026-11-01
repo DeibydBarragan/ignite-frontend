@@ -76,6 +76,10 @@ async function proxy(req: NextRequest, path: string[]) {
     return NextResponse.json({ error: "Music bot unreachable" }, { status: 502 });
   }
 
+  if (upstream.status === 502 || upstream.status === 530) {
+    invalidateMusicBaseUrlCache();
+  }
+
   const contentType = upstream.headers.get("content-type") ?? "";
   if (contentType.includes("text/event-stream")) {
     if (!upstream.body) {
