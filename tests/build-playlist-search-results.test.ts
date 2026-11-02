@@ -120,4 +120,43 @@ describe("buildPlaylistSearchResults", () => {
     expect(item.uploader).toBe("DJ Mix");
     expect(item.source).toBe("youtube");
   });
+
+  it("prioriza la playlist oficial Presenting de YouTube Music en el primer lugar", () => {
+    const rawYoutube: PlaylistSearchResult[] = [
+      {
+        id: "PL999",
+        title: "Daft Punk Mix Videos",
+        name: "Daft Punk Mix Videos",
+        url: "https://www.youtube.com/playlist?list=PL999",
+        thumbnail: "https://img.youtube.com/999.jpg",
+        cover: "https://img.youtube.com/999.jpg",
+        trackCount: 20,
+        uploader: "Fan Club",
+        author: "Fan Club",
+        source: "youtube",
+      },
+      {
+        id: "RDCL123",
+        title: "Presenting Daft Punk",
+        name: "Presenting Daft Punk",
+        url: "https://www.youtube.com/playlist?list=RDCL123",
+        thumbnail: "https://img.youtube.com/rdcl.jpg",
+        cover: "https://img.youtube.com/rdcl.jpg",
+        trackCount: 35,
+        uploader: "YouTube Music",
+        author: "YouTube Music",
+        source: "youtube",
+      },
+    ];
+
+    const res = buildPlaylistSearchResults({
+      query: "Daft Punk",
+      userPlaylists: [],
+      youtubePlaylists: rawYoutube,
+    });
+
+    expect(res.youtubePlaylists[0].id).toBe("RDCL123");
+    expect(res.youtubePlaylists[0].name).toBe("Presenting Daft Punk");
+    expect(res.youtubePlaylists[1].id).toBe("PL999");
+  });
 });

@@ -81,6 +81,22 @@ export function buildPlaylistSearchResults(input: {
     });
   }
 
+  // Priorizar lista oficial "Presenting / Presentamos a" de YouTube Music como primer resultado público
+  const cleanArtist = query.replace(/^(this\s+is|presenting|presentamos\s+a|presentando\s+a)\s+/i, "").trim();
+  if (cleanArtist.length >= 2) {
+    const isPresentingTitle = (t: string) => /^(presenting|presentamos a|presentando a)\b/i.test(t);
+    const presIdx = youtubePlaylists.findIndex(
+      (p) =>
+        (p.uploader === "YouTube Music" || p.id.startsWith("RDCL")) &&
+        p.name.toLowerCase().includes(cleanArtist) &&
+        isPresentingTitle(p.name)
+    );
+    if (presIdx > 0) {
+      const [pres] = youtubePlaylists.splice(presIdx, 1);
+      youtubePlaylists.unshift(pres);
+    }
+  }
+
   return {
     userPlaylists,
     youtubePlaylists,
