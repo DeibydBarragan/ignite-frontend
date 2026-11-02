@@ -83,8 +83,8 @@ export function PlayerCollapsedBar() {
       <button
         type="button"
         onClick={() => setIsPlayerCollapsed(false)}
-        title={`Abrir reproductor • ${currentSong.title}`}
-        aria-label={`Abrir reproductor: ${currentSong.title}`}
+        title={`Abrir reproductor • ${currentSong.title} — ${currentSong.artist}`}
+        aria-label={`Abrir reproductor: ${currentSong.title} por ${currentSong.artist}`}
         className={`relative flex items-center gap-2.5 p-1.5 pr-3.5 rounded-full glass-panel player-glass-dock border shadow-2xl backdrop-blur-2xl transition-all duration-300 cursor-pointer hover:scale-105 active:scale-95 ${
           isPlaying
             ? "border-[#1db954]/50 shadow-[#1db954]/25 ring-1 ring-[#1db954]/30"

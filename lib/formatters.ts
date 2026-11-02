@@ -74,3 +74,33 @@ export function derivePlaylistName(url: string, customName?: string): string {
     return "Nueva playlist";
   }
 }
+
+export function getSongExternalUrl(song: {
+  url?: string;
+  source?: string;
+  id?: string;
+  title?: string;
+  artist?: string;
+}): string {
+  const rawUrl = song.url?.trim();
+  if (rawUrl && /^https?:\/\//i.test(rawUrl)) {
+    return rawUrl;
+  }
+
+  const isSpotify = song.source === "spotify" || rawUrl?.includes("spotify.com");
+  const query = `${song.title || ""} ${song.artist || ""}`.trim();
+
+  if (isSpotify) {
+    if (song.id && !song.id.includes(" ") && !song.id.startsWith("mock-")) {
+      return `https://open.spotify.com/track/${song.id}`;
+    }
+    return `https://open.spotify.com/search/${encodeURIComponent(query || "music")}`;
+  }
+
+  // Default to YouTube
+  if (song.id && !song.id.includes(" ") && !song.id.startsWith("mock-") && song.id.length >= 6) {
+    return `https://www.youtube.com/watch?v=${song.id}`;
+  }
+
+  return `https://www.youtube.com/results?search_query=${encodeURIComponent(query || "music")}`;
+}

@@ -2,6 +2,7 @@
 
 import { usePlayerStore } from "@/features/music/stores/player-store";
 import type { Song } from "@/types/domain";
+import { formatDuration, getSongExternalUrl } from "@/lib/formatters";
 import { CoverImage } from "@/components/ui/cover-image";
 import { LiveEqualizer } from "@/components/ui/live-equalizer";
 import { Loader2, ExternalLink, User, Star, ChevronDown } from "lucide-react";
@@ -39,27 +40,31 @@ export function PlayerTrackInfo({
     className: "bg-purple-500/10 text-purple-400 border-purple-500/20",
   };
 
+  const fullTrackLabel = `${song.title} — ${song.artist}`;
+  const externalUrl = getSongExternalUrl(song);
+
   return (
     <div className="flex items-center gap-3 w-full md:w-[35%] lg:w-[38%] min-w-0 shrink-0">
-      <div className="relative group shrink-0">
+      <a
+        href={externalUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={`Abrir en ${song.source === "spotify" ? "Spotify" : "YouTube"} • ${fullTrackLabel}`}
+        aria-label={`Abrir en ${song.source === "spotify" ? "Spotify" : "YouTube"}: ${fullTrackLabel}`}
+        className="relative group shrink-0 block w-12 h-12 rounded-xl overflow-hidden ring-1 ring-black/10 dark:ring-white/10 shadow-md hover:ring-2 hover:ring-[#1db954] cursor-pointer transition-all duration-200"
+      >
         <CoverImage
           src={song.albumArt}
           alt={song.title}
           sizes="48px"
-          className="w-12 h-12 rounded-xl ring-1 ring-black/10 dark:ring-white/10 shadow-md"
+          className="w-full h-full"
         />
-        <a
-          href={song.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Abrir enlace original"
-          className="absolute inset-0 bg-black/50 text-white rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-        >
-          <ExternalLink size={14} />
-        </a>
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="absolute inset-0 bg-black/60 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <ExternalLink size={16} className="text-white drop-shadow-md" />
+        </div>
+      </a>
+      <div className="min-w-0 flex-1" title={fullTrackLabel}>
+        <div className="flex items-center gap-1.5 min-w-0" title={fullTrackLabel}>
           {isPlaying && (
             <div
               className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#1db954]/10 border border-[#1db954]/25 shrink-0"
@@ -72,8 +77,8 @@ export function PlayerTrackInfo({
             </div>
           )}
           <h4
-            title={song.title}
-            className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate min-w-0 flex-1"
+            title={fullTrackLabel}
+            className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate min-w-0 flex-1 cursor-default"
           >
             {song.title}
           </h4>
@@ -96,8 +101,8 @@ export function PlayerTrackInfo({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-          <span className="truncate" title={song.artist}>{song.artist}</span>
+        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5" title={fullTrackLabel}>
+          <span className="truncate cursor-default" title={fullTrackLabel}>{song.artist}</span>
           <span className="text-slate-300 dark:text-slate-600 shrink-0">•</span>
           <span
             className={`text-[9px] uppercase font-bold px-1.5 py-0.2 rounded border shadow-2xs shrink-0 ${sourceConfig.className}`}

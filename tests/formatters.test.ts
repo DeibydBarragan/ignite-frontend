@@ -5,6 +5,7 @@ import {
   detectPlaylistSource,
   formatDuration,
   formatRelativeTime,
+  getSongExternalUrl,
   timeAgo,
 } from "@/lib/formatters";
 
@@ -80,5 +81,54 @@ describe("derivePlaylistName", () => {
 
   it("usa fallback para URLs inválidas", () => {
     expect(derivePlaylistName("no-es-url")).toBe("Nueva playlist");
+  });
+});
+
+describe("getSongExternalUrl", () => {
+  it("devuelve la URL si ya es absoluta válida", () => {
+    expect(getSongExternalUrl({ url: "https://www.youtube.com/watch?v=12345" })).toBe(
+      "https://www.youtube.com/watch?v=12345"
+    );
+    expect(getSongExternalUrl({ url: "https://open.spotify.com/track/67890" })).toBe(
+      "https://open.spotify.com/track/67890"
+    );
+  });
+
+  it("genera enlace a YouTube por ID o búsqueda", () => {
+    expect(
+      getSongExternalUrl({
+        id: "8GW6sLrK40k",
+        source: "youtube",
+        title: "Qué Hay de Malo",
+        artist: "Jerry Rivera",
+      })
+    ).toBe("https://www.youtube.com/watch?v=8GW6sLrK40k");
+
+    expect(
+      getSongExternalUrl({
+        source: "youtube",
+        title: "Qué Hay de Malo",
+        artist: "Jerry Rivera",
+      })
+    ).toBe("https://www.youtube.com/results?search_query=Qu%C3%A9%20Hay%20de%20Malo%20Jerry%20Rivera");
+  });
+
+  it("genera enlace a Spotify por ID o búsqueda", () => {
+    expect(
+      getSongExternalUrl({
+        id: "1eyzqe2QqGZUmfcPZtrIyt",
+        source: "spotify",
+        title: "PRC",
+        artist: "Peso Pluma",
+      })
+    ).toBe("https://open.spotify.com/track/1eyzqe2QqGZUmfcPZtrIyt");
+
+    expect(
+      getSongExternalUrl({
+        source: "spotify",
+        title: "PRC",
+        artist: "Peso Pluma",
+      })
+    ).toBe("https://open.spotify.com/search/PRC%20Peso%20Pluma");
   });
 });

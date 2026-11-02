@@ -2,9 +2,9 @@
 
 import { memo, useState } from "react";
 import type { Song } from "@/types/domain";
-import { formatDuration } from "@/lib/formatters";
+import { formatDuration, getSongExternalUrl } from "@/lib/formatters";
 import { CoverImage } from "@/components/ui/cover-image";
-import { Star, Play, ListPlus, Plus, Loader2 } from "lucide-react";
+import { Star, Play, ListPlus, Plus, Loader2, ExternalLink } from "lucide-react";
 
 export interface PlaylistTrackRowProps {
   track: Song;
@@ -75,6 +75,9 @@ export const PlaylistTrackRow = memo(function PlaylistTrackRow({
     }
   };
 
+  const fullTrackLabel = `${track.title} — ${track.artist}`;
+  const externalUrl = getSongExternalUrl(track);
+
   return (
     <div
       className={`flex items-center justify-between gap-3 p-2 rounded-xl border transition-colors ${
@@ -87,24 +90,36 @@ export const PlaylistTrackRow = memo(function PlaylistTrackRow({
         <span className="text-[11px] font-mono text-slate-400 w-6 text-center shrink-0">
           {index + 1}
         </span>
-        <CoverImage
-          src={track.albumArt}
-          alt={track.title}
-          sizes="36px"
-          className="w-9 h-9 rounded-lg shrink-0"
-        />
-        <div className="min-w-0 flex-1">
+        <a
+          href={externalUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`Abrir en ${track.source === "spotify" ? "Spotify" : "YouTube"} • ${fullTrackLabel}`}
+          aria-label={`Abrir en ${track.source === "spotify" ? "Spotify" : "YouTube"}: ${fullTrackLabel}`}
+          className="relative group/cover shrink-0 block w-9 h-9 rounded-lg overflow-hidden cursor-pointer ring-1 ring-black/10 dark:ring-white/10 hover:ring-2 hover:ring-[#1db954] transition-all"
+        >
+          <CoverImage
+            src={track.albumArt}
+            alt={track.title}
+            sizes="36px"
+            className="w-full h-full"
+          />
+          <div className="absolute inset-0 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover/cover:opacity-100 transition-opacity">
+            <ExternalLink size={12} className="text-white drop-shadow-xs" />
+          </div>
+        </a>
+        <div className="min-w-0 flex-1" title={fullTrackLabel}>
           <p
-            title={track.title}
-            className={`text-xs font-semibold truncate ${
+            title={fullTrackLabel}
+            className={`text-xs font-semibold truncate cursor-default ${
               isCurrent ? "text-[#1ed760]" : "text-slate-900 dark:text-white"
             }`}
           >
             {track.title}
           </p>
           <p
-            title={track.artist}
-            className="text-[10px] text-slate-500 dark:text-slate-400 truncate"
+            title={fullTrackLabel}
+            className="text-[10px] text-slate-500 dark:text-slate-400 truncate cursor-default"
           >
             {track.artist} · {formatDuration(track.duration)}
           </p>

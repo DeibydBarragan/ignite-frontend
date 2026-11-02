@@ -2,10 +2,10 @@
 
 import type { Song } from "@/types/domain";
 import { usePlayerStore } from "@/features/music/stores/player-store";
-import { formatDuration } from "@/lib/formatters";
+import { formatDuration, getSongExternalUrl } from "@/lib/formatters";
 import { CoverImage } from "@/components/ui/cover-image";
 import { LiveEqualizer } from "@/components/ui/live-equalizer";
-import { User, Star } from "lucide-react";
+import { User, Star, ExternalLink } from "lucide-react";
 
 export interface QueueNowPlayingProps {
   song: Song;
@@ -24,6 +24,9 @@ export function QueueNowPlaying({
 }: QueueNowPlayingProps) {
   const storeCurrentTime = usePlayerStore((s) => s.currentTime);
   const currentTime = propCurrentTime !== undefined ? propCurrentTime : storeCurrentTime;
+  const fullTrackLabel = `${song.title} — ${song.artist}`;
+  const externalUrl = getSongExternalUrl(song);
+
   return (
     <div className="p-3.5 rounded-xl border border-purple-500/20 bg-purple-500/[0.04] dark:bg-purple-950/20">
       <div className="text-[11px] font-medium text-purple-600 dark:text-purple-400 mb-2 flex items-center justify-between">
@@ -36,21 +39,33 @@ export function QueueNowPlaying({
         </span>
       </div>
       <div className="flex items-center gap-3">
-        <CoverImage
-          src={song.albumArt}
-          alt={song.title}
-          sizes="48px"
-          className="w-12 h-12 rounded-lg"
-        />
-        <div className="min-w-0 flex-1">
+        <a
+          href={externalUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`Abrir en ${song.source === "spotify" ? "Spotify" : "YouTube"} • ${fullTrackLabel}`}
+          aria-label={`Abrir en ${song.source === "spotify" ? "Spotify" : "YouTube"}: ${fullTrackLabel}`}
+          className="relative group shrink-0 block w-12 h-12 rounded-lg overflow-hidden cursor-pointer ring-1 ring-purple-500/30 hover:ring-2 hover:ring-[#1db954] transition-all"
+        >
+          <CoverImage
+            src={song.albumArt}
+            alt={song.title}
+            sizes="48px"
+            className="w-full h-full"
+          />
+          <div className="absolute inset-0 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <ExternalLink size={16} className="text-white drop-shadow-sm" />
+          </div>
+        </a>
+        <div className="min-w-0 flex-1" title={fullTrackLabel}>
           <h4
-            title={song.title}
-            className="text-sm font-bold text-slate-900 dark:text-white truncate"
+            title={fullTrackLabel}
+            className="text-sm font-bold text-slate-900 dark:text-white truncate cursor-default"
           >
             {song.title}
           </h4>
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 min-w-0">
-            <span className="truncate" title={song.artist}>{song.artist}</span>
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 min-w-0" title={fullTrackLabel}>
+            <span className="truncate cursor-default" title={fullTrackLabel}>{song.artist}</span>
             {song.requestedBy?.username && (
               <>
                 <span className="text-slate-300 dark:text-slate-600 shrink-0">•</span>

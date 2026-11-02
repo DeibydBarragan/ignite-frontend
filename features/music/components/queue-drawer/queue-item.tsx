@@ -4,9 +4,9 @@ import { memo } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Song } from "@/types/domain";
-import { formatDuration } from "@/lib/formatters";
+import { formatDuration, getSongExternalUrl } from "@/lib/formatters";
 import { CoverImage } from "@/components/ui/cover-image";
-import { User, Star, ChevronUp, ChevronDown, GripVertical, Play, X, Loader2 } from "lucide-react";
+import { User, Star, ChevronUp, ChevronDown, GripVertical, Play, X, Loader2, ExternalLink } from "lucide-react";
 
 export interface SortableQueueItemProps {
   id: string;
@@ -45,6 +45,8 @@ export const SortableQueueItem = memo(function SortableQueueItem({
   } = useSortable({ id, disabled });
 
   const isItemBusy = disabled || removing;
+  const fullTrackLabel = `${song.title} — ${song.artist}`;
+  const externalUrl = getSongExternalUrl(song);
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -77,21 +79,33 @@ export const SortableQueueItem = memo(function SortableQueueItem({
         <span className="text-xs font-mono text-slate-400 w-5 text-center shrink-0">
           #{index + 1}
         </span>
-        <CoverImage
-          src={song.albumArt}
-          alt={song.title}
-          sizes="36px"
-          className="w-9 h-9 rounded-lg shrink-0"
-        />
-        <div className="min-w-0 flex-1">
+        <a
+          href={externalUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`Abrir en ${song.source === "spotify" ? "Spotify" : "YouTube"} • ${fullTrackLabel}`}
+          aria-label={`Abrir en ${song.source === "spotify" ? "Spotify" : "YouTube"}: ${fullTrackLabel}`}
+          className="relative group/cover shrink-0 block w-9 h-9 rounded-lg overflow-hidden cursor-pointer ring-1 ring-black/10 dark:ring-white/10 hover:ring-2 hover:ring-[#1db954] transition-all"
+        >
+          <CoverImage
+            src={song.albumArt}
+            alt={song.title}
+            sizes="36px"
+            className="w-full h-full"
+          />
+          <div className="absolute inset-0 bg-black/60 text-white flex items-center justify-center opacity-0 group-hover/cover:opacity-100 transition-opacity">
+            <ExternalLink size={12} className="text-white drop-shadow-xs" />
+          </div>
+        </a>
+        <div className="min-w-0 flex-1" title={fullTrackLabel}>
           <p
-            title={song.title}
-            className="text-xs font-semibold text-slate-900 dark:text-white truncate"
+            title={fullTrackLabel}
+            className="text-xs font-semibold text-slate-900 dark:text-white truncate cursor-default"
           >
             {song.title}
           </p>
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 min-w-0">
-            <span className="truncate" title={song.artist}>{song.artist}</span>
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 min-w-0" title={fullTrackLabel}>
+            <span className="truncate cursor-default" title={fullTrackLabel}>{song.artist}</span>
             {song.requestedBy?.username && (
               <>
                 <span className="text-slate-300 dark:text-slate-600 shrink-0">•</span>
