@@ -67,7 +67,7 @@ export function QueueDrawer({
     <GlassModal
       isOpen={isOpen}
       onClose={onClose}
-      maxWidth="lg"
+      maxWidth="2xl"
       icon={<ListMusic size={20} />}
       title="Cola de Reproducción"
       subtitle={`${queue.length} temas en espera — Duración aproximada: ~${formatDuration(totalQueueSeconds)}`}

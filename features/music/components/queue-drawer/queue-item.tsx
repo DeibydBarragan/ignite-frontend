@@ -61,7 +61,7 @@ export const SortableQueueItem = memo(function SortableQueueItem({
           : "hover:bg-black/5 dark:hover:bg-white/5"
       }`}
     >
-      <div className="flex items-center gap-2 min-w-0">
+      <div className="flex items-center gap-2.5 min-w-0 flex-1">
         <span
           {...attributes}
           {...listeners}
@@ -74,26 +74,29 @@ export const SortableQueueItem = memo(function SortableQueueItem({
         >
           <GripVertical size={14} />
         </span>
-        <span className="text-xs font-mono text-slate-400 w-5 text-center">
+        <span className="text-xs font-mono text-slate-400 w-5 text-center shrink-0">
           #{index + 1}
         </span>
         <CoverImage
           src={song.albumArt}
           alt={song.title}
           sizes="36px"
-          className="w-9 h-9 rounded-lg"
+          className="w-9 h-9 rounded-lg shrink-0"
         />
-        <div className="min-w-0">
-          <p className="text-xs font-semibold text-slate-900 dark:text-white truncate">
+        <div className="min-w-0 flex-1">
+          <p
+            title={song.title}
+            className="text-xs font-semibold text-slate-900 dark:text-white truncate"
+          >
             {song.title}
           </p>
-          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 truncate">
-            <span className="truncate">{song.artist}</span>
+          <div className="flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400 min-w-0">
+            <span className="truncate" title={song.artist}>{song.artist}</span>
             {song.requestedBy?.username && (
               <>
                 <span className="text-slate-300 dark:text-slate-600 shrink-0">•</span>
                 <span
-                  className="inline-flex items-center gap-1 text-purple-600 dark:text-purple-400 font-medium shrink-0"
+                  className="inline-flex items-center gap-1 text-purple-600 dark:text-purple-400 font-medium shrink-0 max-w-[100px] sm:max-w-[130px]"
                   title={`Añadido por ${song.requestedBy.username}`}
                 >
                   {song.requestedBy.avatar ? (
@@ -106,7 +109,7 @@ export const SortableQueueItem = memo(function SortableQueueItem({
                   ) : (
                     <User size={10} className="inline-block shrink-0" />
                   )}
-                  <span className="truncate max-w-[90px]">{song.requestedBy.username}</span>
+                  <span className="truncate">{song.requestedBy.username}</span>
                 </span>
               </>
             )}

@@ -83,7 +83,7 @@ export const PlaylistTrackRow = memo(function PlaylistTrackRow({
           : "hover:bg-black/5 dark:hover:bg-white/5 border-transparent hover:border-black/5 dark:hover:border-white/5"
       }`}
     >
-      <div className="flex items-center gap-2.5 min-w-0">
+      <div className="flex items-center gap-2.5 min-w-0 flex-1">
         <span className="text-[11px] font-mono text-slate-400 w-6 text-center shrink-0">
           {index + 1}
         </span>
@@ -93,15 +93,19 @@ export const PlaylistTrackRow = memo(function PlaylistTrackRow({
           sizes="36px"
           className="w-9 h-9 rounded-lg shrink-0"
         />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p
+            title={track.title}
             className={`text-xs font-semibold truncate ${
               isCurrent ? "text-[#1ed760]" : "text-slate-900 dark:text-white"
             }`}
           >
             {track.title}
           </p>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+          <p
+            title={track.artist}
+            className="text-[10px] text-slate-500 dark:text-slate-400 truncate"
+          >
             {track.artist} · {formatDuration(track.duration)}
           </p>
         </div>

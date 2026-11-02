@@ -43,16 +43,19 @@ export function QueueNowPlaying({
           className="w-12 h-12 rounded-lg"
         />
         <div className="min-w-0 flex-1">
-          <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">
+          <h4
+            title={song.title}
+            className="text-sm font-bold text-slate-900 dark:text-white truncate"
+          >
             {song.title}
           </h4>
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 truncate">
-            <span className="truncate">{song.artist}</span>
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 min-w-0">
+            <span className="truncate" title={song.artist}>{song.artist}</span>
             {song.requestedBy?.username && (
               <>
                 <span className="text-slate-300 dark:text-slate-600 shrink-0">•</span>
                 <span
-                  className="inline-flex items-center gap-1 text-purple-600 dark:text-purple-400 font-medium shrink-0"
+                  className="inline-flex items-center gap-1 text-purple-600 dark:text-purple-400 font-medium shrink-0 max-w-[160px]"
                   title={`Pedido por ${song.requestedBy.username}`}
                 >
                   {song.requestedBy.avatar ? (
@@ -65,7 +68,7 @@ export function QueueNowPlaying({
                   ) : (
                     <User size={11} className="inline-block shrink-0" />
                   )}
-                  <span>Pedido por {song.requestedBy.username}</span>
+                  <span className="truncate">Pedido por {song.requestedBy.username}</span>
                 </span>
               </>
             )}
