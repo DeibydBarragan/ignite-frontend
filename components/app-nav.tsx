@@ -1,19 +1,33 @@
 "use client";
 
+import Link from "next/link";
 import { useAuth } from "@/context/auth-context";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { DevModeToggle } from "@/components/dev-mode-toggle";
 import { UserBadge } from "@/features/auth/components/user-badge";
+import { setActiveTab } from "@/lib/tab-store";
 import { Flame } from "lucide-react";
 
 export function AppNav() {
   const { user, isLoggedIn, loginDiscord, logoutDiscord } = useAuth();
 
+  const handleBrandClick = () => {
+    setActiveTab("music");
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   return (
     <header className="sticky top-0 z-40 border-b border-black/5 dark:border-white/10 bg-white/70 dark:bg-[#0b0d14]/75 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
         {/* Brand / Logo */}
-        <div className="flex items-center gap-3">
+        <Link
+          href="/"
+          onClick={handleBrandClick}
+          className="flex items-center gap-3 transition-opacity hover:opacity-85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 rounded-lg cursor-pointer select-none"
+          aria-label="Ir a la página de inicio de Ignite"
+        >
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-600 text-white shadow-md shadow-purple-600/20">
             <Flame size={18} className="fill-white/20" />
           </div>
@@ -22,7 +36,7 @@ export function AppNav() {
               ignite
             </span>
           </div>
-        </div>
+        </Link>
 
         {/* Right side: Discord User Login & Theme */}
         <div className="flex items-center gap-2 sm:gap-2.5">
