@@ -13,6 +13,7 @@ import { RecentTTSCard } from "./recent-tts-card";
 import { SavedPhrasesCard } from "./saved-phrases-card";
 import { useVoices } from "@/hooks/use-voices";
 import { useToast } from "@/components/ui/toast";
+import { useTextHistory } from "../hooks/use-text-history";
 import { Trash2, Mic, AlertTriangle } from "lucide-react";
 
 export function TTSView() {
@@ -21,8 +22,16 @@ export function TTSView() {
   const { toast } = useToast();
   const voices = useVoices();
 
-  // Composer State
-  const [text, setText] = useState("");
+  // Composer State con historial de deshacer/rehacer y atajos Ctrl+Z
+  const {
+    text,
+    setText,
+    undo,
+    redo,
+    canUndo,
+    canRedo,
+    handleKeyDown,
+  } = useTextHistory("");
   const [selectedVoiceId, setSelectedVoiceId] = useState("loquendo");
   const [pitch, setPitch] = useState(1.0);
   const [rate, setRate] = useState(1.0);
@@ -66,7 +75,7 @@ export function TTSView() {
 
     if (res.success) {
       toast("Mensaje emitido en Discord con éxito.", "emit");
-      setText("");
+      setText("", true);
     } else {
       toast(res.error || "Error al emitir en Discord.", "error");
     }
@@ -124,7 +133,7 @@ export function TTSView() {
 
   // Load saved phrase into the composer
   const handleLoadToComposer = (phrase: SavedPhrase) => {
-    setText(phrase.text);
+    setText(phrase.text, true);
     if (phrase.voice) setSelectedVoiceId(phrase.voice);
     if (phrase.pitch) setPitch(phrase.pitch);
     if (phrase.rate) setRate(phrase.rate);
@@ -138,6 +147,11 @@ export function TTSView() {
         <TTSComposerCard
           text={text}
           onTextChange={setText}
+          onUndo={undo}
+          onRedo={redo}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onKeyDown={handleKeyDown}
           voices={voices}
           selectedVoiceId={selectedVoiceId}
           onVoiceChange={setSelectedVoiceId}

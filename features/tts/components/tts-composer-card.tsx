@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import type { VoiceItem } from "@/types/domain";
 import { GlassSelect } from "@/components/ui/glass-select";
-import { Mic, Send, Volume2, Loader2 } from "lucide-react";
+import { Mic, Send, Volume2, Loader2, Undo2, Redo2, X } from "lucide-react";
 
 export interface TTSComposerCardProps {
   text: string;
@@ -20,6 +20,11 @@ export interface TTSComposerCardProps {
   isPhraseBusy: boolean;
   onPreview: () => void;
   onSend: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
 }
 
 export function TTSComposerCard({
@@ -37,6 +42,11 @@ export function TTSComposerCard({
   isPhraseBusy,
   onPreview,
   onSend,
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
+  onKeyDown,
 }: TTSComposerCardProps) {
   const maxChars = 300;
   const charsLeft = maxChars - text.length;
@@ -76,8 +86,52 @@ export function TTSComposerCard({
           placeholder="Escribe el mensaje que dirá el bot en Discord..."
           value={text}
           onChange={(e) => onTextChange(e.target.value)}
-          className="glass-input w-full p-3.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 resize-none"
+          onKeyDown={onKeyDown}
+          className="glass-input w-full p-3.5 pb-8 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 resize-none"
         />
+
+        {/* Barra inferior del textarea: Botones de historial (Deshacer/Rehacer/Limpiar) y contador */}
+        <div className="absolute bottom-2 left-3 flex items-center gap-1.5">
+          {onUndo && (
+            <button
+              type="button"
+              onClick={onUndo}
+              disabled={!canUndo}
+              title="Volver al texto anterior (Ctrl+Z)"
+              aria-label="Volver al texto anterior"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-colors cursor-pointer"
+            >
+              <Undo2 size={12} />
+              <span>Anterior</span>
+            </button>
+          )}
+
+          {onRedo && canRedo && (
+            <button
+              type="button"
+              onClick={onRedo}
+              title="Rehacer texto (Ctrl+Y o Ctrl+Shift+Z)"
+              aria-label="Rehacer texto"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+            >
+              <Redo2 size={12} />
+              <span className="hidden sm:inline">Rehacer</span>
+            </button>
+          )}
+
+          {text.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onTextChange("")}
+              title="Limpiar texto"
+              aria-label="Limpiar texto"
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-medium text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
+
         <span
           className={`absolute bottom-2.5 right-3 text-[10px] font-mono tabular-nums ${
             charsLeft < 30 ? "text-amber-500" : "text-slate-400"
