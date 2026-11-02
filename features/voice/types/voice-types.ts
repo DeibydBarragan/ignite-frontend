@@ -11,7 +11,8 @@ export type VoiceCommandId =
   | "autoplay_on"
   | "autoplay_off"
   | "volume"
-  | "queue";
+  | "queue"
+  | "hola_que_hace";
 
 export interface VoiceBinding {
   phrase: string;
@@ -155,6 +156,26 @@ export const VOICE_COMMANDS: VoiceCommandDefinition[] = [
     requiresParam: false,
     defaultPhrases: ["cola", "lista", "fila", "canciones"],
     defaultTemplate: "Mostrando la lista",
+  },
+  {
+    id: "hola_que_hace",
+    label: "Saludo (Hola que hace)",
+    description: "Saluda al bot diciendo 'Hola que hace' y el bot responderá 'Hola que hace'.",
+    requiresParam: false,
+    defaultPhrases: [
+      "hola que hace",
+      "hola que haces",
+      "hola ke hace",
+      "hola ke haces",
+      "ola que hace",
+      "ola que haces",
+      "ola k ase",
+      "hola k ase",
+      "ola k hace",
+      "hola q hace",
+      "hola q haces",
+    ],
+    defaultTemplate: "Hola que hace",
   },
 ];
 

@@ -18,6 +18,7 @@ const voiceBindingSchema = z.object({
     "autoplay_off",
     "volume",
     "queue",
+    "hola_que_hace",
   ]),
 });
 

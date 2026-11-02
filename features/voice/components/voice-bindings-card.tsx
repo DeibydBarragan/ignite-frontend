@@ -60,6 +60,7 @@ const COMMAND_ICONS: Record<VoiceCommandId, React.ReactNode> = {
   autoplay_off: <Repeat size={16} className="text-slate-400" />,
   volume: <Volume2 size={16} className="text-orange-400" />,
   queue: <ListMusic size={16} className="text-violet-400" />,
+  hola_que_hace: <Sparkles size={16} className="text-pink-400" />,
 };
 
 type CategoryId = "all" | "playback" | "control" | "queue";
@@ -76,7 +77,7 @@ const CATEGORIES: CategoryMeta[] = [
     id: "all",
     label: "Todos",
     icon: <Layers size={14} />,
-    commandIds: ["play", "play_next", "enqueue", "pause", "resume", "skip", "previous", "stop", "queue", "shuffle", "autoplay_on", "autoplay_off", "volume"],
+    commandIds: ["play", "play_next", "enqueue", "pause", "resume", "skip", "previous", "stop", "queue", "shuffle", "autoplay_on", "autoplay_off", "volume", "hola_que_hace"],
   },
   { id: "playback", label: "Reproducir y Cola", icon: <Music size={14} />, commandIds: ["play", "play_next", "enqueue", "queue"] },
   { id: "control", label: "Control de Audio", icon: <Play size={14} />, commandIds: ["pause", "resume", "skip", "previous", "stop"] },

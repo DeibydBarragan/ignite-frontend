@@ -8,7 +8,7 @@ import { VOICE_COMMANDS } from "@/features/voice/types/voice-types";
 
 describe("Voice Types & Definitions", () => {
   it("contiene los 13 comandos esperados con sus plantillas por defecto", () => {
-    expect(VOICE_COMMANDS).toHaveLength(13);
+    expect(VOICE_COMMANDS).toHaveLength(14);
     const ids = VOICE_COMMANDS.map((c) => c.id);
     expect(ids).toContain("autoplay_on");
     expect(ids).toContain("autoplay_off");
@@ -23,6 +23,7 @@ describe("Voice Types & Definitions", () => {
     expect(ids).toContain("shuffle");
     expect(ids).toContain("volume");
     expect(ids).toContain("queue");
+    expect(ids).toContain("hola_que_hace");
   });
 
   it("los comandos con parámetros tienen placeholders asignados", () => {
