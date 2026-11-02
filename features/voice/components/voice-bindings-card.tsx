@@ -199,14 +199,28 @@ export function VoiceBindingsCard({
         {/* LEFT: search, categories and command list */}
         <div className="space-y-3">
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
+            <Search size={14} className="absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
             <input
               type="text"
               placeholder="Buscar comando o frase..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="glass-input w-full pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400"
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setSearchQuery("");
+              }}
+              className="glass-input w-full pl-8 pr-7 py-1.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400"
             />
+            {searchQuery.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                title="Borrar búsqueda (Esc)"
+                aria-label="Borrar búsqueda"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
 
           <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1" role="tablist" aria-label="Categorías de comandos">

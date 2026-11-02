@@ -2,7 +2,7 @@
 
 import type { MusicPlatform, SearchScope } from "@/types/music";
 import type { PendingAction } from "@/types/player";
-import { Search, Link2, Plus, ListPlus, Loader2 } from "lucide-react";
+import { Search, Link2, Plus, ListPlus, Loader2, X } from "lucide-react";
 
 const SCOPE_OPTIONS: { id: SearchScope; label: string }[] = [
   { id: "all", label: "Todo" },
@@ -102,64 +102,77 @@ export function MusicSearchBar({
             onKeyDown={(e) => {
               if (e.key === "Escape") onSearchInputChange("");
             }}
-            className={`glass-input w-full pl-10 pr-52 sm:pr-60 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-0 ${
+            className={`glass-input w-full pl-10 pr-56 sm:pr-64 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-0 ${
               isImporting ? "opacity-60 cursor-not-allowed" : ""
             }`}
           />
 
-          {/* Platform badge & Direct action buttons */}
-          {searchInput.trim().length > 0 && (
+          {/* Platform badge, Clear button & Direct action buttons */}
+          {searchInput.length > 0 && (
             <div className="absolute right-2 flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => onSearchInputChange("")}
+                title="Borrar búsqueda (Esc)"
+                aria-label="Borrar búsqueda"
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X size={14} />
+              </button>
               {isUrl && (
                 <span className="hidden sm:inline-block text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-black/10 dark:bg-white/10 text-slate-700 dark:text-slate-300">
                   {detectedPlatform}
                 </span>
               )}
-              <button
-                type="button"
-                onClick={() => onSubmit(searchInput, { next: true })}
-                disabled={isPlayerBusy}
-                title="Reproducir a continuación (saltarse la cola)"
-                className={`px-2.5 py-1 rounded-lg bg-purple-600/90 hover:bg-purple-500 text-white text-xs font-semibold shadow-xs flex items-center gap-1 transition-all ${
-                  isPlayerBusy
-                    ? "opacity-60 cursor-not-allowed"
-                    : "active:scale-95 cursor-pointer"
-                }`}
-              >
-                {isImporting && pendingAction === "playNext" ? (
-                  <>
-                    <Loader2 size={13} className="animate-spin" />
-                    <span>Sig</span>
-                  </>
-                ) : (
-                  <>
-                    <ListPlus size={13} />
-                    <span>Siguiente</span>
-                  </>
-                )}
-              </button>
-              <button
-                type="submit"
-                disabled={isPlayerBusy}
-                title="Añadir al final de la cola"
-                className={`px-3 py-1 rounded-lg bg-[#1db954] text-black text-xs font-semibold shadow-xs flex items-center gap-1 transition-all ${
-                  isPlayerBusy
-                    ? "opacity-60 cursor-not-allowed"
-                    : "hover:bg-[#1ed760] active:scale-95 cursor-pointer"
-                }`}
-              >
-                {isImporting && pendingAction === "queue" ? (
-                  <>
-                    <Loader2 size={13} className="animate-spin" />
-                    <span>Encolando</span>
-                  </>
-                ) : (
-                  <>
-                    <Plus size={13} />
-                    <span>Encolar</span>
-                  </>
-                )}
-              </button>
+              {searchInput.trim().length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => onSubmit(searchInput, { next: true })}
+                    disabled={isPlayerBusy}
+                    title="Reproducir a continuación (saltarse la cola)"
+                    className={`px-2.5 py-1 rounded-lg bg-purple-600/90 hover:bg-purple-500 text-white text-xs font-semibold shadow-xs flex items-center gap-1 transition-all ${
+                      isPlayerBusy
+                        ? "opacity-60 cursor-not-allowed"
+                        : "active:scale-95 cursor-pointer"
+                    }`}
+                  >
+                    {isImporting && pendingAction === "playNext" ? (
+                      <>
+                        <Loader2 size={13} className="animate-spin" />
+                        <span>Sig</span>
+                      </>
+                    ) : (
+                      <>
+                        <ListPlus size={13} />
+                        <span>Siguiente</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isPlayerBusy}
+                    title="Añadir al final de la cola"
+                    className={`px-3 py-1 rounded-lg bg-[#1db954] text-black text-xs font-semibold shadow-xs flex items-center gap-1 transition-all ${
+                      isPlayerBusy
+                        ? "opacity-60 cursor-not-allowed"
+                        : "hover:bg-[#1ed760] active:scale-95 cursor-pointer"
+                    }`}
+                  >
+                    {isImporting && pendingAction === "queue" ? (
+                      <>
+                        <Loader2 size={13} className="animate-spin" />
+                        <span>Encolando</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus size={13} />
+                        <span>Encolar</span>
+                      </>
+                    )}
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>

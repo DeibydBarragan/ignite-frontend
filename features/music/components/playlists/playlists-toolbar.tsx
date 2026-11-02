@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Link2, Plus, Loader2 } from "lucide-react";
+import { Search, Link2, Plus, Loader2, X } from "lucide-react";
 
 export interface PlaylistsToolbarProps {
   search: string;
@@ -27,14 +27,28 @@ export function PlaylistsToolbar({
     <>
       {/* Buscador de playlists */}
       <div className="relative flex items-center">
-        <Search size={16} className="absolute left-3.5 text-slate-400" />
+        <Search size={16} className="absolute left-3.5 text-slate-400 pointer-events-none" />
         <input
           type="text"
           placeholder="Buscar en tus playlists por nombre, artista o canción..."
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="glass-input w-full pl-10 pr-4 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") onSearchChange("");
+          }}
+          className="glass-input w-full pl-10 pr-9 py-2.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400"
         />
+        {search.length > 0 && (
+          <button
+            type="button"
+            onClick={() => onSearchChange("")}
+            title="Borrar búsqueda (Esc)"
+            aria-label="Borrar búsqueda"
+            className="absolute right-2.5 p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+          >
+            <X size={14} />
+          </button>
+        )}
       </div>
 
       {/* Importar por link (solo se guarda el enlace) */}

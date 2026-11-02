@@ -2,7 +2,7 @@
 
 import type { SoundCategory } from "@/types/domain";
 import { GlassSelect } from "@/components/ui/glass-select";
-import { Plus, Search, Clock } from "lucide-react";
+import { Plus, Search, Clock, X } from "lucide-react";
 
 export type SoundScope = "all" | "mine" | "public";
 export type SoundSort = "recent" | "popular" | "alpha";
@@ -131,14 +131,28 @@ export function SoundboardToolbar({
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-56">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
             <input
               type="text"
               placeholder="Buscar sonido..."
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="glass-input w-full pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400"
+              onKeyDown={(e) => {
+                if (e.key === "Escape") onSearchChange("");
+              }}
+              className="glass-input w-full pl-8 pr-7 py-1.5 text-xs text-slate-900 dark:text-white placeholder:text-slate-400"
             />
+            {search.length > 0 && (
+              <button
+                type="button"
+                onClick={() => onSearchChange("")}
+                title="Borrar búsqueda (Esc)"
+                aria-label="Borrar búsqueda"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X size={13} />
+              </button>
+            )}
           </div>
 
           <div className="w-36 shrink-0" title="Ordenar audios">
