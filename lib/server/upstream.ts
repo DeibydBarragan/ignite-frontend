@@ -31,9 +31,11 @@ function fallbackBase(): string {
     process.env.NEXT_PUBLIC_IGNITE_API_URL ??
     "";
   const cleaned = cleanUrl(raw);
-  if (!cleaned) {
+  // Las URLs de trycloudflare.com son túneles efímeros; si Supabase no reporta un latido activo,
+  // el túnel ya no existe y usarlo causaría un error 530 de Cloudflare.
+  if (!cleaned || cleaned.includes(".trycloudflare.com")) {
     throw new BotOfflineError(
-      "No active music bot tunnel found and no fallback IGNITE_API_URL configured"
+      "No active music bot tunnel found in Supabase and no persistent fallback configured"
     );
   }
   return cleaned;

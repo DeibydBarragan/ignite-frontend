@@ -76,8 +76,24 @@ async function proxy(req: NextRequest, path: string[]) {
     return NextResponse.json({ error: "Music bot unreachable" }, { status: 502 });
   }
 
-  if (upstream.status === 502 || upstream.status === 530) {
+  const isTunnelError =
+    upstream.status === 502 ||
+    upstream.status === 503 ||
+    upstream.status === 504 ||
+    (upstream.status >= 520 && upstream.status <= 530);
+
+  if (isTunnelError) {
     invalidateMusicBaseUrlCache();
+    if (path.length === 1 && path[0] === "health") {
+      return NextResponse.json(
+        { status: "offline", error: "Music bot is offline" },
+        { status: 503 }
+      );
+    }
+    return NextResponse.json(
+      { error: "Music bot is currently offline or tunnel is unreachable", status: "offline" },
+      { status: 503 }
+    );
   }
 
   const contentType = upstream.headers.get("content-type") ?? "";
