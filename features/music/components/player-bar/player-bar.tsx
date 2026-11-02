@@ -54,7 +54,7 @@ export function PlayerBar() {
               <PlayerTransport />
 
               {/* Right: FX, Autoplay, Stop, Queue */}
-              <div className="flex items-center justify-end gap-2 w-full md:w-1/4 flex-wrap">
+              <div className="flex items-center justify-end gap-2 w-full md:w-auto shrink-0 flex-wrap">
                 {/* FX / Filtros de audio */}
                 <PlayerFxButton />
 

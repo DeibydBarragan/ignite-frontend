@@ -6,6 +6,17 @@ import { CoverImage } from "@/components/ui/cover-image";
 import { LiveEqualizer } from "@/components/ui/live-equalizer";
 import { Loader2, ExternalLink, User, Star, ChevronDown } from "lucide-react";
 
+const SOURCE_BADGES: Record<Song["source"], { label: string; className: string }> = {
+  youtube: {
+    label: "YouTube",
+    className: "bg-red-500/10 text-red-500 border-red-500/20",
+  },
+  spotify: {
+    label: "Spotify",
+    className: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+  },
+};
+
 export interface PlayerTrackInfoProps {
   song: Song;
   isFav: boolean;
@@ -23,8 +34,13 @@ export function PlayerTrackInfo({
   const isPlayerBusy = usePlayerStore((s) => s.isPlayerBusy);
   const pendingAction = usePlayerStore((s) => s.pendingAction);
 
+  const sourceConfig = SOURCE_BADGES[song.source] || {
+    label: song.source,
+    className: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  };
+
   return (
-    <div className="flex items-center gap-3 w-full md:w-1/4 min-w-0">
+    <div className="flex items-center gap-3 w-full md:w-[35%] lg:w-[38%] min-w-0 shrink-0">
       <div className="relative group shrink-0">
         <CoverImage
           src={song.albumArt}
@@ -43,32 +59,32 @@ export function PlayerTrackInfo({
         </a>
       </div>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
           {isPlaying && (
             <div
-              className="flex items-center gap-1.5 px-1.5 py-0.5 rounded-md bg-[#1db954]/10 border border-[#1db954]/25 shrink-0"
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[#1db954]/10 border border-[#1db954]/25 shrink-0"
               title="Sonando en Discord"
             >
               <LiveEqualizer size="xs" variant="spotify" isPlaying={isPlaying} />
-              <span className="text-[9px] font-bold text-[#1ed760] uppercase tracking-wider hidden sm:inline">
+              <span className="text-[9px] font-bold text-[#1ed760] uppercase tracking-wider hidden xl:inline">
                 En Vivo
               </span>
             </div>
           )}
-          <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+          <h4
+            title={song.title}
+            className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate min-w-0 flex-1"
+          >
             {song.title}
           </h4>
-          <span className="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 shrink-0">
-            {song.source}
-          </span>
           {isPlayerBusy && (
             <span className="inline-flex items-center gap-1 text-[9px] font-semibold text-amber-500 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 animate-pulse shrink-0">
               <Loader2 size={9} className="animate-spin" />
-              <span>
+              <span className="hidden sm:inline">
                 {pendingAction === "skip"
-                  ? "Saltando pista..."
+                  ? "Saltando..."
                   : pendingAction === "previous"
-                  ? "Pista anterior..."
+                  ? "Anterior..."
                   : pendingAction === "toggle"
                   ? isPlaying
                     ? "Reanudando..."
@@ -80,8 +96,14 @@ export function PlayerTrackInfo({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 truncate">
-          <span className="truncate">{song.artist}</span>
+        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+          <span className="truncate" title={song.artist}>{song.artist}</span>
+          <span className="text-slate-300 dark:text-slate-600 shrink-0">•</span>
+          <span
+            className={`text-[9px] uppercase font-bold px-1.5 py-0.2 rounded border shadow-2xs shrink-0 ${sourceConfig.className}`}
+          >
+            {sourceConfig.label}
+          </span>
           {song.requestedBy?.username && (
             <>
               <span className="text-slate-300 dark:text-slate-600 shrink-0">•</span>

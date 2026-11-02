@@ -34,7 +34,7 @@ export function PlayerTransport() {
   if (!hasSong) return null;
 
   return (
-    <div className="flex flex-col items-center gap-1.5 w-full md:w-2/4">
+    <div className="flex flex-col items-center gap-1.5 w-full md:flex-1 md:max-w-xl min-w-0">
       {/* Transport Buttons */}
       <div className="flex items-center gap-3">
         <button
